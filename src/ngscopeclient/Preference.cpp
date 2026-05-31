@@ -80,12 +80,18 @@ namespace impl
 
 void EnumMapping::AddEnumMember(const std::string& name, base_type value)
 {
+	AddEnumMember(name, name, value);
+}
+
+void EnumMapping::AddEnumMember(const std::string& name, const std::string& displayName, base_type value)
+{
 	if(this->m_forwardMap.count(name) != 0)
 		throw std::runtime_error("Enum mapping already contains given enum value");
 
 	this->m_forwardMap.insert(std::make_pair(name, value));
 	this->m_backwardMap.insert(std::make_pair(value, name));
 	this->m_names.push_back(name);
+	this->m_displayNames.push_back(displayName);
 }
 
 const std::string& EnumMapping::GetName(base_type value) const
@@ -121,6 +127,11 @@ EnumMapping::base_type EnumMapping::GetValue(const std::string& name) const
 const std::vector<std::string>& EnumMapping::GetNames() const
 {
 	return this->m_names;
+}
+
+const std::vector<std::string>& EnumMapping::GetDisplayNames() const
+{
+	return this->m_displayNames;
 }
 
 void Preference::SetLabel(std::string label)
@@ -466,4 +477,3 @@ impl::PreferenceBuilder Preference::Font(std::string identifier, FontDescription
 
 	return impl::PreferenceBuilder{ std::move(pref) };
 }
-

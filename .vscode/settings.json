@@ -1,0 +1,8 @@
+{
+    // 打开文件默认用 UTF-8（无 BOM）
+    "files.encoding": "utf8",
+    // 禁止自动猜编码，防止误判 GBK
+    "files.autoGuessEncoding": false,
+    // 保存时也用 UTF-8
+    "files.saveEncoding": "utf8"
+}

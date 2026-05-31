@@ -90,6 +90,16 @@ namespace internal
 		return this->m_identifier;
 	}
 
+	const string& PreferenceTreeNodeBase::GetDisplayName() const
+	{
+		return this->m_displayName;
+	}
+
+	void PreferenceTreeNodeBase::SetDisplayName(string name)
+	{
+		this->m_displayName = std::move(name);
+	}
+
 	PreferenceTreeNodeType PreferenceTreeNodeBase::GetType() const
 	{
 		return this->m_type;
@@ -364,4 +374,11 @@ PreferenceCategory& PreferenceCategory::AddCategory(const string& identifier)
 	this->m_ordering.push_back(identifier);
 
 	return *static_cast<PreferenceCategory*>(this->m_children[identifier].get());
+}
+
+PreferenceCategory& PreferenceCategory::AddCategory(const string& identifier, const string& displayName)
+{
+	auto& category = AddCategory(identifier);
+	category.SetDisplayName(displayName);
+	return category;
 }

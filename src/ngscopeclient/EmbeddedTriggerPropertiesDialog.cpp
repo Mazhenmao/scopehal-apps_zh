@@ -105,7 +105,7 @@ bool EmbeddedTriggerPropertiesDialog::DoRender()
 			m_page = make_unique<TriggerPropertiesPage>(m_scope);
 		}
 	}
-	HelpMarker("Select the type of trigger for this instrument\n");
+	HelpMarker("选择此仪器的触发类型\n");
 
 	//Render the main trigger page
 	if(m_page)

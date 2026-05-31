@@ -63,7 +63,7 @@ HardwareFlagsDialog::~HardwareFlagsDialog()
  */
 bool HardwareFlagsDialog::DoRender()
 {
-	ImGui::Text(Tr("This dialog allows you to override hardware feature flag detection."));
+	ImGui::Text("此对话框允许覆盖硬件特性标志检测。");
 	ImGui::TextWrapped(
 	    "It is mostly intended for developers to test fallback versions of accelerated functionality by "
 		"disabling a feature that the hardware actually supports. There are no guardrails! "
@@ -82,16 +82,16 @@ bool HardwareFlagsDialog::DoRender()
 
 	if(ImGui::CollapsingHeader("GPU"))
 	{
-		ImGui::Checkbox(Tr("Legacy GPU filter enable"), &g_gpuFilterEnabled);
-		ImGui::Checkbox(Tr("Shader float64"), &g_hasShaderFloat64);
-		ImGui::Checkbox(Tr("Shader int64"), &g_hasShaderInt64);
-		ImGui::Checkbox(Tr("Shader atomic int64"), &g_hasShaderAtomicInt64);
-		ImGui::Checkbox(Tr("Shader int16"), &g_hasShaderInt16);
-		ImGui::Checkbox(Tr("Shader int8"), &g_hasShaderInt8);
-		ImGui::Checkbox(Tr("Shader atomic float"), &g_hasShaderAtomicFloat);
-		ImGui::Checkbox(Tr("Debug utils"), &g_hasDebugUtils);
-		ImGui::Checkbox(Tr("Memory budget"), &g_hasMemoryBudget);
-		ImGui::Checkbox(Tr("Push descriptor"), &g_hasPushDescriptor);
+		ImGui::Checkbox("启用旧版 GPU 滤波器", &g_gpuFilterEnabled);
+		ImGui::Checkbox("着色器 float64", &g_hasShaderFloat64);
+		ImGui::Checkbox("着色器 int64", &g_hasShaderInt64);
+		ImGui::Checkbox("着色器原子 int64", &g_hasShaderAtomicInt64);
+		ImGui::Checkbox("着色器 int16", &g_hasShaderInt16);
+		ImGui::Checkbox("着色器 int8", &g_hasShaderInt8);
+		ImGui::Checkbox("着色器原子 float", &g_hasShaderAtomicFloat);
+		ImGui::Checkbox("调试工具", &g_hasDebugUtils);
+		ImGui::Checkbox("内存预算", &g_hasMemoryBudget);
+		ImGui::Checkbox("推送描述符", &g_hasPushDescriptor);
 	}
 
 	return true;

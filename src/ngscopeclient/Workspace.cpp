@@ -109,7 +109,7 @@ bool Workspace::Render()
 
 	if(ImGui::BeginPopupContextItem())
 	{
-		ImGui::InputText(Tr("Name"), &m_title);
+		ImGui::InputText("名称", &m_title);
 		ImGui::EndPopup();
 	}
 

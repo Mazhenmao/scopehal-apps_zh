@@ -53,7 +53,7 @@ FilterGraphWorkspace::FilterGraphWorkspace(
 	, m_graphEditor(graphEditor)
 	, m_palette(palette)
 {
-	m_title = Tr("Filter Graph");
+	m_title = "滤波器图";
 }
 
 void FilterGraphWorkspace::DoRender(ImGuiID id)

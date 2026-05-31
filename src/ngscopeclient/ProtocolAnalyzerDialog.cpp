@@ -142,7 +142,7 @@ bool ProtocolAnalyzerDialog::DoRender()
 	float boxwidth = ImGui::GetContentRegionAvail().x;
 	ImGui::SetNextItemWidth(boxwidth - ImGui::CalcTextSize("Filter").x - ImGui::GetStyle().ItemSpacing.x);
 	ImGui::PushStyleColor(ImGuiCol_FrameBg, bgcolor);
-	ImGui::InputText(Tr("Filter"), &m_filterExpression);
+	ImGui::InputText("滤波器", &m_filterExpression);
 	bool updated = !ImGui::IsItemActive();
 	bool filterDirty = (m_committedFilterExpression != m_filterExpression);
 	ImGui::PopStyleColor();
@@ -180,7 +180,7 @@ bool ProtocolAnalyzerDialog::DoRender()
 	if(m_filter->GetShowDataColumn())
 	{
 		ImGui::SetNextItemWidth(10 * width);
-		if(ImGui::Combo(Tr("Data Format"), (int*)&m_dataFormat, "Hex\0ASCII\0Hexdump\0"))
+		if(ImGui::Combo("数据格式", (int*)&m_dataFormat, "Hex\0ASCII\0Hexdump\0"))
 			forceRefresh = true;
 	}
 
@@ -195,7 +195,7 @@ bool ProtocolAnalyzerDialog::DoRender()
 	if(!rows.empty() && ImGui::BeginTable("table", ncols, flags))
 	{
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-		ImGui::TableSetupColumn(Tr("Timestamp"), ImGuiTableColumnFlags_WidthFixed, 12*width);
+		ImGui::TableSetupColumn("时间戳", ImGuiTableColumnFlags_WidthFixed, 12*width);
 		for(size_t i=0; i<cols.size(); i++)
 		{
 			//Stretch the last text column if we have no data column
@@ -208,11 +208,11 @@ bool ProtocolAnalyzerDialog::DoRender()
 		}
 		if(m_filter->GetShowDataColumn())
 		{
-			ImGui::TableSetupColumn(Tr("Data"), ImGuiTableColumnFlags_WidthStretch, 0.0f);
+			ImGui::TableSetupColumn("数据", ImGuiTableColumnFlags_WidthStretch, 0.0f);
 			lastTextColumn ++;
 		}
 		if(m_filter->GetShowImageColumn())
-			ImGui::TableSetupColumn(Tr("Image"), ImGuiTableColumnFlags_WidthFixed, 0.0f);
+			ImGui::TableSetupColumn("图像", ImGuiTableColumnFlags_WidthFixed, 0.0f);
 		ImGui::TableHeadersRow();
 
 		ImGuiListClipper clipper;

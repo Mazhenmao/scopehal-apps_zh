@@ -96,7 +96,7 @@ void PowerSupplyDialog::AsyncLoadState()
 bool PowerSupplyDialog::DoRender()
 {
 	//Device information
-	if(ImGui::CollapsingHeader("Info"))
+	if(ImGui::CollapsingHeader("信息"))
 	{
 		ImGui::BeginDisabled();
 
@@ -108,12 +108,12 @@ bool PowerSupplyDialog::DoRender()
 			auto tname = transport->GetName();
 			auto tstring = transport->GetConnectionString();
 
-			ImGui::InputText(Tr("Make"), &vendor[0], vendor.size());
-			ImGui::InputText(Tr("Model"), &name[0], name.size());
-			ImGui::InputText(Tr("Serial"), &serial[0], serial.size());
-			ImGui::InputText(Tr("Driver"), &driver[0], driver.size());
-			ImGui::InputText(Tr("Transport"), &tname[0], tname.size());
-			ImGui::InputText(Tr("Path"), &tstring[0], tstring.size());
+			ImGui::InputText("制造商", &vendor[0], vendor.size());
+			ImGui::InputText("型号", &name[0], name.size());
+			ImGui::InputText("序列号", &serial[0], serial.size());
+			ImGui::InputText("驱动", &driver[0], driver.size());
+			ImGui::InputText("传输", &tname[0], tname.size());
+			ImGui::InputText("路径", &tstring[0], tstring.size());
 
 		ImGui::EndDisabled();
 	}
@@ -121,15 +121,12 @@ bool PowerSupplyDialog::DoRender()
 	//Top level settings
 	if(m_psu->SupportsMasterOutputSwitching())
 	{
-		if(ImGui::CollapsingHeader("Global", ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("全局", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			if(ImGui::Checkbox(Tr("Output Enable"), &m_masterEnable))
+			if(ImGui::Checkbox("输出使能", &m_masterEnable))
 				m_psu->SetMasterPowerEnable(m_masterEnable);
 
-			HelpMarker(
-				"Top level output enable, gating all outputs from the PSU.\n"
-				"\n"
-				"This acts as a second switch in series with the per-channel output enables.");
+			HelpMarker("顶层输出启用，用于控制 PSU 的所有输出。\n\n它相当于与各通道输出启用串联的第二级开关。");
 		}
 	}
 
@@ -200,7 +197,7 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 
 		if(m_psu->SupportsIndividualOutputSwitching())
 		{
-			if(ImGui::Checkbox(Tr("Output Enable"), &m_channelUIState[i].m_outputEnabled))
+			if(ImGui::Checkbox("输出使能", &m_channelUIState[i].m_outputEnabled))
 			{
 				m_psu->SetPowerChannelActive(i, m_channelUIState[i].m_outputEnabled);
 				// Tell intrument thread that the PSU state has to be updated
@@ -213,14 +210,11 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 
 				ImGui::SameLine();
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1*alpha, 0, 0, 1*alpha));
-				ImGui::TextUnformatted(Tr("Overload shutdown"));
+				ImGui::TextUnformatted("过载关断");
 				ImGui::PopStyleColor();
-				Tooltip(
-					"Overcurrent shutdown has been triggered.\n\n"
-					"Clear the fault on your load, then turn the output off and on again to reset."
-					);
+				Tooltip("已触发过流关断。\n\n清除负载上的故障后，关闭并重新打开输出以复位。");
 			}
-			HelpMarker("Turns power from this channel on or off");
+			HelpMarker("打开或关闭此通道的供电");
 		}
 
 		//Advanced features (not available with all PSUs)
@@ -228,35 +222,29 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 		bool ss = m_psu->SupportsSoftStart();
 		if(ocp || ss)
 		{
-			if(ImGui::TreeNode("Advanced"))
+			if(ImGui::TreeNode("高级"))
 			{
 				if(ocp)
 				{
-					if(ImGui::Checkbox(Tr("Overcurrent Shutdown"), &m_channelUIState[i].m_overcurrentShutdownEnabled))
+					if(ImGui::Checkbox("过流关断", &m_channelUIState[i].m_overcurrentShutdownEnabled))
 					{
 						m_psu->SetPowerOvercurrentShutdownEnabled(i, m_channelUIState[i].m_overcurrentShutdownEnabled);
 						// Tell intrument thread that the PSU state has to be updated
 						m_state->m_needsUpdate[i] = true;
 					}
-					HelpMarker(
-						"When enabled, the channel will shut down on overcurrent rather than switching to constant current mode.\n"
-						"\n"
-						"Once the overcurrent shutdown has been activated, the channel must be disabled and re-enabled to "
-						"restore power to the load.");
+					HelpMarker("启用后，通道在过流时会关断，而不是切换到恒流模式。\n\n过流关断触发后，必须先禁用再重新启用该通道，才能恢复对负载供电。");
 				}
 
 				if(ss)
 				{
-					if(ImGui::Checkbox(Tr("Soft Start"), &m_channelUIState[i].m_softStartEnabled))
+					if(ImGui::Checkbox("软启动", &m_channelUIState[i].m_softStartEnabled))
 					{
 						m_psu->SetSoftStartEnabled(i, m_channelUIState[i].m_softStartEnabled);
 						// Tell intrument thread that the PSU state has to be updated
 						m_state->m_needsUpdate[i] = true;
 					}
 
-					HelpMarker(
-						"Deliberately limit the rise time of the output in order to reduce inrush current when driving "
-						"capacitive loads.");
+					HelpMarker("有意限制输出上升时间，以降低驱动容性负载时的浪涌电流。");
 
 					ImGui::SetNextItemWidth(valueWidth);
 					if(UnitInputWithExplicitApply(
@@ -266,12 +254,7 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 						// Tell intrument thread that the PSU state has to be updated
 						m_state->m_needsUpdate[i] = true;
 					}
-					HelpMarker(
-						"Transition time between off and on state when using soft start\n\n"
-						"Changes are not pushed to hardware until you click Apply.\n\n"
-						"CAUTION: Some instruments (e.g. R&S HMC804x) will turn off the output\n"
-						"when changing the ramp time."
-						);
+					HelpMarker("使用软启动时从关闭到开启状态的过渡时间\n\n点击应用前，更改不会发送到硬件。\n\n注意：部分仪器（例如 R&S HMC804x）在更改斜坡时间时会关闭输出。");
 				}
 
 				ImGui::TreePop();
@@ -282,7 +265,7 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 		{
 			//Set points for channels
 			ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
-			if(ImGui::TreeNode("Set Points"))
+			if(ImGui::TreeNode("设定值"))
 			{
 				ImGui::SetNextItemWidth(valueWidth);
 				if(UnitInputWithExplicitApply(
@@ -292,7 +275,7 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 					// Tell intrument thread that the PSU state has to be updated
 					m_state->m_needsUpdate[i] = true;
 				}
-				HelpMarker("Target voltage to be supplied to the load.\n\nChanges are not pushed to hardware until you click Apply.");
+				HelpMarker("提供给负载的目标电压。\n\n点击应用前，更改不会发送到硬件。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(UnitInputWithExplicitApply(
@@ -302,14 +285,14 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 					// Tell intrument thread that the PSU state has to be updated
 					m_state->m_needsUpdate[i] = true;
 				}
-				HelpMarker("Maximum current to be supplied to the load.\n\nChanges are not pushed to hardware until you click Apply.");
+				HelpMarker("提供给负载的最大电流。\n\n点击应用前，更改不会发送到硬件。");
 
 				ImGui::TreePop();
 			}
 
 			//Actual values of channels
 			ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
-			if(ImGui::TreeNode("Measured"))
+			if(ImGui::TreeNode("测量值"))
 			{
 				ImGui::BeginDisabled();
 					ImGui::SetNextItemWidth(valueWidth);
@@ -323,9 +306,9 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0, 1, 0, 1));
 					ImGui::TextUnformatted("CV");
 					ImGui::PopStyleColor();
-					Tooltip("Channel is operating in constant-voltage mode");
+					Tooltip("通道正在恒压模式下工作");
 				}
-				HelpMarker("Measured voltage being output by the supply");
+				HelpMarker("电源正在输出的测量电压");
 
 				ImGui::BeginDisabled();
 					ImGui::SetNextItemWidth(valueWidth);
@@ -338,11 +321,11 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 					ImGui::SameLine();
 					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0, 0, 1));
 					ImGui::TextUnformatted("CC");
-					Tooltip("Channel is operating in constant-current mode");
+					Tooltip("通道正在恒流模式下工作");
 					ImGui::PopStyleColor();
 				}
 
-				HelpMarker("Measured current being output by the supply");
+				HelpMarker("电源正在输出的测量电流");
 
 				ImGui::TreePop();
 			}

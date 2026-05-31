@@ -90,7 +90,9 @@ class EnumMapping
 
 	public:
 		void AddEnumMember(const std::string& name, base_type value);
+		void AddEnumMember(const std::string& name, const std::string& displayName, base_type value);
 		const std::string& GetName(base_type value) const;
+		const std::vector<std::string>& GetDisplayNames() const;
 		base_type GetValue(const std::string& name) const;
 		const std::vector<std::string>& GetNames() const;
 		bool HasNameFor(base_type value) const;
@@ -110,10 +112,18 @@ class EnumMapping
 			this->AddEnumMember(name, val);
 		}
 
+		template< typename E >
+		void AddEnumMember(const std::string& name, const std::string& displayName, E value)
+		{
+			const auto val = static_cast<base_type>(value);
+			this->AddEnumMember(name, displayName, val);
+		}
+
 	protected:
 		std::map<std::string, base_type> m_forwardMap;
 		std::map<base_type, std::string> m_backwardMap;
 		std::vector<std::string> m_names;
+		std::vector<std::string> m_displayNames;
 };
 
 class Preference
@@ -282,6 +292,13 @@ namespace impl
 			PreferenceBuilder EnumValue(const std::string& name, E value) &&
 			{
 				this->m_pref.m_mapping.AddEnumMember<E>(name, value);
+				return std::move(*this);
+			}
+
+			template< typename E >
+			PreferenceBuilder EnumValue(const std::string& name, const std::string& displayName, E value) &&
+			{
+				this->m_pref.m_mapping.AddEnumMember<E>(name, displayName, value);
 				return std::move(*this);
 			}
 	};

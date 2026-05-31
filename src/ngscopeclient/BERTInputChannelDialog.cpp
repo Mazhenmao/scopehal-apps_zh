@@ -171,7 +171,7 @@ bool BERTInputChannelDialog::DoRender()
 	auto bert = m_channel->GetBERT().lock();
 	if(!bert)
 		return false;
-	if(ImGui::CollapsingHeader("Info"))
+	if(ImGui::CollapsingHeader("信息"))
 	{
 		auto nickname = bert->m_nickname;
 		auto hwname = m_channel->GetHwname();
@@ -179,31 +179,31 @@ bool BERTInputChannelDialog::DoRender()
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Instrument"), &nickname);
+			ImGui::InputText("仪器", &nickname);
 		ImGui::EndDisabled();
-		HelpMarker("The instrument this channel was measured by");
+		HelpMarker("测量此通道的仪器");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Hardware Channel"), &index);
+			ImGui::InputText("硬件通道", &index);
 		ImGui::EndDisabled();
-		HelpMarker("Physical channel number (starting from 1) on the instrument front panel");
+		HelpMarker("仪器前面板上的物理通道编号（从 1 开始）");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Hardware Name"), &hwname);
+			ImGui::InputText("硬件名称", &hwname);
 		ImGui::EndDisabled();
-		HelpMarker("Hardware name for the channel (as used in the instrument API)");
+		HelpMarker("通道的硬件名称（仪器 API 使用的名称）");
 	}
 
 	//All channels have display settings
-	if(ImGui::CollapsingHeader("Display", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("显示", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(TextInputWithImplicitApply(Tr("Nickname"), m_displayName, m_committedDisplayName))
+		if(TextInputWithImplicitApply("自定义名称", m_displayName, m_committedDisplayName))
 			m_channel->SetDisplayName(m_committedDisplayName);
 
-		HelpMarker("Display name for the channel");
+		HelpMarker("通道显示名称");
 
 		if(ImGui::ColorEdit3(
 			"Color",
@@ -219,19 +219,19 @@ bool BERTInputChannelDialog::DoRender()
 		}
 	}
 
-	if(ImGui::CollapsingHeader("Receiver", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("接收器", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Checkbox(Tr("Invert"), &m_invert))
+		if(ImGui::Checkbox("反相", &m_invert))
 			m_channel->SetInvert(m_invert);
-		HelpMarker("Inverts the polarity of the input");
+		HelpMarker("反转输入极性");
 
 		if(m_channel->HasCTLE())
 		{
 			ImGui::SetNextItemWidth(width);
 			if(Dialog::Combo("CTLE Gain", m_ctleNames, m_ctleIndex))
 				m_channel->SetCTLEGainStep(m_ctleIndex);
-			HelpMarker("Gain step for the continuous-time linear equalizer");
+			HelpMarker("连续时间线性均衡器的增益档位");
 		}
 	}
 
@@ -239,33 +239,31 @@ bool BERTInputChannelDialog::DoRender()
 	{
 		ImGui::BeginDisabled();
 			auto lock = m_channel->GetCdrLockState();
-			ImGui::Checkbox(Tr("Lock"), &lock);
+			ImGui::Checkbox("锁定", &lock);
 		ImGui::EndDisabled();
-		HelpMarker(
-			"Indicates whether the clock recovery loop and PRBS checker are locked to incoming data.\n"
-			"If not locked, no measurements can be made.");
+		HelpMarker("指示时钟恢复环路和 PRBS 检查器是否已锁定到输入数据。\n未锁定时无法进行测量。");
 	}
 
-	if(ImGui::CollapsingHeader("Pattern Checker", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("码型检查器", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
 		if(Dialog::Combo("Pattern", m_patternNames, m_patternIndex))
 			m_channel->SetPattern(m_patternValues[m_patternIndex]);
-		HelpMarker("Expected PRBS pattern");
+		HelpMarker("期望的 PRBS 码型");
 	}
 
 	if(bert->IsDataRatePerChannel())
 	{
-		if(ImGui::CollapsingHeader("Timebase", defaultOpenFlags))
+		if(ImGui::CollapsingHeader("时基", defaultOpenFlags))
 		{
 			ImGui::SetNextItemWidth(width);
 			if(Dialog::Combo("Data Rate", m_dataRateNames, m_dataRateIndex))
 				m_channel->SetDataRate(m_dataRates[m_dataRateIndex]);
-			HelpMarker("PHY signaling rate for this transmit port");
+			HelpMarker("此发送端口的 PHY 信号速率");
 		}
 	}
 
-	if(ImGui::CollapsingHeader("Measurements", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("测量", defaultOpenFlags))
 	{
 		auto state = m_parent->GetSession().GetBERTState(m_channel->GetBERT().lock());
 
@@ -277,9 +275,7 @@ bool BERTInputChannelDialog::DoRender()
 			ImGui::SetNextItemWidth(width);
 			if(Dialog::Combo("Integration Depth", m_scanNames, m_scanIndex))
 				m_channel->SetScanDepth(m_scanValues[m_scanIndex]);
-			HelpMarker(
-				"Maximum number of UIs to integrate at each point in the scan.\n"
-				"Higher values give better accuracy at lower BER values, but increase scan time.");
+			HelpMarker("扫描中每个点积分的最大 UI 数量。\n较大的值在较低 BER 下精度更好，但会增加扫描时间。");
 		}
 
 		//See if sampling point moved outside our dialog
@@ -295,23 +291,23 @@ bool BERTInputChannelDialog::DoRender()
 		}
 
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::SliderFloat(Tr("Sample X"), &m_sampleX, -uiWidth/2, uiWidth/2))
+		if(ImGui::SliderFloat("采样 X", &m_sampleX, -uiWidth/2, uiWidth/2))
 		{
 			m_channel->SetBERSamplingPoint(m_sampleX * 1e3, m_sampleY);
 			m_committedSampleX = m_sampleX;
 		}
-		HelpMarker("Sampling time for BER measurements, in ps relative to center of UI");
+		HelpMarker("BER 测量采样时间，相对于 UI 中心，单位 ps");
 
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::SliderFloat(Tr("Sample Y"), &m_sampleY, -0.2, 0.2))
+		if(ImGui::SliderFloat("采样 Y", &m_sampleY, -0.2, 0.2))
 		{
 			m_channel->SetBERSamplingPoint(m_sampleX * 1e3, m_sampleY);
 			m_committedSampleY = m_sampleY;
 		}
-		HelpMarker("Sampling offset for BER measurements, in V relative to center of UI");
+		HelpMarker("BER 测量采样偏移，相对于 UI 中心，单位 V");
 
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Button(Tr("Horz Bathtub")))
+		if(ImGui::Button("水平浴盆图"))
 		{
 			//Make sure we have a plot to see the data in
 			m_parent->AddAreaForStreamIfNotAlreadyVisible(m_channel->GetHBathtubStream());
@@ -327,11 +323,11 @@ bool BERTInputChannelDialog::DoRender()
 		if(m_channel->IsHBathtubScanInProgress())
 			ImGui::ProgressBar(m_channel->GetScanProgress(), ImVec2(2*width, 0));
 		else
-			ImGui::Text(Tr("Estimated %s"), fs.PrettyPrint(m_channel->GetExpectedBathtubCaptureTime(), 5).c_str());
+			ImGui::Text("预计 %s", fs.PrettyPrint(m_channel->GetExpectedBathtubCaptureTime(), 5).c_str());
 
-		HelpMarker("Acquire a single horizontal bathtub measurement");
+		HelpMarker("采集一次水平浴盆曲线测量");
 
-		if(ImGui::Button(Tr("Eye")))
+		if(ImGui::Button("眼图"))
 		{
 			//Make sure we have a plot to see the data in
 			m_parent->AddAreaForStreamIfNotAlreadyVisible(m_channel->GetEyeStream());
@@ -345,8 +341,8 @@ bool BERTInputChannelDialog::DoRender()
 		if(m_channel->IsEyeScanInProgress())
 			ImGui::ProgressBar(m_channel->GetScanProgress(), ImVec2(2*width, 0));
 		else
-			ImGui::Text(Tr("Estimated %s"), fs.PrettyPrint(m_channel->GetExpectedEyeCaptureTime(), 5).c_str());
-		HelpMarker("Acquire a single eye pattern measurement");
+			ImGui::Text("预计 %s", fs.PrettyPrint(m_channel->GetExpectedEyeCaptureTime(), 5).c_str());
+		HelpMarker("采集一次眼图测量");
 
 		//Input path
 		ImGui::SetNextItemWidth(ImGui::GetFontSize() * 10);
@@ -371,8 +367,8 @@ bool BERTInputChannelDialog::DoRender()
 				LogTrace("file dialog is already open, ignoring additional button click\n");
 		}
 		ImGui::SameLine();
-		ImGui::TextUnformatted(Tr("Mask file"));
-		HelpMarker("Mask data file for pass/fail testing");
+		ImGui::TextUnformatted("掩码文件");
+		HelpMarker("用于通过/失败测试的模板数据文件");
 	}
 
 	return true;

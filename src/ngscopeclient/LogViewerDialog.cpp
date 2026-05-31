@@ -88,8 +88,8 @@ bool LogViewerDialog::DoRender()
 		if(ImGui::BeginTable("filters", 2, flags, ImVec2(0, 7*ImGui::GetFontSize())))
 		{
 			ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-			ImGui::TableSetupColumn(Tr("Class"), ImGuiTableColumnFlags_WidthFixed, 10*width);
-			ImGui::TableSetupColumn(Tr("Function"), ImGuiTableColumnFlags_WidthStretch, 0.0f);
+			ImGui::TableSetupColumn("类别", ImGuiTableColumnFlags_WidthFixed, 10*width);
+			ImGui::TableSetupColumn("功能", ImGuiTableColumnFlags_WidthStretch, 0.0f);
 			ImGui::TableHeadersRow();
 
 			for(auto& filter : g_trace_filters)
@@ -133,7 +133,7 @@ bool LogViewerDialog::DoRender()
 			ImGui::EndTable();
 		}
 
-		ImGui::InputText(Tr("Filter"), &m_traceFilter);
+		ImGui::InputText("滤波器", &m_traceFilter);
 		ImGui::SameLine();
 		if(ImGui::Button("+"))
 		{
@@ -181,9 +181,9 @@ bool LogViewerDialog::DoRender()
 		//TODO: use ImGuiListClipper
 
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-		ImGui::TableSetupColumn(Tr("Timestamp"), ImGuiTableColumnFlags_WidthFixed, 10*width);
-		ImGui::TableSetupColumn(Tr("Severity"), ImGuiTableColumnFlags_WidthFixed, 0.0f);
-		ImGui::TableSetupColumn(Tr("Message"), ImGuiTableColumnFlags_WidthStretch, 0.0f);
+		ImGui::TableSetupColumn("时间戳", ImGuiTableColumnFlags_WidthFixed, 10*width);
+		ImGui::TableSetupColumn("严重级别", ImGuiTableColumnFlags_WidthFixed, 0.0f);
+		ImGui::TableSetupColumn("消息", ImGuiTableColumnFlags_WidthStretch, 0.0f);
 		ImGui::TableHeadersRow();
 
 		for(size_t i=0; i<lines.size(); i++)
@@ -220,27 +220,27 @@ bool LogViewerDialog::DoRender()
 				//no need for fatal, we abort before we can see it
 
 				case Severity::ERROR:
-					ImGui::TextUnformatted(Tr("Error"));
+					ImGui::TextUnformatted("错误");
 					break;
 
 				case Severity::WARNING:
-					ImGui::TextUnformatted(Tr("Warning"));
+					ImGui::TextUnformatted("警告");
 					break;
 
 				case Severity::NOTICE:
-					ImGui::TextUnformatted(Tr("Notice"));
+					ImGui::TextUnformatted("通知");
 					break;
 
 				case Severity::VERBOSE:
-					ImGui::TextUnformatted(Tr("Verbose"));
+					ImGui::TextUnformatted("详细");
 					break;
 
 				case Severity::DEBUG:
-					ImGui::TextUnformatted(Tr("Debug"));
+					ImGui::TextUnformatted("调试");
 					break;
 
 				case Severity::TRACE:
-					ImGui::TextUnformatted(Tr("Trace"));
+					ImGui::TextUnformatted("跟踪");
 					break;
 				default:
 					break;

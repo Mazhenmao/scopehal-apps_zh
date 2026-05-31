@@ -143,7 +143,7 @@ bool HistoryDialog::DoRender()
 
 	float width = ImGui::GetFontSize();
 
-	ImGui::InputInt(Tr("History Depth"), &m_mgr.m_maxDepth, 1, 10);
+	ImGui::InputInt("历史深度", &m_mgr.m_maxDepth, 1, 10);
 	HelpMarker(
 		"Adjust the cap on total history depth, in waveforms.\n"
 		"Large history depths can use significant amounts of RAM with deep memory.");
@@ -155,9 +155,9 @@ bool HistoryDialog::DoRender()
 	if(ImGui::BeginTable("history", 3, flags))
 	{
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-		ImGui::TableSetupColumn(Tr("Timestamp"), ImGuiTableColumnFlags_WidthFixed, 12*width);
-		ImGui::TableSetupColumn(Tr("Pin"), ImGuiTableColumnFlags_WidthFixed, 0.0f);
-		ImGui::TableSetupColumn(Tr("Label"));
+		ImGui::TableSetupColumn("时间戳", ImGuiTableColumnFlags_WidthFixed, 12*width);
+		ImGui::TableSetupColumn("固定", ImGuiTableColumnFlags_WidthFixed, 0.0f);
+		ImGui::TableSetupColumn("标签");
 		ImGui::TableHeadersRow();
 
 		list<shared_ptr<HistoryPoint> >::iterator itDelete;
@@ -188,7 +188,7 @@ bool HistoryDialog::DoRender()
 			bool rowIsHovered = ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal);
 			if(ImGui::BeginPopupContextItem())
 			{
-				if(ImGui::MenuItem(Tr("Delete")))
+				if(ImGui::MenuItem("删除"))
 				{
 					itDelete = it;
 					deleting = true;
@@ -313,7 +313,7 @@ bool HistoryDialog::DoRender()
 
 					if(ImGui::BeginPopupContextItem())
 					{
-						if(ImGui::MenuItem(Tr("Delete")))
+						if(ImGui::MenuItem("删除"))
 						{
 							deletingMarker = true;
 							markerToDelete = i;

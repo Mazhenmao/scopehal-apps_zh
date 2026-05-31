@@ -44,7 +44,7 @@ using namespace std;
 // Construction / destruction
 
 ManageInstrumentsDialog::ManageInstrumentsDialog(Session& session, MainWindow* parent)
-	: Dialog(Tr("Manage Instruments"), Tr("Manage Instruments"), ImVec2(1024, 300), &session, parent)
+	: Dialog("管理仪器", "管理仪器", ImVec2(1024, 300), &session, parent)
 	//, m_selection(nullptr)
 {
 }
@@ -76,12 +76,10 @@ bool ManageInstrumentsDialog::DoRender()
 
 	//TODO: should VNAs really be considered scopes?
 
-	if(ImGui::CollapsingHeader(Tr("Trigger Groups"), ImGuiTreeNodeFlags_DefaultOpen) && (scopes.size() != 0))
+	if(ImGui::CollapsingHeader("触发组", ImGuiTreeNodeFlags_DefaultOpen) && (scopes.size() != 0))
 	{
 		HelpMarker(
-		 Tr("All instruments in a trigger group are synchronized and trigger in lock-step.\n"
-			"The root instrument of a trigger group must have a trigger-out port.\n"
-			"All instruments in a trigger group should be connected to a common reference clock to avoid skew."));
+		 "触发组内所有仪器保持同步，并以锁步方式触发。\n触发组的主仪器必须具备触发输出端口。\n触发组内所有仪器应连接到同一参考时钟，以避免时序偏移。");
 
 		if(ImGui::BeginTable("groups", 6, flags))
 		{
@@ -93,7 +91,7 @@ bool ManageInstrumentsDialog::DoRender()
 		m_session->GarbageCollectTriggerGroups();
 	}
 
-	if(ImGui::CollapsingHeader(Tr("All Instruments"), ImGuiTreeNodeFlags_DefaultOpen))
+	if(ImGui::CollapsingHeader("所有仪器", ImGuiTreeNodeFlags_DefaultOpen))
 	{
 		if(ImGui::BeginTable("alltable", 8, flags))
 		{
@@ -109,12 +107,12 @@ void ManageInstrumentsDialog::TriggerGroupsTable()
 {
 	float width = ImGui::GetFontSize();
 	ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-	ImGui::TableSetupColumn(Tr("Nickname"), ImGuiTableColumnFlags_WidthFixed, 12*width);
-	ImGui::TableSetupColumn(Tr("Make"), ImGuiTableColumnFlags_WidthFixed, 9*width);
-	ImGui::TableSetupColumn(Tr("Model"), ImGuiTableColumnFlags_WidthFixed, 15*width);
-	ImGui::TableSetupColumn(Tr("Serial"), ImGuiTableColumnFlags_WidthFixed, 8*width);
-	ImGui::TableSetupColumn(Tr("Skew"), ImGuiTableColumnFlags_WidthFixed, 8*width);
-	ImGui::TableSetupColumn(Tr("Actions"), ImGuiTableColumnFlags_WidthFixed, 8*width);
+	ImGui::TableSetupColumn("自定义名称", ImGuiTableColumnFlags_WidthFixed, 12*width);
+	ImGui::TableSetupColumn("制造商", ImGuiTableColumnFlags_WidthFixed, 9*width);
+	ImGui::TableSetupColumn("型号", ImGuiTableColumnFlags_WidthFixed, 15*width);
+	ImGui::TableSetupColumn("序列号", ImGuiTableColumnFlags_WidthFixed, 8*width);
+	ImGui::TableSetupColumn("偏斜", ImGuiTableColumnFlags_WidthFixed, 8*width);
+	ImGui::TableSetupColumn("操作", ImGuiTableColumnFlags_WidthFixed, 8*width);
 	ImGui::TableHeadersRow();
 
 	Unit fs(Unit::UNIT_FS);
@@ -187,10 +185,7 @@ void ManageInstrumentsDialog::TriggerGroupsTable()
 			ImGui::BeginTooltip();
 			ImGui::PushTextWrapPos(ImGui::GetFontSize() * 50);
 			ImGui::TextUnformatted(
-				Tr(
-					"Drag to the root of a trigger group to add this instrument to the group.\n"
-					"Drag to an ungrouped instrument to create a new group under it.\n"
-					"Drag an instrument to the root of its current group to make it the primary.\n"));
+				"拖到触发组根节点即可将此仪器加入该组。\n拖到未分组仪器上即可在其下创建新组。\n将仪器拖到其当前组的根节点即可设为主设备。\n");
 			ImGui::PopTextWrapPos();
 			ImGui::EndTooltip();
 		}
@@ -307,7 +302,7 @@ void ManageInstrumentsDialog::TriggerGroupsTable()
 					ImGui::TextUnformatted(fs.PrettyPrint(m_session->GetDeskew(scope)).c_str());
 				if(ImGui::TableSetColumnIndex(5))
 				{
-					if(ImGui::Button(Tr("Deskew")))
+					if(ImGui::Button("去偏斜"))
 						m_parent->ShowSyncWizard(group, scope);
 				}
 				ImGui::PopID();
@@ -396,14 +391,14 @@ void ManageInstrumentsDialog::AllInstrumentsTable()
 	auto insts = m_session->GetInstruments();
 	float width = ImGui::GetFontSize();
 	ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-	ImGui::TableSetupColumn(Tr("Nickname"), ImGuiTableColumnFlags_WidthFixed, 12*width);
-	ImGui::TableSetupColumn(Tr("Make"), ImGuiTableColumnFlags_WidthFixed, 9*width);
-	ImGui::TableSetupColumn(Tr("Model"), ImGuiTableColumnFlags_WidthFixed, 12*width);
-	ImGui::TableSetupColumn(Tr("Transport"), ImGuiTableColumnFlags_WidthFixed, 4*width);
-	ImGui::TableSetupColumn(Tr("Path"), ImGuiTableColumnFlags_WidthFixed, 15*width);
-	ImGui::TableSetupColumn(Tr("Status"), ImGuiTableColumnFlags_WidthFixed, 5*width);
-	ImGui::TableSetupColumn(Tr("Serial"), ImGuiTableColumnFlags_WidthFixed, 7*width);
-	ImGui::TableSetupColumn(Tr("Features"), ImGuiTableColumnFlags_WidthFixed, 10*width);
+	ImGui::TableSetupColumn("自定义名称", ImGuiTableColumnFlags_WidthFixed, 12*width);
+	ImGui::TableSetupColumn("制造商", ImGuiTableColumnFlags_WidthFixed, 9*width);
+	ImGui::TableSetupColumn("型号", ImGuiTableColumnFlags_WidthFixed, 12*width);
+	ImGui::TableSetupColumn("传输", ImGuiTableColumnFlags_WidthFixed, 4*width);
+	ImGui::TableSetupColumn("路径", ImGuiTableColumnFlags_WidthFixed, 15*width);
+	ImGui::TableSetupColumn("状态", ImGuiTableColumnFlags_WidthFixed, 5*width);
+	ImGui::TableSetupColumn("序列号", ImGuiTableColumnFlags_WidthFixed, 7*width);
+	ImGui::TableSetupColumn("特性", ImGuiTableColumnFlags_WidthFixed, 10*width);
 	ImGui::TableHeadersRow();
 
 	size_t instNumber = insts.size();

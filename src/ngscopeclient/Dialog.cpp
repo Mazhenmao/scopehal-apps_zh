@@ -125,7 +125,7 @@ void Dialog::RenderErrorPopup()
 	{
 		ImGui::TextUnformatted(m_errorPopupMessage.c_str());
 		ImGui::Separator();
-		if(ImGui::Button(Tr("OK")))
+		if(ImGui::Button("确定"))
 			ImGui::CloseCurrentPopup();
 		ImGui::EndPopup();
 	}
@@ -614,7 +614,7 @@ bool Dialog::renderEditableProperty(
 			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, buttonColorHovered);
 			ImGui::PushStyleColor(ImGuiCol_ButtonActive, buttonColorActive);
 
-			if(ImGui::Button(Tr("Apply")))
+			if(ImGui::Button("应用"))
 			{	// Apply button click
 				validateChange = true;
 			}

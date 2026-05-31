@@ -128,7 +128,7 @@ bool BERTOutputChannelDialog::DoRender()
 	float width = 10 * ImGui::GetFontSize();
 
 	auto bert = m_channel->GetBERT();
-	if(ImGui::CollapsingHeader("Info"))
+	if(ImGui::CollapsingHeader("信息"))
 	{
 		//Scope info
 		if(bert)
@@ -139,32 +139,32 @@ bool BERTOutputChannelDialog::DoRender()
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText(Tr("Instrument"), &nickname);
+				ImGui::InputText("仪器", &nickname);
 			ImGui::EndDisabled();
-			HelpMarker("The instrument this channel was measured by");
+			HelpMarker("测量此通道的仪器");
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText(Tr("Hardware Channel"), &index);
+				ImGui::InputText("硬件通道", &index);
 			ImGui::EndDisabled();
-			HelpMarker("Physical channel number (starting from 1) on the instrument front panel");
+			HelpMarker("仪器前面板上的物理通道编号（从 1 开始）");
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText(Tr("Hardware Name"), &hwname);
+				ImGui::InputText("硬件名称", &hwname);
 			ImGui::EndDisabled();
-			HelpMarker("Hardware name for the channel (as used in the instrument API)");
+			HelpMarker("通道的硬件名称（仪器 API 使用的名称）");
 		}
 	}
 
 	//All channels have display settings
-	if(ImGui::CollapsingHeader("Display", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("显示", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(TextInputWithImplicitApply(Tr("Nickname"), m_displayName, m_committedDisplayName))
+		if(TextInputWithImplicitApply("自定义名称", m_displayName, m_committedDisplayName))
 			m_channel->SetDisplayName(m_committedDisplayName);
 
-		HelpMarker("Display name for the channel");
+		HelpMarker("通道显示名称");
 
 		if(ImGui::ColorEdit3(
 			"Color",
@@ -180,53 +180,53 @@ bool BERTOutputChannelDialog::DoRender()
 		}
 	}
 
-	if(ImGui::CollapsingHeader("Pattern Generator", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("码型发生器", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
 		if(Dialog::Combo("Pattern", m_patternNames, m_patternIndex))
 			m_channel->SetPattern(m_patternValues[m_patternIndex]);
 
 		if(!m_channel->GetBERT()->IsCustomPatternPerChannel())
-			HelpMarker("Pattern to drive out this port.\nNote that all ports in \"custom\" mode share a single pattern generator");
+			HelpMarker("从此端口输出的码型。\n注意，所有处于“自定义”模式的端口共用同一个码型发生器");
 		else
-			HelpMarker("Pattern to drive out this port.");
+			HelpMarker("从此端口输出的码型。");
 	}
 
-	if(ImGui::CollapsingHeader("PHY Control", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("PHY 控制", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Checkbox(Tr("Enable"), &m_enable))
+		if(ImGui::Checkbox("启用", &m_enable))
 			m_channel->Enable(m_enable);
-		HelpMarker("Enable the output driver");
+		HelpMarker("启用输出驱动器");
 
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Checkbox(Tr("Invert"), &m_invert))
+		if(ImGui::Checkbox("反相", &m_invert))
 			m_channel->SetInvert(m_invert);
-		HelpMarker("Invert polarity of the output");
+		HelpMarker("反转输出极性");
 
 		ImGui::SetNextItemWidth(width);
 		if(Dialog::Combo("Swing", m_driveNames, m_driveIndex))
 			m_channel->SetDriveStrength(m_driveValues[m_driveIndex]);
-		HelpMarker("Peak-to-peak swing of the output (with no emphasis)");
+		HelpMarker("输出峰峰值摆幅（无加重）");
 
-		if(ImGui::SliderFloat(Tr("Pre-cursor"), &m_precursor, 0.0, 1.0, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+		if(ImGui::SliderFloat("前游标", &m_precursor, 0.0, 1.0, "%.2f", ImGuiSliderFlags_AlwaysClamp))
 			m_channel->SetPreCursor(m_precursor);
-		HelpMarker("Pre-cursor FFE tap value");
+		HelpMarker("前游标 FFE 抽头值");
 
-		if(ImGui::SliderFloat(Tr("Post-cursor"), &m_postcursor, 0.0, 1.0, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+		if(ImGui::SliderFloat("后游标", &m_postcursor, 0.0, 1.0, "%.2f", ImGuiSliderFlags_AlwaysClamp))
 			m_channel->SetPostCursor(m_postcursor);
-		HelpMarker("Post-cursor FFE tap value");
+		HelpMarker("后游标 FFE 抽头值");
 
 	}
 
 	if(m_channel->GetBERT()->IsDataRatePerChannel())
 	{
-		if(ImGui::CollapsingHeader("Timebase", defaultOpenFlags))
+		if(ImGui::CollapsingHeader("时基", defaultOpenFlags))
 		{
 			ImGui::SetNextItemWidth(width);
 			if(Dialog::Combo("Data Rate", m_dataRateNames, m_dataRateIndex))
 				m_channel->SetDataRate(m_dataRates[m_dataRateIndex]);
-			HelpMarker("PHY signaling rate for this transmit port");
+			HelpMarker("此发送端口的 PHY 信号速率");
 		}
 	}
 

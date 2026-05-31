@@ -153,7 +153,7 @@ bool FilterPropertiesDialog::DoRender()
 	//Show inputs (if we have any)
 	if( (f->GetInputCount() != 0) && !m_graphEditorMode)
 	{
-		if(ImGui::CollapsingHeader("Inputs", ImGuiTreeNodeFlags_DefaultOpen))
+		if(ImGui::CollapsingHeader("输入", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 			ImGui::PushID("Inputs");
 
@@ -198,7 +198,7 @@ bool FilterPropertiesDialog::DoRender()
 	//Show parameters (if we have any)
 	if(f->GetParamCount() != 0)
 	{
-		if(ImGui::CollapsingHeader("Parameters", defaultOpenFlags))
+		if(ImGui::CollapsingHeader("参数", defaultOpenFlags))
 		{
 			for(auto it = f->GetParamBegin(); it != f->GetParamEnd(); it++)
 			{
@@ -257,7 +257,7 @@ bool FilterPropertiesDialog::DoRender()
 	auto ap = dynamic_cast<ActionProvider*>(f);
 	if(ap)
 	{
-		if(ImGui::CollapsingHeader("Actions", defaultOpenFlags))
+		if(ImGui::CollapsingHeader("操作", defaultOpenFlags))
 		{
 			auto actions = ap->EnumActions();
 			for(auto& a : actions)
@@ -497,7 +497,7 @@ bool FilterPropertiesDialog::DoParameter(FilterParameter& param, string name, ma
 			break;
 
 		default:
-			ImGui::Text(Tr("Parameter %s is unimplemented type"), name.c_str());
+			ImGui::Text("参数 %s 的类型尚未实现", name.c_str());
 			break;
 	}
 

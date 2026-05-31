@@ -1073,7 +1073,7 @@ void WaveformArea::PlotContextMenu()
 		//If we right clicked on or very close to a marker, show "delete" menu instead
 		if(hitMarker)
 		{
-			if(ImGui::MenuItem(Tr("Delete")))
+			if(ImGui::MenuItem("删除"))
 			{
 				markers.erase(markers.begin() + selectedMarker);
 				m_parent->GetSession().OnMarkerChanged();
@@ -1083,27 +1083,27 @@ void WaveformArea::PlotContextMenu()
 		//Otherwise, normal GUI context menu
 		else
 		{
-			if(ImGui::BeginMenu(Tr("Cursors")))
+			if(ImGui::BeginMenu("光标"))
 			{
-				if(ImGui::BeginMenu(Tr("X axis")))
+				if(ImGui::BeginMenu("X 轴"))
 				{
-					if(ImGui::MenuItem(Tr("None"), nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_NONE)))
+					if(ImGui::MenuItem("无", nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_NONE)))
 						m_group->m_xAxisCursorMode = WaveformGroup::X_CURSOR_NONE;
-					if(ImGui::MenuItem(Tr("Single"), nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_SINGLE)))
+					if(ImGui::MenuItem("单游标", nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_SINGLE)))
 						m_group->m_xAxisCursorMode = WaveformGroup::X_CURSOR_SINGLE;
-					if(ImGui::MenuItem(Tr("Dual"), nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_DUAL)))
+					if(ImGui::MenuItem("双游标", nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_DUAL)))
 						m_group->m_xAxisCursorMode = WaveformGroup::X_CURSOR_DUAL;
 
 					ImGui::EndMenu();
 				}
 
-				if(ImGui::BeginMenu(Tr("Y axis")))
+				if(ImGui::BeginMenu("Y 轴"))
 				{
-					if(ImGui::MenuItem(Tr("None"), nullptr, (m_yAxisCursorMode == Y_CURSOR_NONE)))
+					if(ImGui::MenuItem("无", nullptr, (m_yAxisCursorMode == Y_CURSOR_NONE)))
 						m_yAxisCursorMode = Y_CURSOR_NONE;
-					if(ImGui::MenuItem(Tr("Single"), nullptr, (m_yAxisCursorMode == Y_CURSOR_SINGLE)))
+					if(ImGui::MenuItem("单游标", nullptr, (m_yAxisCursorMode == Y_CURSOR_SINGLE)))
 						m_yAxisCursorMode = Y_CURSOR_SINGLE;
-					if(ImGui::MenuItem(Tr("Dual"), nullptr, (m_yAxisCursorMode == Y_CURSOR_DUAL)))
+					if(ImGui::MenuItem("双游标", nullptr, (m_yAxisCursorMode == Y_CURSOR_DUAL)))
 						m_yAxisCursorMode = Y_CURSOR_DUAL;
 
 					ImGui::EndMenu();
@@ -1112,7 +1112,7 @@ void WaveformArea::PlotContextMenu()
 				ImGui::EndMenu();
 			}
 
-			if(ImGui::MenuItem(Tr("Add Marker")))
+			if(ImGui::MenuItem("添加标记"))
 			{
 				auto& session = m_parent->GetSession();
 				session.AddMarker(Marker(GetWaveformTimestamp(), m_lastRightClickOffset, session.GetNextMarkerName()));
@@ -2805,7 +2805,7 @@ void WaveformArea::RenderYAxis(ImVec2 size, map<float, float>& gridmap, float vb
 
 	if(ImGui::BeginPopupContextWindow())
 	{
-		if(ImGui::MenuItem(Tr("Autofit")))
+		if(ImGui::MenuItem("自动适配"))
 			AutofitVertical();
 		ImGui::EndPopup();
 	}
@@ -3042,10 +3042,10 @@ void WaveformArea::RenderEyePatternTooltip(ImVec2 start, ImVec2 size)
 		if(m_mouseOverBERTarget && bchan)
 		{
 			auto rtber = bchan->GetScalarValue(BERTInputChannel::STREAM_BER);
-			ImGui::Text(Tr("Realtime BER: %s\nEye BER: %s"), rtunit.PrettyPrint(rtber).c_str(), unit.PrettyPrint(ber).c_str());
+			ImGui::Text("实时 BER: %s\n眼图 BER: %s", rtunit.PrettyPrint(rtber).c_str(), unit.PrettyPrint(ber).c_str());
 		}
 		else
-			ImGui::Text(Tr("BER: %s"), unit.PrettyPrint(ber).c_str());
+			ImGui::Text("BER: %s", unit.PrettyPrint(ber).c_str());
 
 		ImGui::PopTextWrapPos();
 		ImGui::EndTooltip();
@@ -4021,7 +4021,7 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
 		ImGui::SetDragDropPayload("Waveform", &desc, sizeof(desc));
 
 		//Preview of what we're dragging
-		ImGui::Text(Tr("Drag %s"), fqname.c_str());
+		ImGui::Text("拖动 %s", fqname.c_str());
 
 		ImGui::EndDragDropSource();
 	}
@@ -4121,14 +4121,14 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
 	//Context menu
 	if(ImGui::BeginPopupContextItem())
 	{
-		if(ImGui::MenuItem(Tr("Delete")))
+		if(ImGui::MenuItem("删除"))
 			RemoveStream(index);
 		ImGui::Separator();
 
 		//Color ramp if it's a density plot
 		if(ddata)
 		{
-			if(ImGui::BeginMenu(Tr("Color ramp")))
+			if(ImGui::BeginMenu("颜色映射"))
 			{
 				auto& gradients = m_parent->GetEyeGradients();
 
@@ -4166,7 +4166,7 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
 		}
 
 		bool persist = chan->IsPersistenceEnabled();
-		if(ImGui::MenuItem(Tr("Persistence"), nullptr, persist))
+		if(ImGui::MenuItem("余辉", nullptr, persist))
 			chan->SetPersistenceEnabled(!persist);
 		ImGui::Separator();
 
@@ -4181,19 +4181,19 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
  */
 void WaveformArea::FilterMenu(shared_ptr<DisplayedChannel> chan)
 {
-	FilterSubmenu(chan, Tr("Bus"), Filter::CAT_BUS);
-	FilterSubmenu(chan, Tr("Clocking"), Filter::CAT_CLOCK);
-	FilterSubmenu(chan, Tr("Export"), Filter::CAT_EXPORT);
-	FilterSubmenu(chan, Tr("Generation"), Filter::CAT_GENERATION);
-	FilterSubmenu(chan, Tr("Math"), Filter::CAT_MATH);
-	FilterSubmenu(chan, Tr("Measurement"), Filter::CAT_MEASUREMENT);
-	FilterSubmenu(chan, Tr("Memory"), Filter::CAT_MEMORY);
-	FilterSubmenu(chan, Tr("Miscellaneous"), Filter::CAT_MISC);
-	FilterSubmenu(chan, Tr("Optical"), Filter::CAT_OPTICAL);
-	FilterSubmenu(chan, Tr("Power"), Filter::CAT_POWER);
-	FilterSubmenu(chan, Tr("RF"), Filter::CAT_RF);
-	FilterSubmenu(chan, Tr("Serial_p"), Filter::CAT_SERIAL);
-	FilterSubmenu(chan, Tr("Signal integrity"), Filter::CAT_ANALYSIS);
+	FilterSubmenu(chan, "总线", Filter::CAT_BUS);
+	FilterSubmenu(chan, "时钟", Filter::CAT_CLOCK);
+	FilterSubmenu(chan, "导出", Filter::CAT_EXPORT);
+	FilterSubmenu(chan, "信号生成", Filter::CAT_GENERATION);
+	FilterSubmenu(chan, "数学运算", Filter::CAT_MATH);
+	FilterSubmenu(chan, "测量", Filter::CAT_MEASUREMENT);
+	FilterSubmenu(chan, "存储/内存", Filter::CAT_MEMORY);
+	FilterSubmenu(chan, "杂项", Filter::CAT_MISC);
+	FilterSubmenu(chan, "光学/光信号", Filter::CAT_OPTICAL);
+	FilterSubmenu(chan, "电源/功率", Filter::CAT_POWER);
+	FilterSubmenu(chan, "射频信号处理", Filter::CAT_RF);
+	FilterSubmenu(chan, "串行", Filter::CAT_SERIAL);
+	FilterSubmenu(chan, "信号完整性", Filter::CAT_ANALYSIS);
 }
 
 /**
@@ -4234,10 +4234,10 @@ void WaveformArea::FilterSubmenu(shared_ptr<DisplayedChannel> chan, const string
 			{
 				if(ImGui::BeginMenu(fname.c_str(), valid))
 				{
-					if(ImGui::MenuItem(Tr("Trend")))
+					if(ImGui::MenuItem("趋势"))
 						m_parent->CreateFilter(fname, this, stream, false);
 
-					if(ImGui::MenuItem(Tr("Summary")))
+					if(ImGui::MenuItem("摘要"))
 						m_parent->CreateFilter(fname, this, stream, false, false);
 
 					ImGui::EndMenu();

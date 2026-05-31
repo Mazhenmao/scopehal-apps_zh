@@ -121,10 +121,7 @@ void TriggerPropertiesPage::Render(bool graphEditorMode)
 				m_triggerOffset = fs.PrettyPrint(off);
 			}
 
-			Dialog::HelpMarker(
-				"Time offset from the nominal zero-time point of the waveform to the trigger point.\n\n"
-				""
-				);
+			Dialog::HelpMarker("从波形标称零时间点到触发点的时间偏移。\n\n");
 
 			EndSection(graphEditorMode);
 		}
@@ -159,10 +156,7 @@ void TriggerPropertiesPage::Render(bool graphEditorMode)
 					trig->SetInput(i, matchingInputs[sel]);
 					updated = true;
 				}
-				Dialog::HelpMarker(
-					"Select the channel to use as input to the trigger circuit.\n\n"
-					"Some instruments have restrictions on which channels can be used for some trigger types\n"
-					"(for example, dedicated routing to a CDR board)\n");
+				Dialog::HelpMarker("选择作为触发电路输入的通道。\n\n部分仪器会限制某些触发类型可使用的通道\n（例如到 CDR 板的专用路由）\n");
 			}
 
 			EndSection(graphEditorMode);
@@ -181,7 +175,7 @@ void TriggerPropertiesPage::Render(bool graphEditorMode)
 				if(cdrtrig->IsAutomaticBitRateCalculationAvailable())
 				{
 					ImGui::SameLine();
-					if(ImGui::Button(Tr("Auto")))
+					if(ImGui::Button("自动"))
 					{
 						cdrtrig->CalculateBitRate();
 
@@ -200,7 +194,7 @@ void TriggerPropertiesPage::Render(bool graphEditorMode)
 				}
 
 				ImGui::BeginDisabled();
-				ImGui::Checkbox(Tr("PLL Lock"), &locked);
+				ImGui::Checkbox("PLL 锁定", &locked);
 				ImGui::EndDisabled();
 
 				if(locked != m_cdrLockState)
@@ -262,7 +256,7 @@ void TriggerPropertiesPage::FindAllStreams(vector<StreamDescriptor>& streams)
 // Construction / destruction
 
 TriggerPropertiesDialog::TriggerPropertiesDialog(Session* session)
-	: Dialog(Tr("Trigger"), "Trigger", ImVec2(300, 400), session)
+	: Dialog("触发", "Trigger", ImVec2(300, 400), session)
 {
 	Refresh();
 }
@@ -357,7 +351,7 @@ bool TriggerPropertiesDialog::DoRender()
 					m_pages[i] = make_unique<TriggerPropertiesPage>(scope);
 				}
 			}
-			HelpMarker("Select the type of trigger for this instrument\n");
+			HelpMarker("选择此仪器的触发类型\n");
 
 			m_pages[i]->Render(false);
 

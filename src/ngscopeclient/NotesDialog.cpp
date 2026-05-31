@@ -44,7 +44,7 @@ using namespace std;
 // Construction / destruction
 
 NotesDialog::NotesDialog(MainWindow* parent)
-	: Dialog(Tr("Lab Notes"), Tr("Lab Notes"), ImVec2(800, 400), nullptr, parent)
+	: Dialog("实验记录", "实验记录", ImVec2(800, 400), nullptr, parent)
 {
 }
 
@@ -66,13 +66,13 @@ bool NotesDialog::DoRender()
 	ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
 	if (ImGui::BeginTabBar("NotesFile", tab_bar_flags))
 	{
-		if (ImGui::BeginTabItem(Tr("Setup Notes")))
+		if (ImGui::BeginTabItem("设置记录"))
 		{
 			SetupNotes();
 			ImGui::EndTabItem();
 		}
 
-		if (ImGui::BeginTabItem(Tr("General Notes")))
+		if (ImGui::BeginTabItem("常规记录"))
 		{
 			GeneralNotes();
 			ImGui::EndTabItem();
@@ -87,10 +87,7 @@ bool NotesDialog::DoRender()
 void NotesDialog::SetupNotes()
 {
 	ImGui::TextWrapped(
-	 Tr("Describe your experimental setup in sufficient detail that you could verify it's wired correctly. "
-		"Limited Markdown syntax is supported.\n\n"
-		"These notes will be displayed when re-loading the session so you can confirm all instrument channels "
-		"are connected correctly before making any changes to hardware configuration.")
+	 "详细描述你的实验搭建方式，确保能据此核对接线是否正确。支持有限的 Markdown 语法。\n\n重新加载会话时会显示这些备注，方便你在修改硬件配置前，确认所有仪器通道已正确连接。"
 		);
 
 	MarkdownEditor(m_parent->GetSession().m_setupNotes);
@@ -99,7 +96,7 @@ void NotesDialog::SetupNotes()
 void NotesDialog::GeneralNotes()
 {
 	ImGui::TextWrapped(
-	  Tr("Take notes on your testing here. Limited Markdown syntax is supported.")
+	  "在此记录测试备注，支持有限 Markdown 语法。"
 		);
 
 	MarkdownEditor(m_parent->GetSession().m_generalNotes);
@@ -123,7 +120,7 @@ void NotesDialog::MarkdownEditor(string& str)
 
 		//Editor
 		ImGui::TableSetColumnIndex(0);
-		ImGui::InputTextMultiline(Tr("###Setup Notes"), &str, ImGui::GetContentRegionAvail());
+		ImGui::InputTextMultiline("###设置记录", &str, ImGui::GetContentRegionAvail());
 
 		//Render the markdown
 		ImGui::TableSetColumnIndex(1);

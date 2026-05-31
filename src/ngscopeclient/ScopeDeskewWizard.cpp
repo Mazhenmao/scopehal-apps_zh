@@ -146,7 +146,7 @@ bool ScopeDeskewWizard::DoRender()
 	{
 		case STATE_WELCOME_1:
 			ImGui::PushFont(titleFont.first, titleFont.second);
-			ImGui::TextUnformatted(Tr("Welcome"));
+			ImGui::TextUnformatted("欢迎");
 			ImGui::PopFont();
 			ImGui::Separator();
 
@@ -157,14 +157,14 @@ bool ScopeDeskewWizard::DoRender()
 				m_group->m_primary->m_nickname.c_str(),
 				m_secondary->m_nickname.c_str() );
 
-			if(ImGui::Button(Tr("Continue")))
+			if(ImGui::Button("继续"))
 				m_state = STATE_WELCOME_2;
 
 			break;
 
 		case STATE_WELCOME_2:
 			ImGui::PushFont(titleFont.first, titleFont.second);
-			ImGui::TextUnformatted(Tr("Cross-Trigger Cabling"));
+			ImGui::TextUnformatted("交叉触发接线");
 			ImGui::PopFont();
 			ImGui::Separator();
 
@@ -184,13 +184,13 @@ bool ScopeDeskewWizard::DoRender()
 				"If %s does not have a trigger output, it cannot be used as the primary of the trigger group.",
 				m_group->m_primary->m_nickname.c_str());
 
-			if(ImGui::Button(Tr("Continue")))
+			if(ImGui::Button("继续"))
 				m_state = STATE_WELCOME_3;
 			break;
 
 		case STATE_WELCOME_3:
 			ImGui::PushFont(titleFont.first, titleFont.second);
-			ImGui::TextUnformatted(Tr("Cross-Trigger Setup"));
+			ImGui::TextUnformatted("交叉触发设置");
 			ImGui::PopFont();
 			ImGui::Separator();
 
@@ -208,13 +208,13 @@ bool ScopeDeskewWizard::DoRender()
 			ImGui::TextWrapped("To test if the cabling and trigger level are correct, "
 				"press the \"trigger arm\" button on the toolbar and verify both instruments trigger.");
 
-			if(ImGui::Button(Tr("Continue")))
+			if(ImGui::Button("继续"))
 				m_state = STATE_WELCOME_4;
 			break;
 
 		case STATE_WELCOME_4:
 			ImGui::PushFont(titleFont.first, titleFont.second);
-			ImGui::TextUnformatted(Tr("Calibration Signal Setup"));
+			ImGui::TextUnformatted("校准信号设置");
 			ImGui::PopFont();
 			ImGui::Separator();
 
@@ -246,13 +246,13 @@ bool ScopeDeskewWizard::DoRender()
 			ChannelSelector("Primary", m_group->m_primary, m_primaryStream);
 			ChannelSelector("Secondary", m_secondary, m_secondaryStream);
 
-			if(ImGui::Button(Tr("Continue")))
+			if(ImGui::Button("继续"))
 				m_state = STATE_WELCOME_5;
 			break;
 
 		case STATE_WELCOME_5:
 			ImGui::PushFont(titleFont.first, titleFont.second);
-			ImGui::TextUnformatted(Tr("Reference Clock Setup"));
+			ImGui::TextUnformatted("参考时钟设置");
 			ImGui::PopFont();
 			ImGui::Separator();
 
@@ -263,10 +263,10 @@ bool ScopeDeskewWizard::DoRender()
 				"however timebase drift will result in increasingly worse alignment between the waveforms\n"
 				"at samples further away from the trigger point.");
 
-			ImGui::Checkbox(Tr("Use external reference on primary"), &m_useExtRefPrimary);
-			ImGui::Checkbox(Tr("Use external reference on secondary"), &m_useExtRefSecondary);
+			ImGui::Checkbox("主设备使用外部参考", &m_useExtRefPrimary);
+			ImGui::Checkbox("从设备使用外部参考", &m_useExtRefSecondary);
 
-			if(ImGui::Button(Tr("Start")))
+			if(ImGui::Button("开始"))
 			{
 				LogTrace("Starting\n");
 				m_state = STATE_ACQUIRE;
@@ -358,7 +358,7 @@ void ScopeDeskewWizard::DoMainProcessingFlow()
 
 	auto titleFont = m_parent->GetFontPref("Appearance.General.title_font");
 	ImGui::PushFont(titleFont.first, titleFont.second);
-	ImGui::TextUnformatted(Tr("Calibration Measurements"));
+	ImGui::TextUnformatted("校准测量");
 	ImGui::PopFont();
 	ImGui::Separator();
 
@@ -375,10 +375,10 @@ void ScopeDeskewWizard::DoMainProcessingFlow()
 	{
 		float width = ImGui::GetFontSize();
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-		ImGui::TableSetupColumn(Tr("Acquire"), ImGuiTableColumnFlags_WidthFixed, 6*width);
-		ImGui::TableSetupColumn(Tr("Correlate"), ImGuiTableColumnFlags_WidthFixed, 6*width);
-		ImGui::TableSetupColumn(Tr("Skew"), ImGuiTableColumnFlags_WidthFixed, 6*width);
-		ImGui::TableSetupColumn(Tr("Correlation"), ImGuiTableColumnFlags_WidthFixed, 8*width);
+		ImGui::TableSetupColumn("采集", ImGuiTableColumnFlags_WidthFixed, 6*width);
+		ImGui::TableSetupColumn("相关", ImGuiTableColumnFlags_WidthFixed, 6*width);
+		ImGui::TableSetupColumn("偏斜", ImGuiTableColumnFlags_WidthFixed, 6*width);
+		ImGui::TableSetupColumn("相关性", ImGuiTableColumnFlags_WidthFixed, 8*width);
 		ImGui::TableHeadersRow();
 
 		Unit fs(Unit::UNIT_FS);
@@ -390,10 +390,10 @@ void ScopeDeskewWizard::DoMainProcessingFlow()
 			ImGui::TableNextRow(ImGuiTableRowFlags_None);
 
 			ImGui::TableSetColumnIndex(0);
-			ImGui::TextUnformatted(Tr("Done"));
+			ImGui::TextUnformatted("完成");
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::TextUnformatted(Tr("Done"));
+			ImGui::TextUnformatted("完成");
 
 			ImGui::TableSetColumnIndex(2);
 			ImGui::TextUnformatted(fs.PrettyPrint(m_skews[i]).c_str());
@@ -412,21 +412,21 @@ void ScopeDeskewWizard::DoMainProcessingFlow()
 
 			ImGui::TableSetColumnIndex(0);
 			if(m_state == STATE_ACQUIRE)
-				ImGui::TextUnformatted(Tr("Acquiring"));
+				ImGui::TextUnformatted("正在采集");
 			else
-				ImGui::TextUnformatted(Tr("Done"));
+				ImGui::TextUnformatted("完成");
 
 			ImGui::TableSetColumnIndex(1);
 			if(m_state == STATE_CORRELATE)
-				ImGui::TextUnformatted(Tr("Calculating"));
+				ImGui::TextUnformatted("正在计算");
 			else
-				ImGui::TextUnformatted(Tr("Pending"));
+				ImGui::TextUnformatted("等待中");
 
 			ImGui::TableSetColumnIndex(2);
-			ImGui::TextUnformatted(Tr("--"));
+			ImGui::TextUnformatted("--");
 
 			ImGui::TableSetColumnIndex(3);
-			ImGui::TextUnformatted(Tr("--"));
+			ImGui::TextUnformatted("--");
 
 			ImGui::PopID();
 		}
@@ -438,16 +438,16 @@ void ScopeDeskewWizard::DoMainProcessingFlow()
 			ImGui::TableNextRow(ImGuiTableRowFlags_None);
 
 			ImGui::TableSetColumnIndex(0);
-			ImGui::TextUnformatted(Tr("Pending"));
+			ImGui::TextUnformatted("等待中");
 
 			ImGui::TableSetColumnIndex(1);
-			ImGui::TextUnformatted(Tr("Pending"));
+			ImGui::TextUnformatted("等待中");
 
 			ImGui::TableSetColumnIndex(2);
-			ImGui::TextUnformatted(Tr("--"));
+			ImGui::TextUnformatted("--");
 
 			ImGui::TableSetColumnIndex(3);
-			ImGui::TextUnformatted(Tr("--"));
+			ImGui::TextUnformatted("--");
 
 			ImGui::PopID();
 		}
@@ -514,7 +514,7 @@ void ScopeDeskewWizard::DoMainProcessingFlow()
 				Unit fs(Unit::UNIT_FS);
 				ImGui::TextWrapped("Calculated skew: %s", fs.PrettyPrint(m_medianSkew).c_str());
 
-				if(ImGui::Button(Tr("Apply")))
+				if(ImGui::Button("应用"))
 				{
 					m_session->SetDeskew(m_secondary, m_medianSkew);
 					m_state = STATE_CLOSE;

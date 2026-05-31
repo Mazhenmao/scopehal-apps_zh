@@ -73,7 +73,7 @@ namespace internal
     {
     public:
         PreferenceTreeNodeBase(PreferenceTreeNodeType type, std::string identifier)
-            : m_identifier{ std::move(identifier) }, m_type{ type }
+            : m_identifier{ std::move(identifier) }, m_displayName{ m_identifier }, m_type{ type }
         {
         }
 
@@ -97,6 +97,8 @@ namespace internal
 
     public:
         const std::string& GetIdentifier() const;
+        const std::string& GetDisplayName() const;
+        void SetDisplayName(std::string name);
         PreferenceTreeNodeType GetType() const;
         bool IsCategory() const;
         bool IsPreference() const;
@@ -106,6 +108,7 @@ namespace internal
 
     protected:
         std::string m_identifier;       //< The identifier of this node
+        std::string m_displayName;      //< The human-readable display name of this node
         PreferenceTreeNodeType m_type;  //< What particular type this node has
     };
 
@@ -147,6 +150,7 @@ public:
     void AddPreference(Preference pref);
     void AddPreference(impl::PreferenceBuilder&& pref);
     PreferenceCategory& AddCategory(const std::string& identifier);
+    PreferenceCategory& AddCategory(const std::string& identifier, const std::string& displayName);
     map_type& GetChildren();
     const seq_type& GetOrdering() const;
     virtual bool IsVisible() const;

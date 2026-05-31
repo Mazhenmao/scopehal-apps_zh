@@ -47,7 +47,7 @@ using namespace std;
 // Construction / destruction
 
 PreferenceDialog::PreferenceDialog(PreferenceManager& prefs)
-	: Dialog(Tr("Preferences"), "Preferences", ImVec2(600, 400))
+	: Dialog("首选项", "Preferences", ImVec2(600, 400))
 	, m_prefs(prefs)
 {
 	m_fontPaths.push_back(FindDataFile("fonts/DejaVuSans.ttf"));
@@ -140,14 +140,14 @@ bool PreferenceDialog::RenderConfirmDialog(const std::string& identifier)
         ImGui::Separator();
 		float buttonWidth = ImGui::GetFontSize()*6;
         // OK button
-        if (ImGui::Button(Tr("OK"), ImVec2(buttonWidth, 0)))
+        if (ImGui::Button("确定", ImVec2(buttonWidth, 0)))
         {
             confirmed = true;
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
         // Cancel button
-        if (ImGui::Button(Tr("Cancel"), ImVec2(buttonWidth, 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+        if (ImGui::Button("取消", ImVec2(buttonWidth, 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
             ImGui::CloseCurrentPopup();
         }
@@ -181,15 +181,15 @@ bool PreferenceDialog::DoRender()
 			if(subCategory.IsVisible())
 			{
 				ImGui::PushID(identifier.c_str());
-				if(DefaultButton("Reset section",identifier))
+				if(DefaultButton("重置本节",identifier))
 				{
-					OpenConfirmDialog("Reset to default","Reset all settings in this section to default?",identifier);
+					OpenConfirmDialog("恢复默认值","将本节所有设置恢复为默认值吗?",identifier);
 				}
 				if(RenderConfirmDialog(identifier))
 				{
 					ResetCategoryToDefault(subCategory);
 				}
-				if(ImGui::CollapsingHeader(identifier.c_str()))
+				if(ImGui::CollapsingHeader(subCategory.GetDisplayName().c_str()))
 					ProcessCategory(subCategory);
 				ImGui::PopID();
 			}
@@ -197,9 +197,9 @@ bool PreferenceDialog::DoRender()
 	}
 
 	ImGui::NewLine();
-	if(DefaultButton("Reset all Preferences","###resetAll",true))
+	if(DefaultButton("重置所有偏好设置","###resetAll",true))
 	{
-		OpenConfirmDialog("Reset to default","Reset all settings to default?","resetAll");
+		OpenConfirmDialog("恢复默认值","确定将所有设置恢复为默认值吗?","resetAll");
 	}
 	if(RenderConfirmDialog("resetAll"))
 	{
@@ -234,15 +234,15 @@ void PreferenceDialog::ProcessCategory(PreferenceCategory& cat)
 
 			if(subCategory.IsVisible())
 			{
-				if(DefaultButton("Reset category",identifier))
+				if(DefaultButton("重置该类别",identifier))
 				{
-					OpenConfirmDialog("Reset to default","Reset all settings in this category to default?",identifier);
+					OpenConfirmDialog("恢复默认值","将此类别下的所有设置恢复为默认值吗?",identifier);
 				}
 				if(RenderConfirmDialog(identifier))
 				{
 					ResetCategoryToDefault(subCategory);
 				}
-				if(ImGui::TreeNode(identifier.c_str()))
+				if(ImGui::TreeNode(subCategory.GetDisplayName().c_str()))
 				{
 					ImGui::PushID(identifier.c_str());
 					ProcessCategory(subCategory);
@@ -309,6 +309,7 @@ void PreferenceDialog::ProcessPreference(Preference& pref)
 			{
 				auto map = pref.GetMapping();
 				auto names = map.GetNames();
+				auto displayNames = map.GetDisplayNames();
 				auto curValue = pref.ToString();
 
 				//This is a bit ugly and slow, but works...
@@ -323,7 +324,7 @@ void PreferenceDialog::ProcessPreference(Preference& pref)
 				}
 
 				ImGui::SetNextItemWidth(ImGui::GetFontSize() * 15);
-				if(Combo(label, names, selection))
+				if(Combo(label, displayNames, selection))
 					pref.SetEnumRaw(map.GetValue(names[selection]));
 			}
 			break;

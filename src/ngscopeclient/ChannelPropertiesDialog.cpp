@@ -257,7 +257,7 @@ bool ChannelPropertiesDialog::DoRender()
 	auto f = dynamic_cast<Filter*>(m_channel);
 
 	//All channels have display settings
-	if(ImGui::CollapsingHeader("Display", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("显示", defaultOpenFlags))
 	{
 		//If it's a filter, using the default name, check for changes made outside of this properties window
 		//(e.g. via filter graph editor)
@@ -271,7 +271,7 @@ bool ChannelPropertiesDialog::DoRender()
 		}
 
 		ImGui::SetNextItemWidth(width);
-		if(TextInputWithImplicitApply(Tr("Nickname"), m_displayName, m_committedDisplayName))
+		if(TextInputWithImplicitApply("自定义名称", m_displayName, m_committedDisplayName))
 		{
 			//If it's a filter, we're not using a default name anymore (unless the provided name is blank)
 			if(f != nullptr)
@@ -295,9 +295,9 @@ bool ChannelPropertiesDialog::DoRender()
 		}
 
 		if(f)
-			HelpMarker("Display name for the filter.\n\nSet blank to use an auto-generated default name.");
+			HelpMarker("滤波器显示名称。\n\n留空则使用自动生成的默认名称。");
 		else
-			HelpMarker("Display name for the channel");
+			HelpMarker("通道显示名称");
 
 		if(ImGui::ColorEdit3(
 			"Color",
@@ -321,7 +321,7 @@ bool ChannelPropertiesDialog::DoRender()
 	auto index = m_channel->GetIndex();
 	if(scope)
 	{
-		if(ImGui::CollapsingHeader("Input", defaultOpenFlags))
+		if(ImGui::CollapsingHeader("输入", defaultOpenFlags))
 		{
 			//Type of probe connected
 			string ptype = m_probe;
@@ -329,9 +329,9 @@ bool ChannelPropertiesDialog::DoRender()
 				ptype = "(not detected)";
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText(Tr("Probe Type"), &ptype);
+				ImGui::InputText("探头类型", &ptype);
 			ImGui::EndDisabled();
-			HelpMarker("Type of probe connected to the instrument input");
+			HelpMarker("连接到仪器输入端的探头类型");
 
 			//See if the channel is digital (first stream digital)
 			bool isDigital = (m_channel->GetType(0) == Stream::STREAM_TYPE_DIGITAL);
@@ -355,7 +355,7 @@ bool ChannelPropertiesDialog::DoRender()
 						// Tell intrument thread that the scope state has to be updated
 						if(m_state) m_state->m_needsUpdate[index] = true;
 					}
-					HelpMarker("Switching threshold for the digital input buffer");
+					HelpMarker("数字输入缓冲器的开关阈值");
 				}
 
 				if(scope->IsDigitalHysteresisConfigurable())
@@ -372,7 +372,7 @@ bool ChannelPropertiesDialog::DoRender()
 						// Tell intrument thread that the scope state has to be updated
 						if(m_state) m_state->m_needsUpdate[index] = true;
 					}
-					HelpMarker("Hysteresis for the digital input buffer");
+					HelpMarker("数字输入缓冲器的迟滞");
 				}
 
 				//TODO: when value is changed, refresh any dialogs that might be open showing other channels
@@ -381,7 +381,7 @@ bool ChannelPropertiesDialog::DoRender()
 				auto bank = scope->GetDigitalBank(index);
 				if(bank.size() > 1)
 				{
-					ImGui::Text(Tr("Changing input buffer settings will also affect the following channels:"));
+					ImGui::Text("更改输入缓冲区设置也会影响以下通道:");
 					for(auto c : bank)
 					{
 						if(c == m_channel)
@@ -421,7 +421,7 @@ bool ChannelPropertiesDialog::DoRender()
 				}
 				if(m_probe != "")
 					ImGui::EndDisabled();
-				HelpMarker("Attenuation setting for the probe (for example, 10 for a 10:1 probe)");
+				HelpMarker("探头衰减设置（例如 10 表示 10:1 探头）");
 
 				//Only show coupling box if the instrument has configurable coupling
 				if( (m_couplings.size() > 1) && (m_probe == "") )
@@ -434,7 +434,7 @@ bool ChannelPropertiesDialog::DoRender()
 						// Tell intrument thread that the scope state has to be updated
 						if(m_state) m_state->m_needsUpdate[index] = true;
 					}
-					HelpMarker("Coupling configuration for the input");
+					HelpMarker("输入耦合配置");
 				}
 
 				//Bandwidth limiters (only show if more than one value available)
@@ -448,7 +448,7 @@ bool ChannelPropertiesDialog::DoRender()
 						// Tell intrument thread that the scope state has to be updated
 						if(m_state) m_state->m_needsUpdate[index] = true;
 					}
-					HelpMarker("Hardware bandwidth limiter setting");
+					HelpMarker("硬件带宽限制器设置");
 				}
 			}
 
@@ -464,7 +464,7 @@ bool ChannelPropertiesDialog::DoRender()
 					//the set of valid values can change
 					RefreshInputSettings(scope, index);
 				}
-				HelpMarker("Hardware input multiplexer setting");
+				HelpMarker("硬件输入多路复用器设置");
 			}
 
 			//If the scope has configurable ADC modes, show dropdown for that
@@ -483,18 +483,13 @@ bool ChannelPropertiesDialog::DoRender()
 				if(nomodes)
 					ImGui::EndDisabled();
 
-				HelpMarker(
-					"Operating mode for the analog-to-digital converter.\n\n"
-					"Some instruments allow the ADC to operate in several modes, typically trading bit depth "
-					"against sample rate. Available modes may vary depending on the current sample rate and "
-					"which channels are in use."
-					);
+				HelpMarker("模数转换器的工作模式。\n\n部分仪器允许 ADC 以多种模式工作，通常是在位深和采样率之间取舍。可用模式可能随当前采样率和启用通道而变化。");
 			}
 
 			//If the probe supports inversion, show a checkbox for it
 			if(scope->CanInvert(index))
 			{
-				if(ImGui::Checkbox(Tr("Invert"), &m_inverted))
+				if(ImGui::Checkbox("反相", &m_inverted))
 				{
 					ochan->Invert(m_inverted);
 
@@ -502,33 +497,25 @@ bool ChannelPropertiesDialog::DoRender()
 					if(m_state) m_state->m_needsUpdate[index] = true;
 				}
 
-				HelpMarker(
-					"When checked, input value is multiplied by -1.\n\n"
-					"For a differential probe, this is equivalent to swapping the positive and negative inputs."
-					);
+				HelpMarker("勾选后，输入值将乘以 -1。\n\n对于差分探头，这等同于交换正负输入。");
 			}
 
 
 			//If the channel supports averaging, show a spin button for it
 			if(!isDigital && scope->CanAverage(index))
 			{
-				if(ImGui::InputInt(Tr("Averaging"), &m_navg))
+				if(ImGui::InputInt("平均", &m_navg))
 					scope->SetNumAverages(index, m_navg);
 
-				HelpMarker(
-					"Reduce noise for repetitive signals by averaging\n"
-					"multiple consecutive acquisitions");
+				HelpMarker("通过对多次连续采集求平均来降低重复信号的噪声");
 			}
 
 			//If the probe supports auto zeroing, show a button for it
 			if(m_canAutoZero)
 			{
-				if(ImGui::Button(Tr("Auto Zero")))
+				if(ImGui::Button("自动调零"))
 					ochan->AutoZero();
-				HelpMarker(
-					"Click to automatically zero offset of active probe.\n\n"
-					"Check probe documentation to see whether input signal must be removed before zeroing."
-					);
+				HelpMarker("点击以自动归零有源探头偏移。\n\n归零前是否必须移除输入信号，请查看探头文档。");
 			}
 
 			//If the probe supports degaussing, show a button for it
@@ -539,10 +526,7 @@ bool ChannelPropertiesDialog::DoRender()
 					caption += "*";
 				if(ImGui::Button(caption.c_str()))
 					ochan->Degauss();
-				HelpMarker(
-					"Click to automatically degauss current probe.\n\n"
-					"Check probe documentation to see whether input signal must be removed before degaussing."
-					);
+				HelpMarker("点击以自动消磁电流探头。\n\n消磁前是否必须移除输入信号，请查看探头文档。");
 			}
 		}
 	}

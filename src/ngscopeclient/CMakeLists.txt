@@ -86,7 +86,6 @@ add_executable(ngscopeclient
 	IGFDFileBrowser.cpp
 	InstrumentThread.cpp
 	KDialogFileBrowser.cpp
-	Localization.cpp
 	LoadDialog.cpp
 	LogViewerDialog.cpp
 	MainWindow.cpp

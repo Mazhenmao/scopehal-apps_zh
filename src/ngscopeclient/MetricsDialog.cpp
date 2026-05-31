@@ -43,7 +43,7 @@ using namespace std;
 // Construction / destruction
 
 MetricsDialog::MetricsDialog(Session* session)
-	: Dialog(Tr("Performance Metrics"), "Metrics", ImVec2(300, 400), session)
+	: Dialog("性能指标", "Metrics", ImVec2(300, 400), session)
 {
 	m_displayRefreshRate = 0;
 
@@ -79,12 +79,12 @@ bool MetricsDialog::DoRender()
 
 	float width = ImGui::GetFontSize() * 7;
 
-	if(ImGui::CollapsingHeader(Tr("Rendering")))
+	if(ImGui::CollapsingHeader("渲染"))
 	{
 		ImGui::BeginDisabled();
 			str = hz.PrettyPrint(ImGui::GetIO().Framerate);
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Framerate"), &str);
+			ImGui::InputText("帧率", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker(
@@ -95,7 +95,7 @@ bool MetricsDialog::DoRender()
 		ImGui::BeginDisabled();
 			str = hz.PrettyPrint(m_displayRefreshRate);
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Refresh rate"), &str);
+			ImGui::InputText("刷新率", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker(
@@ -104,7 +104,7 @@ bool MetricsDialog::DoRender()
 		ImGui::BeginDisabled();
 			str = fs.PrettyPrint(m_session->GetLastWaveformRenderTime());
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Rasterize time"), &str);
+			ImGui::InputText("栅格化时间", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker(
@@ -116,7 +116,7 @@ bool MetricsDialog::DoRender()
 		ImGui::BeginDisabled();
 			str = fs.PrettyPrint(m_session->GetToneMapTime());
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Tone map time"), &str);
+			ImGui::InputText("色调映射时间", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker(
@@ -129,7 +129,7 @@ bool MetricsDialog::DoRender()
 		ImGui::BeginDisabled();
 			str = counts.PrettyPrint(ImGui::GetIO().MetricsRenderVertices);
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Vertices"), &str);
+			ImGui::InputText("顶点", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker(
@@ -139,7 +139,7 @@ bool MetricsDialog::DoRender()
 		ImGui::BeginDisabled();
 			str = counts.PrettyPrint(ImGui::GetIO().MetricsRenderIndices);
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Indices"), &str);
+			ImGui::InputText("索引", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker(
@@ -147,12 +147,12 @@ bool MetricsDialog::DoRender()
 			"Waveform samples are drawn by a compute shader and not included in this total");
 	}
 
-	if(ImGui::CollapsingHeader(Tr("Filter graph")))
+	if(ImGui::CollapsingHeader("滤波器图"))
 	{
 		ImGui::BeginDisabled();
 			str = counts.PrettyPrint(m_session->GetFilterCount());
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Total filters"), &str);
+			ImGui::InputText("滤波器总数", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker("Number of filter blocks currently in existence");
@@ -160,18 +160,18 @@ bool MetricsDialog::DoRender()
 		ImGui::BeginDisabled();
 			str = fs.PrettyPrint(m_session->GetFilterGraphExecTime());
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Exec time"), &str);
+			ImGui::InputText("执行时间", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker("Update time for the last evaluation of the filter graph");
 	}
 
-	if(ImGui::CollapsingHeader(Tr("Acquisition")))
+	if(ImGui::CollapsingHeader("采集"))
 	{
 		ImGui::BeginDisabled();
 			str = hz.PrettyPrint(m_session->GetWaveformDownloadRate());
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Waveform rate"), &str);
+			ImGui::InputText("波形速率", &str);
 		ImGui::EndDisabled();
 
 		HelpMarker(
@@ -190,7 +190,7 @@ bool MetricsDialog::DoRender()
 				ImGui::BeginDisabled();
 					str = counts.PrettyPrint(s->GetPendingWaveformCount());
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Pending waveforms"), &str);
+					ImGui::InputText("等待中的波形", &str);
 				ImGui::EndDisabled();
 
 				HelpMarker(
@@ -205,7 +205,7 @@ bool MetricsDialog::DoRender()
 		}
 	}
 
-	if(ImGui::CollapsingHeader(Tr("Buffers")))
+	if(ImGui::CollapsingHeader("缓存"))
 	{
 		int64_t hostDeviceCopiesSkipped = AcceleratorBufferPerformanceCounters::m_hostDeviceCopiesSkipped;
 		int64_t hostDeviceCopiesBlocking = AcceleratorBufferPerformanceCounters::m_hostDeviceCopiesBlocking;
@@ -232,22 +232,22 @@ bool MetricsDialog::DoRender()
 				ImGui::BeginDisabled();
 					str = counts.PrettyPrint(hostDeviceCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Requested"), &str);
+					ImGui::InputText("请求值", &str);
 					HelpMarker("Total number of times a data buffer was requested by a GPU shader");
 
 					str = FormatValueWithPercentage(hostDeviceCopiesSkipped, hostDeviceCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Avoided"), &str);
+					ImGui::InputText("已避免", &str);
 					HelpMarker("Copies which did not happen because the GPU already had up-to-date data");
 
 					str = FormatValueWithPercentage(hostDeviceCopiesBlocking, hostDeviceCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Blocking"), &str);
+					ImGui::InputText("阻塞", &str);
 					HelpMarker("Blocking transfers using the implicit global transfer command buffer");
 
 					str = FormatValueWithPercentage(hostDeviceCopiesNonBlocking, hostDeviceCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Non-blocking"), &str);
+					ImGui::InputText("非阻塞", &str);
 					HelpMarker("Nonblocking transfers using an explicit command buffer");
 
 				ImGui::EndDisabled();
@@ -260,22 +260,22 @@ bool MetricsDialog::DoRender()
 				ImGui::BeginDisabled();
 					str = counts.PrettyPrint(deviceHostCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Requested"), &str);
+					ImGui::InputText("请求值", &str);
 					HelpMarker("Total number of times a data buffer was requested by CPU-side code");
 
 					str = FormatValueWithPercentage(deviceHostCopiesSkipped, deviceHostCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Avoided"), &str);
+					ImGui::InputText("已避免", &str);
 					HelpMarker("Copies which did not happen because the CPU already had up-to-date data");
 
 					str = FormatValueWithPercentage(deviceHostCopiesBlocking, deviceHostCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Blocking"), &str);
+					ImGui::InputText("阻塞", &str);
 					HelpMarker("Blocking transfers using the implicit global transfer command buffer");
 
 					str = FormatValueWithPercentage(deviceHostCopiesNonBlocking, deviceHostCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Non-blocking"), &str);
+					ImGui::InputText("非阻塞", &str);
 					HelpMarker("Nonblocking transfers using an explicit command buffer");
 
 				ImGui::EndDisabled();
@@ -288,22 +288,22 @@ bool MetricsDialog::DoRender()
 				ImGui::BeginDisabled();
 					str = counts.PrettyPrint(deviceDeviceCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Requested"), &str);
+					ImGui::InputText("请求值", &str);
 					HelpMarker("Total number of times a data buffer was copied from one GPU location to another");
 
 					str = FormatValueWithPercentage(deviceDeviceCopiesSkipped, deviceDeviceCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Avoided"), &str);
+					ImGui::InputText("已避免", &str);
 					HelpMarker("Copies which did not happen because the old buffer was empty");
 
 					str = FormatValueWithPercentage(deviceDeviceCopiesBlocking, deviceDeviceCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Blocking"), &str);
+					ImGui::InputText("阻塞", &str);
 					HelpMarker("Blocking transfers using the implicit global transfer command buffer");
 
 					str = FormatValueWithPercentage(deviceDeviceCopiesNonBlocking, deviceDeviceCopiesRequested);
 					ImGui::SetNextItemWidth(width);
-					ImGui::InputText(Tr("Non-blocking"), &str);
+					ImGui::InputText("非阻塞", &str);
 					HelpMarker("Nonblocking transfers using an explicit command buffer");
 
 				ImGui::EndDisabled();
@@ -315,7 +315,7 @@ bool MetricsDialog::DoRender()
 		}
 	}
 
-	if(ImGui::CollapsingHeader(Tr("Memory")))
+	if(ImGui::CollapsingHeader("存储/内存"))
 	{
 		Unit bytes(Unit::UNIT_BYTES);
 		Unit pct(Unit::UNIT_PERCENT);
@@ -354,7 +354,7 @@ bool MetricsDialog::DoRender()
 				ImGui::BeginDisabled();
 					str = bytes.PrettyPrint(pinnedBudget, 4);
 					ImGui::SetNextItemWidth(10 * ImGui::GetFontSize());
-					ImGui::InputText(Tr("Budget"), &str);
+					ImGui::InputText("预算", &str);
 				ImGui::EndDisabled();
 
 				HelpMarker(pinnedHelpMarkerBudgetText);
@@ -363,7 +363,7 @@ bool MetricsDialog::DoRender()
 					str = bytes.PrettyPrint(pinnedUsage, 4) +
 						" (" + pct.PrettyPrint(pinnedUsage * 1.0f / pinnedBudget, 4) + ")";
 					ImGui::SetNextItemWidth(10 * ImGui::GetFontSize());
-					ImGui::InputText(Tr("Usage"), &str);
+					ImGui::InputText("用量", &str);
 				ImGui::EndDisabled();
 
 				HelpMarker(pinnedHelpMarkerUsageText);
@@ -379,7 +379,7 @@ bool MetricsDialog::DoRender()
 				ImGui::BeginDisabled();
 					str = bytes.PrettyPrint(localBudget, 4);
 					ImGui::SetNextItemWidth(10 * ImGui::GetFontSize());
-					ImGui::InputText(Tr("Budget"), &str);
+					ImGui::InputText("预算", &str);
 				ImGui::EndDisabled();
 
 				HelpMarker(
@@ -391,7 +391,7 @@ bool MetricsDialog::DoRender()
 					str = bytes.PrettyPrint(localUsage, 4) +
 						" (" + pct.PrettyPrint(localUsage * 1.0f / localBudget, 4) + ")";
 					ImGui::SetNextItemWidth(10 * ImGui::GetFontSize());
-					ImGui::InputText(Tr("Usage"), &str);
+					ImGui::InputText("用量", &str);
 				ImGui::EndDisabled();
 
 				HelpMarker("Amount of GPU-side RAM currently in use by ngscopeclient.");
@@ -406,7 +406,7 @@ bool MetricsDialog::DoRender()
 			ImGui::BeginDisabled();
 				str = bytes.PrettyPrint(ScratchBufferManager::GetTotalSize(), 4);
 				ImGui::SetNextItemWidth(10 * ImGui::GetFontSize());
-				ImGui::InputText(Tr("Total"), &str);
+				ImGui::InputText("总计", &str);
 			ImGui::EndDisabled();
 
 			if(ImGui::TreeNodeEx("GPU", ImGuiTreeNodeFlags_DefaultOpen))

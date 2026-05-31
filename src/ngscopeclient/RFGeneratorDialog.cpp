@@ -184,7 +184,7 @@ void RFGeneratorDialog::RefreshFromHardware()
 bool RFGeneratorDialog::DoRender()
 {
 	//Device information
-	if(ImGui::CollapsingHeader("Info"))
+	if(ImGui::CollapsingHeader("信息"))
 	{
 		ImGui::BeginDisabled();
 
@@ -196,12 +196,12 @@ bool RFGeneratorDialog::DoRender()
 			auto tname = transport->GetName();
 			auto tstring = transport->GetConnectionString();
 
-			ImGui::InputText(Tr("Make"), &vendor[0], vendor.size());
-			ImGui::InputText(Tr("Model"), &name[0], name.size());
-			ImGui::InputText(Tr("Serial"), &serial[0], serial.size());
-			ImGui::InputText(Tr("Driver"), &driver[0], driver.size());
-			ImGui::InputText(Tr("Transport"), &tname[0], tname.size());
-			ImGui::InputText(Tr("Path"), &tstring[0], tstring.size());
+			ImGui::InputText("制造商", &vendor[0], vendor.size());
+			ImGui::InputText("型号", &name[0], name.size());
+			ImGui::InputText("序列号", &serial[0], serial.size());
+			ImGui::InputText("驱动", &driver[0], driver.size());
+			ImGui::InputText("传输", &tname[0], tname.size());
+			ImGui::InputText("路径", &tstring[0], tstring.size());
 
 		ImGui::EndDisabled();
 	}
@@ -236,9 +236,9 @@ void RFGeneratorDialog::DoChannel(size_t i)
 	{
 		ImGui::PushID(chname.c_str());
 
-		if(ImGui::Checkbox(Tr("Output Enable"), &m_uiState[i].m_outputEnabled))
+		if(ImGui::Checkbox("输出使能", &m_uiState[i].m_outputEnabled))
 			m_generator->SetChannelOutputEnable(i, m_uiState[i].m_outputEnabled);
-		HelpMarker("Turns the RF signal from this channel on or off");
+		HelpMarker("打开或关闭此通道的 RF 信号");
 
 		string f = hz.PrettyPrint(chan->GetFrequency());
 		string p = dbm.PrettyPrint(chan->GetLevel());
@@ -249,12 +249,10 @@ void RFGeneratorDialog::DoChannel(size_t i)
 		if(sweepingPower)
 		{
 			ImGui::BeginDisabled();
-			ImGui::InputText(Tr("Level"), &p);
+			ImGui::InputText("电平", &p);
 			ImGui::EndDisabled();
 
-			HelpMarker(
-				"Power level of the generated waveform.\n\n"
-				"This value cannot be changed when doing a power sweep. Change levels under sweep settings.");
+			HelpMarker("生成波形的功率电平。\n\n进行功率扫描时无法更改此值。请在扫描设置中更改电平。");
 		}
 		else
 		{
@@ -263,18 +261,16 @@ void RFGeneratorDialog::DoChannel(size_t i)
 			ImGui::SetNextItemWidth(valueWidth);
 			if(UnitInputWithExplicitApply("Level", m_uiState[i].m_level, m_uiState[i].m_committedLevel, dbm))
 				m_generator->SetChannelOutputPower(i, m_uiState[i].m_committedLevel);
-			HelpMarker("Power level of the generated waveform");
+			HelpMarker("生成波形的功率电平");
 		}
 
 		if(sweepingFrequency)
 		{
 			ImGui::BeginDisabled();
-			ImGui::InputText(Tr("Frequency"), &f);
+			ImGui::InputText("频率", &f);
 			ImGui::EndDisabled();
 
-			HelpMarker(
-				"Carrier frequency of the generated waveform.\n\n"
-				"This value cannot be changed when doing a frequency sweep. Change frequency under sweep settings.");
+			HelpMarker("生成波形的载波频率。\n\n进行频率扫描时无法更改此值。请在扫描设置中更改频率。");
 		}
 		else
 		{
@@ -282,19 +278,19 @@ void RFGeneratorDialog::DoChannel(size_t i)
 			if(UnitInputWithImplicitApply("Frequency", m_uiState[i].m_frequency, m_uiState[i].m_committedFrequency, hz))
 				m_generator->SetChannelCenterFrequency(i, m_uiState[i].m_committedFrequency);
 
-			HelpMarker("Carrier frequency of the generated waveform.");
+			HelpMarker("生成波形的载波频率。");
 		}
 
 		if(m_generator->IsSweepAvailable(i))
 		{
-			if(ImGui::TreeNode("Sweep"))
+			if(ImGui::TreeNode("扫频"))
 			{
 				ImGui::PushID("Sweep");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(Combo("Mode", m_uiState[i].m_sweepTypeNames, m_uiState[i].m_sweepType))
 					m_generator->SetSweepType(i, m_uiState[i].m_sweepTypes[m_uiState[i].m_sweepType]);
-				HelpMarker("Choose whether to sweep frequency, power, both, or neither.");
+				HelpMarker("选择扫描频率、功率、两者都扫描或都不扫描。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(UnitInputWithImplicitApply("Dwell Time",
@@ -302,27 +298,27 @@ void RFGeneratorDialog::DoChannel(size_t i)
 				{
 					m_generator->SetSweepDwellTime(i, m_uiState[i].m_committedSweepDwellTime);
 				}
-				HelpMarker("Time to stay at each frequency before moving to the next.");
+				HelpMarker("切换到下一个频率前，在每个频率停留的时间。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(IntInputWithImplicitApply("Points", m_uiState[i].m_sweepPoints, m_uiState[i].m_committedSweepPoints))
 					m_generator->SetSweepPoints(i, m_uiState[i].m_committedSweepPoints);
-				HelpMarker("Number of steps in the sweep.");
+				HelpMarker("扫描步数。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(Combo("Shape", m_uiState[i].m_sweepShapeNames, m_uiState[i].m_sweepShape))
 					m_generator->SetSweepShape(i, m_uiState[i].m_sweepShapes[m_uiState[i].m_sweepShape]);
-				HelpMarker("Select the shape of the sweep waveform (triangle or sawtooth).");
+				HelpMarker("选择扫描波形形状（三角波或锯齿波）。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(Combo("Spacing", m_uiState[i].m_sweepSpaceNames, m_uiState[i].m_sweepSpacing))
 					m_generator->SetSweepSpacing(i, m_uiState[i].m_sweepSpaceTypes[m_uiState[i].m_sweepSpacing]);
-				HelpMarker("Specify how to divide the sweep range into points (linear or logarithmic spacing).");
+				HelpMarker("指定如何将扫描范围划分为点（线性或对数间隔）。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(Combo("Direction", m_uiState[i].m_sweepDirectionNames, m_uiState[i].m_sweepDirection))
 					m_generator->SetSweepDirection(i, m_uiState[i].m_sweepDirections[m_uiState[i].m_sweepDirection]);
-				HelpMarker("Allows the direction of the sweep to be reversed.");
+				HelpMarker("允许反转扫描方向。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(UnitInputWithImplicitApply("Start Frequency",
@@ -330,7 +326,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 				{
 					m_generator->SetSweepStartFrequency(i, m_uiState[i].m_committedSweepStart);
 				}
-				HelpMarker("Initial value for frequency sweeps. Ignored if not sweeping frequency.");
+				HelpMarker("频率扫描的初始值。不扫描频率时忽略。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(UnitInputWithExplicitApply("Start Level",
@@ -338,7 +334,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 				{
 					m_generator->SetSweepStartLevel(i, m_uiState[i].m_committedSweepStartLevel);
 				}
-				HelpMarker("Initial value for power sweeps. Ignored if not sweeping power.");
+				HelpMarker("功率扫描的初始值。不扫描功率时忽略。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(UnitInputWithImplicitApply("Stop Frequency",
@@ -346,7 +342,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 				{
 					m_generator->SetSweepStopFrequency(i, m_uiState[i].m_committedSweepStop);
 				}
-				HelpMarker("Ending value for frequency sweeps. Ignored if not sweeping frequency.");
+				HelpMarker("频率扫描的结束值。不扫描频率时忽略。");
 
 				ImGui::SetNextItemWidth(valueWidth);
 				if(UnitInputWithExplicitApply("Stop Level",
@@ -354,7 +350,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 				{
 					m_generator->SetSweepStopLevel(i, m_uiState[i].m_committedSweepStopLevel);
 				}
-				HelpMarker("Ending value for power sweeps. Ignored if not sweeping power.");
+				HelpMarker("功率扫描的结束值。不扫描功率时忽略。");
 
 				ImGui::PopID();
 				ImGui::TreePop();
@@ -363,11 +359,11 @@ void RFGeneratorDialog::DoChannel(size_t i)
 
 		if(m_generator->IsAnalogModulationAvailable(i))
 		{
-			if(ImGui::TreeNode("Analog Modulation"))
+			if(ImGui::TreeNode("模拟调制"))
 			{
-				if(ImGui::Checkbox(Tr("Modulation Enable"), &m_uiState[i].m_analogModEnabled))
+				if(ImGui::Checkbox("调制使能", &m_uiState[i].m_analogModEnabled))
 					m_generator->SetAnalogModulationEnable(i, m_uiState[i].m_analogModEnabled);
-				HelpMarker("Turn analog modulation on or off");
+				HelpMarker("打开或关闭模拟调制");
 
 				if(!m_uiState[i].m_analogModEnabled)
 					ImGui::BeginDisabled();
@@ -378,9 +374,9 @@ void RFGeneratorDialog::DoChannel(size_t i)
 				}
 				if(ImGui::TreeNode("FM"))
 				{
-					if(ImGui::Checkbox(Tr("FM Enable"), &m_uiState[i].m_fmEnabled))
+					if(ImGui::Checkbox("FM 使能", &m_uiState[i].m_fmEnabled))
 						m_generator->SetAnalogFMEnable(i, m_uiState[i].m_fmEnabled);
-					HelpMarker("Turn analog frequency modulation on or off");
+					HelpMarker("打开或关闭模拟调频");
 
 					if(!m_uiState[i].m_fmEnabled)
 						ImGui::BeginDisabled();
@@ -388,7 +384,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 					ImGui::SetNextItemWidth(valueWidth);
 					if(Combo("Waveform", m_uiState[i].m_fmWaveShapeNames, m_uiState[i].m_fmWaveShape))
 						m_generator->SetAnalogFMWaveShape(i, m_uiState[i].m_fmWaveShapes[m_uiState[i].m_fmWaveShape]);
-					HelpMarker("Shape of the baseband modulation waveform");
+					HelpMarker("基带调制波形的形状");
 
 					ImGui::SetNextItemWidth(valueWidth);
 					if(UnitInputWithImplicitApply("Deviation",
@@ -396,7 +392,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 					{
 						m_generator->SetAnalogFMDeviation(i, m_uiState[i].m_committedFmDeviation);
 					}
-					HelpMarker("Modulation depth for analog FM");
+					HelpMarker("模拟 FM 的调制深度");
 
 					ImGui::SetNextItemWidth(valueWidth);
 					if(UnitInputWithImplicitApply("Frequency",
@@ -404,7 +400,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 					{
 						m_generator->SetAnalogFMFrequency(i, m_uiState[i].m_committedFmFrequency);
 					}
-					HelpMarker("Baseband frequency for analog FM");
+					HelpMarker("模拟 FM 的基带频率");
 
 					if(!m_uiState[i].m_fmEnabled)
 						ImGui::EndDisabled();
@@ -421,7 +417,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 
 		if(m_generator->IsVectorModulationAvailable(i))
 		{
-			if(ImGui::TreeNode("Vector Modulation"))
+			if(ImGui::TreeNode("矢量调制"))
 			{
 				ImGui::TreePop();
 			}

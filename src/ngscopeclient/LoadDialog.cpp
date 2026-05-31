@@ -90,7 +90,7 @@ void LoadDialog::RefreshFromHardware()
 bool LoadDialog::DoRender()
 {
 	//Device information
-	if(ImGui::CollapsingHeader("Info"))
+	if(ImGui::CollapsingHeader("信息"))
 	{
 		ImGui::BeginDisabled();
 
@@ -102,12 +102,12 @@ bool LoadDialog::DoRender()
 			auto tname = transport->GetName();
 			auto tstring = transport->GetConnectionString();
 
-			ImGui::InputText(Tr("Make"), &vendor[0], vendor.size());
-			ImGui::InputText(Tr("Model"), &name[0], name.size());
-			ImGui::InputText(Tr("Serial"), &serial[0], serial.size());
-			ImGui::InputText(Tr("Driver"), &driver[0], driver.size());
-			ImGui::InputText(Tr("Transport"), &tname[0], tname.size());
-			ImGui::InputText(Tr("Path"), &tstring[0], tstring.size());
+			ImGui::InputText("制造商", &vendor[0], vendor.size());
+			ImGui::InputText("型号", &name[0], name.size());
+			ImGui::InputText("序列号", &serial[0], serial.size());
+			ImGui::InputText("驱动", &driver[0], driver.size());
+			ImGui::InputText("传输", &tname[0], tname.size());
+			ImGui::InputText("路径", &tstring[0], tstring.size());
 
 		ImGui::EndDisabled();
 	}
@@ -166,11 +166,11 @@ void LoadDialog::ChannelSettings(size_t channel)
 	Unit watts(Unit::UNIT_WATTS);
 	Unit ohms(Unit::UNIT_OHMS);
 
-	if(ImGui::Checkbox(Tr("Load Enable"), &m_channelUIState[channel].m_loadEnabled))
+	if(ImGui::Checkbox("负载使能", &m_channelUIState[channel].m_loadEnabled))
 		m_load->SetLoadActive(channel, m_channelUIState[channel].m_loadEnabled);
 
 	ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
-	if(ImGui::TreeNode("Configuration"))
+	if(ImGui::TreeNode("配置"))
 	{
 		ImGui::SetNextItemWidth(valueWidth);
 		if(Dialog::Combo("Voltage Range",
@@ -179,7 +179,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 		{
 			m_load->SetLoadVoltageRange(channel, m_channelUIState[channel].m_voltageRangeIndex);
 		}
-		HelpMarker("Maximum operating voltage for the load");
+		HelpMarker("负载的最大工作电压");
 
 		ImGui::SetNextItemWidth(valueWidth);
 		if(Dialog::Combo("Current Range",
@@ -188,7 +188,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 		{
 			m_load->SetLoadCurrentRange(channel, m_channelUIState[channel].m_currentRangeIndex);
 		}
-		HelpMarker("Maximum operating current for the load");
+		HelpMarker("负载的最大工作电流");
 
 		const char* modes[4] =
 		{
@@ -199,7 +199,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 		};
 
 		ImGui::SetNextItemWidth(valueWidth);
-		if(ImGui::Combo(Tr("Mode"), (int*)&m_channelUIState[channel].m_mode, modes, 4))
+		if(ImGui::Combo("模式", (int*)&m_channelUIState[channel].m_mode, modes, 4))
 		{
 			//Turn the load off before changing mode, to avoid accidental overloading of the DUT
 			m_load->SetLoadActive(channel, false);
@@ -210,7 +210,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 			//Refresh set point with hardware config for the new mode
 			m_channelUIState[channel].RefreshSetPoint();
 		}
-		HelpMarker("Operating mode for the control loop");
+		HelpMarker("控制环路的工作模式");
 
 		//Update set point text if it's been changed via the filter graph
 		if(m_channelUIState[channel].m_committedSetPoint != m_load->GetLoadSetPoint(channel))
@@ -259,14 +259,14 @@ void LoadDialog::ChannelSettings(size_t channel)
 		if(applySetPoint)
 			m_load->SetLoadSetPoint(channel, m_channelUIState[channel].m_committedSetPoint);
 
-		HelpMarker("Set point for the load.\n\nChanges are not pushed to hardware until you click Apply.");
+		HelpMarker("负载设定值。\n\n点击应用前，更改不会发送到硬件。");
 
 		ImGui::TreePop();
 	}
 
 	//Actual values of channels
 	ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
-	if(ImGui::TreeNode("Measured"))
+	if(ImGui::TreeNode("测量值"))
 	{
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(valueWidth);
@@ -274,7 +274,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 			ImGui::InputText("Voltage###VMeasured", &svolts);
 		ImGui::EndDisabled();
 
-		HelpMarker("Measured voltage being sunk by the load");
+		HelpMarker("负载正在吸收的测量电压");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(valueWidth);
@@ -282,7 +282,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 			ImGui::InputText("Current###IMeasured", &scurr);
 		ImGui::EndDisabled();
 
-		HelpMarker("Measured current being sunk by the load");
+		HelpMarker("负载正在吸收的测量电流");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(valueWidth);
@@ -290,7 +290,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 			ImGui::InputText("Power###PCalc", &pcurr);
 		ImGui::EndDisabled();
 
-		HelpMarker("Measured power being sunk by the load");
+		HelpMarker("负载正在吸收的测量功率");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(valueWidth);
@@ -298,7 +298,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 			ImGui::InputText("Resistance###RCalc", &rcurr);
 		ImGui::EndDisabled();
 
-		HelpMarker("Equivalent resistance of the load");
+		HelpMarker("负载的等效电阻");
 
 		ImGui::TreePop();
 	}

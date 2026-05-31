@@ -73,7 +73,7 @@ bool BaseChannelPropertiesDialog::DoRender()
 	float width = 10 * ImGui::GetFontSize();
 
 	ImGui::PushID("info");
-	if(ImGui::CollapsingHeader("Info"))
+	if(ImGui::CollapsingHeader("信息"))
 	{
 		//Scope info
 		if(scope)
@@ -84,21 +84,21 @@ bool BaseChannelPropertiesDialog::DoRender()
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText(Tr("Instrument"), &nickname);
+				ImGui::InputText("仪器", &nickname);
 			ImGui::EndDisabled();
-			HelpMarker("The instrument this channel was measured by");
+			HelpMarker("测量此通道的仪器");
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText(Tr("Hardware Channel"), &index);
+				ImGui::InputText("硬件通道", &index);
 			ImGui::EndDisabled();
-			HelpMarker("Physical channel number (starting from 1) on the instrument front panel");
+			HelpMarker("仪器前面板上的物理通道编号（从 1 开始）");
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText(Tr("Hardware Name"), &hwname);
+				ImGui::InputText("硬件名称", &hwname);
 			ImGui::EndDisabled();
-			HelpMarker("Hardware name for the channel (as used in the instrument API)");
+			HelpMarker("通道的硬件名称（仪器 API 使用的名称）");
 		}
 
 		//Filter info
@@ -108,9 +108,9 @@ bool BaseChannelPropertiesDialog::DoRender()
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText(Tr("Filter Type"), &fname);
+				ImGui::InputText("滤波器类型", &fname);
 			ImGui::EndDisabled();
-			HelpMarker("Type of filter object");
+			HelpMarker("滤波器对象类型");
 		}
 	}
 	ImGui::PopID();

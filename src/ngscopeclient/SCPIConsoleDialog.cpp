@@ -98,7 +98,7 @@ bool SCPIConsoleDialog::DoRender()
 	bool pending = m_commandPending;
 	if(pending)
 		ImGui::BeginDisabled();
-	if(ImGui::InputText(Tr("Command"), &m_command, ImGuiInputTextFlags_EnterReturnsTrue))
+	if(ImGui::InputText("命令", &m_command, ImGuiInputTextFlags_EnterReturnsTrue))
 	{
 		//Show command immediately
 		m_output.push_back(string("> ") + m_command);

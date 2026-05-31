@@ -237,7 +237,7 @@ bool WaveformGroup::Render()
 	//see https://github.com/ocornut/imgui/issues/7914
 	if(ImGui::BeginPopupContextItem())
 	{
-		ImGui::InputText(Tr("Name"), &m_title);
+		ImGui::InputText("名称", &m_title);
 		ImGui::EndPopup();
 	}
 
@@ -361,13 +361,13 @@ void WaveformGroup::DoCursorReadouts()
 			//Header row
 			//TODO: only show in-band power column if units match up?
 			ImGui::TableSetupScrollFreeze(0, 1); 	//Header row does not scroll
-			ImGui::TableSetupColumn(Tr("Channel"), ImGuiTableColumnFlags_WidthFixed, 10*width);
-			ImGui::TableSetupColumn(Tr("Value 1"), ImGuiTableColumnFlags_WidthFixed, 8*width);
+			ImGui::TableSetupColumn("通道", ImGuiTableColumnFlags_WidthFixed, 10*width);
+			ImGui::TableSetupColumn("值 1", ImGuiTableColumnFlags_WidthFixed, 8*width);
 			if(hasSecondCursor)
 			{
-				ImGui::TableSetupColumn(Tr("Value 2"), ImGuiTableColumnFlags_WidthFixed, 8*width);
-				ImGui::TableSetupColumn(Tr("Delta"), ImGuiTableColumnFlags_WidthFixed, 8*width);
-				ImGui::TableSetupColumn(Tr("Band"), ImGuiTableColumnFlags_WidthFixed, 8*width);
+				ImGui::TableSetupColumn("值 2", ImGuiTableColumnFlags_WidthFixed, 8*width);
+				ImGui::TableSetupColumn("差值", ImGuiTableColumnFlags_WidthFixed, 8*width);
+				ImGui::TableSetupColumn("频段", ImGuiTableColumnFlags_WidthFixed, 8*width);
 			}
 			ImGui::TableHeadersRow();
 
@@ -963,7 +963,7 @@ void WaveformGroup::RenderTimeline(float width, float height)
 
 	if(ImGui::BeginPopupContextWindow())
 	{
-		if(ImGui::MenuItem(Tr("Autofit"))){
+		if(ImGui::MenuItem("自动适配")){
 			AutofitHorizontal(width);
 		}
 		ImGui::EndPopup();

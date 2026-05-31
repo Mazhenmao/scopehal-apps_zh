@@ -126,28 +126,27 @@ bool AddInstrumentDialog::DoRender()
 	if(tutorial && (tutorial->GetCurrentStep() != TutorialWizard::TUTORIAL_02_CONNECT) )
 		tutorial = nullptr;
 
-	if(ImGui::InputText(Tr("Nickname"), &m_nickname))
+	if(ImGui::InputText("自定义名称", &m_nickname))
 		m_nicknameEdited = !(m_nickname.empty() || (m_nickname == m_defaultNickname));
 	HelpMarker(
-		"Text nickname for this instrument so you can distinguish between multiple similar devices.\n"
+		"为此仪器设置文本昵称，以便区分多台相似设备。\n"
 		"\n"
-		"This is shown on the list of recent instruments, to disambiguate channel names in multi-instrument setups, etc.");
+		"该昵称会显示在最近使用仪器列表中，也会在多仪器配置中用于区分通道名称等。");
 
 	bool dropdownOpen = false;
-	if(Combo(Tr("Driver"), m_drivers, m_selectedDriver,&dropdownOpen))
+	if(Combo("驱动", m_drivers, m_selectedDriver,&dropdownOpen))
 	{
 		m_selectedModel = 0;
 		m_selectedTransport = 0;
 		UpdateCombos();
 	}
 	HelpMarker(
-		"Select the instrument driver to use.\n"
+		"选择要使用的仪器驱动。\n"
 		"\n"
-		"Most commonly there is one driver supporting all hardware of a given type from a given vendor (e.g. Siglent oscilloscopes),"
-		"however there may be multiple drivers to choose from if a given vendor has several product lines with very different "
-		"software stacks.\n"
+		"通常一个驱动会支持某个厂商同一类型的所有硬件（例如 Siglent 示波器），"
+		"但如果同一厂商有多个软件栈差异很大的产品线，也可能需要在多个驱动中选择。\n"
 		"\n"
-		"Check the user manual for details of what driver to use with a given instrument.");
+		"具体仪器应使用哪个驱动，请查阅用户手册。");
 
 	//Show speech bubble for tutorial
 	bool showedBubble = false;
@@ -155,7 +154,7 @@ bool AddInstrumentDialog::DoRender()
 	{
 		auto pos = ImGui::GetCursorScreenPos();
 		ImVec2 anchorPos(pos.x + 10*ImGui::GetFontSize(), pos.y);
-		tutorial->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "Select the \"demo\" driver");
+		tutorial->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "选择 \"demo\" 驱动");
 		showedBubble = true;
 	}
 	else if(dropdownOpen)	//suppress further bubbles if dropdown is active
@@ -163,29 +162,29 @@ bool AddInstrumentDialog::DoRender()
 
 	if(m_models.size() > 1)
 	{	// Only show model combo if there is more than one model
-		if(Combo("Model", m_models, m_selectedModel))
+		if(Combo("型号", m_models, m_selectedModel))
 			UpdateCombos();
 		HelpMarker(
-			"Select the model of your instrument.\n"
+			"选择仪器型号。\n"
 			"\n"
-			"The selected driver supports several models from the manufacturer,"
-			"Selecting the model will adapt the instrument nickname and connection string.");
+			"所选驱动支持该厂商的多个型号，"
+			"选择型号后会自动调整仪器昵称和连接字符串。");
 	}
 
-	if(Combo(Tr("Transport"), m_transports, m_selectedTransport, &dropdownOpen))
+	if(Combo("传输", m_transports, m_selectedTransport, &dropdownOpen))
 		UpdateCombos();
 
 	HelpMarker(
-		"Select the SCPI transport for the connection between your computer and the instrument.\n"
+		"选择计算机与仪器之间连接使用的 SCPI 传输方式。\n"
 		"\n"
-		"This controls how remote control commands and waveform data get to/from the instrument (USB, Ethernet, GPIB, etc).\n"
+		"该设置控制远程控制命令和波形数据如何在计算机与仪器之间传输（USB、Ethernet、GPIB 等）。\n"
 		"\n"
-		"Note that there are four different transports which run over TCP/IP, since instruments vary greatly:\n",
+		"注意，由于不同仪器差异很大，基于 TCP/IP 的传输方式有四种：\n",
 			{
-				"lan: raw SCPI over TCP socket with no framing",
+				"lan：通过 TCP socket 传输无帧格式的原始 SCPI",
 				"lxi: LXI VXI-11",
-				"twinlan: separate sockets for SCPI text control commands and raw binary waveforms.\n"
-				"Commonly used with bridge servers for interfacing to USB instruments (Digilent, DreamSourceLabs, Pico).",
+				"twinlan：SCPI 文本控制命令和原始二进制波形使用独立 socket。\n"
+				"通常配合桥接服务器连接 USB 仪器（Digilent、DreamSourceLabs、Pico）。",
 				"vicp: Teledyne LeCroy Virtual Instrument Control Protocol"
 			}
 		);
@@ -195,7 +194,7 @@ bool AddInstrumentDialog::DoRender()
 	{
 		auto pos = ImGui::GetCursorScreenPos();
 		ImVec2 anchorPos(pos.x + 10*ImGui::GetFontSize(), pos.y);
-		tutorial->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "Select the \"null\" transport");
+		tutorial->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "选择 \"null\" 传输方式");
 		showedBubble = true;
 	}
 	else if(dropdownOpen)	//suppress further bubbles if dropdown is active
@@ -203,38 +202,38 @@ bool AddInstrumentDialog::DoRender()
 
 	if(!m_endpoints.empty())
 	{	// Endpoint discovery available: create endpoint combo
-		if(Combo("Endpoint", m_endpointNames, m_selectedEndpoint, &dropdownOpen))
+		if(Combo("端点", m_endpointNames, m_selectedEndpoint, &dropdownOpen))
 		{
 			UpdatePath();
 		}
-		HelpMarker("Select the transport endpoint from the list and/or edit the path manually.");
+		HelpMarker("从列表中选择传输端点，也可以手动编辑路径。");
 		ImGui::SameLine();
 		if(ImGui::Button("鉄?"))
 		{
 			UpdateCombos();
 		}
 	}
-	if(ImGui::InputText(Tr("Path"), &m_path))
+	if(ImGui::InputText("路径", &m_path))
 		m_pathEdited = !(m_path.empty() || (m_path == m_defaultPath));
 	HelpMarker(
-		"Transport-specific description of how to connect to the instrument.\n",
+		"指定如何通过当前传输方式连接到仪器。\n",
 			{
-				"GPIB: board index and primary address (0:7)",
-				"TCP/IP transports: IP or hostname : port (localhost:5025).\n"
-				"Note that for twinlan, two port numbers are required (localhost:5025:5026) for SCPI and data ports respectively.",
-				"UART: device path and baud rate (/dev/ttyUSB0:9600, COM1). Default is 115200 if not specified. ",
-				"USBTMC: Linux device path (/dev/usbtmcX)",
-				"USB-HID: Device vendor id, product id (and optionnaly serial number): <vendorId(hex)>:<productId(hex)>:<serialNumber> (e.g.: 2e3c:af01)"
+				"GPIB：板卡索引和主地址（0:7）",
+				"TCP/IP 传输：IP 或主机名 : 端口（localhost:5025）。\n"
+				"注意 twinlan 需要两个端口号（localhost:5025:5026），分别用于 SCPI 和数据端口。",
+				"UART：设备路径和波特率（/dev/ttyUSB0:9600，COM1）。未指定时默认 115200。",
+				"USBTMC：Linux 设备路径（/dev/usbtmcX）",
+				"USB-HID：设备 vendor id、product id（以及可选序列号）：<vendorId(hex)>:<productId(hex)>:<serialNumber>（例如：2e3c:af01）"
 			}
 		);
 
-	if(ImGui::Button(Tr("Add")))
+	if(ImGui::Button("添加"))
 	{
 		if(m_nickname.empty())
 		{
 			ShowErrorPopup(
-				"Nickname error",
-				"The nickname cannot be left blank");
+				"昵称错误",
+				"昵称不能为空");
 		}
 		else
 		{
@@ -256,7 +255,7 @@ bool AddInstrumentDialog::DoRender()
 	{
 		auto pos = ImGui::GetCursorScreenPos();
 		ImVec2 anchorPos(pos.x + 2*ImGui::GetFontSize(), pos.y);
-		tutorial->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "Add the scope to your session");
+		tutorial->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "将示波器添加到会话");
 		//showedBubble = true;
 	}
 
@@ -276,8 +275,8 @@ SCPITransport* AddInstrumentDialog::MakeTransport()
 	if(transport == nullptr)
 	{
 		ShowErrorPopup(
-			"Transport error",
-			"Failed to create transport of type \"" + m_transports[m_selectedTransport] + "\"");
+			"传输错误",
+			"无法创建类型为 \"" + m_transports[m_selectedTransport] + "\" 的传输");
 		return nullptr;
 	}
 
@@ -285,7 +284,7 @@ SCPITransport* AddInstrumentDialog::MakeTransport()
 	if(!transport->IsConnected())
 	{
 		delete transport;
-		ShowErrorPopup("Connection error", "Failed to connect to \"" + m_path + "\"");
+		ShowErrorPopup("连接错误", "无法连接到 \"" + m_path + "\"");
 		return nullptr;
 	}
 

@@ -106,7 +106,7 @@ bool TutorialWizard::DoRender()
 	//TODO: is this necessary? will it break things? For now turn it off
 	/*
 	ImGui::BeginDisabled(m_step == TUTORIAL_00_INTRO);
-		if(ImGui::Button(Tr("<< Back")))
+		if(ImGui::Button("<< 上一步"))
 			m_step --;
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -117,13 +117,13 @@ bool TutorialWizard::DoRender()
 	auto buttonStartPos = ImGui::GetCursorScreenPos();
 	if(m_step == (m_markdownText.size()-1) )
 	{
-		if(ImGui::Button(Tr("Finish")))
+		if(ImGui::Button("完成"))
 			return false;
 	}
 	else
 	{
 		ImGui::BeginDisabled(!m_continueEnabled);
-			if(ImGui::Button(Tr("Continue >>")))
+			if(ImGui::Button("继续 >>"))
 				AdvanceToNextStep();
 		ImGui::EndDisabled();
 	}

@@ -196,7 +196,7 @@ void FilterGraphGroup::MoveBy(ImVec2 displacement)
 // Construction / destruction
 
 FilterGraphEditor::FilterGraphEditor(Session& session, MainWindow* parent)
-	: Dialog(Tr("Filter Graph Editor"), "Filter Graph Editor", ImVec2(800, 600), &session, parent)
+	: Dialog("滤波器编辑器", "Filter Graph Editor", ImVec2(800, 600), &session, parent)
 	, m_nextID(1)
 	, m_errorWindow(&session)
 {
@@ -772,7 +772,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 
 	//Figure out how big the port text is
 	float oportmax = 1;
-	float iportmax = ImGui::CalcTextSize("�?").x;
+	float iportmax = ImGui::CalcTextSize("�?").x;
 	vector<string> onames;
 	for(auto it : group->m_hierInputMap)
 	{
@@ -787,7 +787,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 		else if(trig)
 			sinkname = trig->GetScope()->m_nickname;
 
-		auto name = sinkname + " �?";
+		auto name = sinkname + " �?";
 		onames.push_back(name);
 		oportmax = max(oportmax,
 			ImGui::CalcTextSize(name.c_str()).x +
@@ -821,8 +821,8 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 	//Table of input ports
 	if(ImGui::BeginTable("Ports", 2, 0, ImVec2(nodewidth, 0 ) ) )
 	{
-		ImGui::TableSetupColumn(Tr("inputs"), ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
-		ImGui::TableSetupColumn(Tr("outputs"), ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
+		ImGui::TableSetupColumn("输入", ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
+		ImGui::TableSetupColumn("输出", ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
 
 		for(auto it : group->m_hierInputMap)
 		{
@@ -841,7 +841,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
-				ImGui::TextUnformatted("�?");
+				ImGui::TextUnformatted("�?");
 			ax::NodeEditor::EndPin();
 
 			//TODO refactor into function
@@ -857,7 +857,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(group->m_hierInputInternalMap[sink], ax::NodeEditor::PinKind::Output);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(1, 0.5));
-				RightJustifiedText(sinkname + "." + sink.first->GetInputName(sink.second) + " �?");
+				RightJustifiedText(sinkname + "." + sink.first->GetInputName(sink.second) + " �?");
 			ax::NodeEditor::EndPin();
 		}
 		ImGui::EndTable();
@@ -879,13 +879,13 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 
 	//Figure out how big the port text is
 	float oportmax = 1;
-	float iportmax = ImGui::CalcTextSize("�?").x;
+	float iportmax = ImGui::CalcTextSize("�?").x;
 	vector<string> onames;
 	for(auto it : group->m_hierOutputMap)
 	{
 		auto stream = it.first;
 
-		auto name = stream.GetName() + " �?";
+		auto name = stream.GetName() + " �?";
 		onames.push_back(name);
 		oportmax = max(oportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}
@@ -920,8 +920,8 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 
 	if(ImGui::BeginTable("Ports", 2, 0, ImVec2(nodewidth, 0 ) ) )
 	{
-		ImGui::TableSetupColumn(Tr("inputs"), ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
-		ImGui::TableSetupColumn(Tr("outputs"), ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
+		ImGui::TableSetupColumn("输入", ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
+		ImGui::TableSetupColumn("输出", ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
 
 		for(auto it : group->m_hierOutputMap)
 		{
@@ -934,14 +934,14 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(group->m_hierOutputInternalMap[stream], ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
-				ImGui::TextUnformatted("�?");
+				ImGui::TextUnformatted("�?");
 			ax::NodeEditor::EndPin();
 
 			//Output side (path from hierarchical port to external node)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Output);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(1, 0.5));
-				RightJustifiedText(stream.GetName() + " �?");
+				RightJustifiedText(stream.GetName() + " �?");
 			ax::NodeEditor::EndPin();
 
 			if(sid == ax::NodeEditor::GetHoveredPin())
@@ -1056,47 +1056,47 @@ void FilterGraphEditor::OutputPortTooltip(StreamDescriptor stream)
 		switch(stype)
 		{
 			case Stream::STREAM_TYPE_ANALOG:
-				ImGui::TextUnformatted(Tr("Analog channel"));
+				ImGui::TextUnformatted("模拟通道");
 				break;
 
 			case Stream::STREAM_TYPE_DIGITAL:
-				ImGui::TextUnformatted(Tr("Digital channel"));
+				ImGui::TextUnformatted("数字通道");
 				break;
 
 			case Stream::STREAM_TYPE_DIGITAL_BUS:
-				ImGui::TextUnformatted(Tr("Digital bus"));
+				ImGui::TextUnformatted("数字总线");
 				break;
 
 			case Stream::STREAM_TYPE_EYE:
-				ImGui::TextUnformatted(Tr("Eye pattern"));
+				ImGui::TextUnformatted("眼图");
 				break;
 
 			case Stream::STREAM_TYPE_SPECTROGRAM:
-				ImGui::TextUnformatted(Tr("Spectrogram"));
+				ImGui::TextUnformatted("频谱图");
 				break;
 
 			case Stream::STREAM_TYPE_WATERFALL:
-				ImGui::TextUnformatted(Tr("Waterfall"));
+				ImGui::TextUnformatted("瀑布图");
 				break;
 
 			case Stream::STREAM_TYPE_PROTOCOL:
-				ImGui::TextUnformatted(Tr("Protocol data"));
+				ImGui::TextUnformatted("协议数据");
 				break;
 
 			case Stream::STREAM_TYPE_TRIGGER:
-				ImGui::TextUnformatted(Tr("External trigger"));
+				ImGui::TextUnformatted("外部触发");
 				break;
 
 			case Stream::STREAM_TYPE_ANALOG_SCALAR:
 				{
-					ImGui::TextUnformatted(Tr("Analog value:"));
+					ImGui::TextUnformatted("模拟值:");
 					string value = stream.GetYAxisUnits().PrettyPrint(stream.GetScalarValue());
 					ImGui::TextUnformatted(value.c_str());
 				}
 				break;
 
 			default:
-				ImGui::TextUnformatted(Tr("Unknown channel type"));
+				ImGui::TextUnformatted("未知通道类型");
 				break;
 		}
 
@@ -1105,25 +1105,25 @@ void FilterGraphEditor::OutputPortTooltip(StreamDescriptor stream)
 		{
 			auto data = stream.GetData();
 			if(!data)
-				ImGui::Text(Tr("No waveform data"));
+				ImGui::Text("无波形数据");
 			else
 			{
 				auto srate = stream.GetXAxisUnits().PrettyPrint(data->m_timescale);
 				auto ssamples = Unit(Unit::UNIT_SAMPLEDEPTH).PrettyPrint(data->size());
 				if(dynamic_cast<DensityFunctionWaveform*>(data))
-					ImGui::Text(Tr("2D density plot"));
+					ImGui::Text("二维密度图");
 				else if(dynamic_cast<UniformAnalogWaveform*>(data))
-					ImGui::Text(Tr("Uniformly sampled analog data, %s at %s intervals"), ssamples.c_str(), srate.c_str());
+					ImGui::Text("均匀采样模拟数据，%s，间隔 %s", ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<UniformDigitalWaveform*>(data))
-					ImGui::Text(Tr("Uniformly sampled digital data, %s at %s intervals"), ssamples.c_str(), srate.c_str());
+					ImGui::Text("均匀采样数字数据，%s，间隔 %s", ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<SparseAnalogWaveform*>(data))
-					ImGui::Text(Tr("Sparsely sampled analog data, %s at %s resolution"), ssamples.c_str(), srate.c_str());
+					ImGui::Text("稀疏采样模拟数据，%s，分辨率 %s", ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<SparseDigitalWaveform*>(data))
-					ImGui::Text(Tr("Sparsely sampled digital data, %s at %s resolution"), ssamples.c_str(), srate.c_str());
+					ImGui::Text("稀疏采样数字数据，%s，分辨率 %s", ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<UniformWaveformBase*>(data))
-					ImGui::Text(Tr("Uniformly sampled data, %s at %s intervals"), ssamples.c_str(), srate.c_str());
+					ImGui::Text("均匀采样数据，%s，间隔 %s", ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<SparseWaveformBase*>(data))
-					ImGui::Text(Tr("Sparsely sampled data, %s at %s resolution"), ssamples.c_str(), srate.c_str());
+					ImGui::Text("稀疏采样数据，%s，分辨率 %s", ssamples.c_str(), srate.c_str());
 			}
 		}
 
@@ -1660,7 +1660,7 @@ bool FilterGraphEditor::IsBackEdge(FlowGraphNode* src, FlowGraphNode* dst)
  */
 void FilterGraphEditor::CreateChannelMenu()
 {
-	if(ImGui::BeginMenu(Tr("Channels")))
+	if(ImGui::BeginMenu("通道"))
 	{
 		vector<StreamDescriptor> streams;
 
@@ -1714,7 +1714,7 @@ void FilterGraphEditor::CreateChannelMenu()
 
 		ImGui::EndMenu();
 	}
-	if(ImGui::BeginMenu(Tr("Create")))
+	if(ImGui::BeginMenu("创建"))
 	{
 		auto& refs = m_parent->GetSession().GetReferenceFilters();
 
@@ -1772,25 +1772,25 @@ void FilterGraphEditor::FilterMenu(StreamDescriptor stream)
 		auto dlg = m_parent->GetMeasurementsDialog(false);
 		if(!dlg || !dlg->HasStream(stream))
 		{
-			if(ImGui::MenuItem(Tr("Measure")))
+			if(ImGui::MenuItem("测量"))
 				m_parent->GetMeasurementsDialog(true)->AddStream(stream);
 			ImGui::Separator();
 		}
 	}
 
-	FilterSubmenu(stream, Tr("Bus"), Filter::CAT_BUS);
-	FilterSubmenu(stream, Tr("Clocking"), Filter::CAT_CLOCK);
-	FilterSubmenu(stream, Tr("Export"), Filter::CAT_EXPORT);
-	FilterSubmenu(stream, Tr("Generation"), Filter::CAT_GENERATION);
-	FilterSubmenu(stream, Tr("Math"), Filter::CAT_MATH);
-	FilterSubmenu(stream, Tr("Measurement"), Filter::CAT_MEASUREMENT);
-	FilterSubmenu(stream, Tr("Memory"), Filter::CAT_MEMORY);
-	FilterSubmenu(stream, Tr("Miscellaneous"), Filter::CAT_MISC);
-	FilterSubmenu(stream, Tr("Optical"), Filter::CAT_OPTICAL);
-	FilterSubmenu(stream, Tr("Power"), Filter::CAT_POWER);
-	FilterSubmenu(stream, Tr("RF"), Filter::CAT_RF);
-	FilterSubmenu(stream, Tr("Serial_p"), Filter::CAT_SERIAL);
-	FilterSubmenu(stream, Tr("Signal integrity"), Filter::CAT_ANALYSIS);
+	FilterSubmenu(stream, "总线", Filter::CAT_BUS);
+	FilterSubmenu(stream, "时钟", Filter::CAT_CLOCK);
+	FilterSubmenu(stream, "导出", Filter::CAT_EXPORT);
+	FilterSubmenu(stream, "信号生成", Filter::CAT_GENERATION);
+	FilterSubmenu(stream, "数学运算", Filter::CAT_MATH);
+	FilterSubmenu(stream, "测量", Filter::CAT_MEASUREMENT);
+	FilterSubmenu(stream, "存储/内存", Filter::CAT_MEMORY);
+	FilterSubmenu(stream, "杂项", Filter::CAT_MISC);
+	FilterSubmenu(stream, "光学/光信号", Filter::CAT_OPTICAL);
+	FilterSubmenu(stream, "电源/功率", Filter::CAT_POWER);
+	FilterSubmenu(stream, "射频信号处理", Filter::CAT_RF);
+	FilterSubmenu(stream, "串行", Filter::CAT_SERIAL);
+	FilterSubmenu(stream, "信号完整性", Filter::CAT_ANALYSIS);
 }
 
 /**
@@ -1981,7 +1981,7 @@ void FilterGraphEditor::DoNodeForTrigger(Trigger* trig)
 		{
 			auto sid = GetID(pair<FlowGraphNode*, size_t>(trig, i));
 
-			string portname("�? ");
+			string portname("�? ");
 			portname += trig->GetInputName(i);
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
@@ -2111,13 +2111,13 @@ void FilterGraphEditor::DoNodeForChannel(
 	vector<string> onames;
 	for(size_t i=0; i<channel->GetInputCount(); i++)
 	{
-		auto name = string("�? ") + channel->GetInputName(i);
+		auto name = string("�? ") + channel->GetInputName(i);
 		inames.push_back(name);
 		iportmax = max(iportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}
 	for(size_t i=0; i<channel->GetStreamCount(); i++)
 	{
-		auto name = channel->GetStreamName(i) + " �?";
+		auto name = channel->GetStreamName(i) + " �?";
 		onames.push_back(name);
 		oportmax = max(oportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}
@@ -2143,9 +2143,9 @@ void FilterGraphEditor::DoNodeForChannel(
 	{
 		size_t maxports = max(channel->GetInputCount(), channel->GetStreamCount());
 
-		ImGui::TableSetupColumn(Tr("inputs"), ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
-		ImGui::TableSetupColumn(Tr("icon"), ImGuiTableColumnFlags_WidthFixed, iconcolwidth + 2);
-		ImGui::TableSetupColumn(Tr("outputs"), ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
+		ImGui::TableSetupColumn("输入", ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
+		ImGui::TableSetupColumn("图标", ImGuiTableColumnFlags_WidthFixed, iconcolwidth + 2);
+		ImGui::TableSetupColumn("输出", ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
 
 		for(size_t i=0; i<maxports; i++)
 		{
@@ -2563,7 +2563,7 @@ bool FilterGraphEditor::HandleNodeProperties()
 		if(m_groups.HasEntry(m_selectedProperties))
 		{
 			auto group = m_groups[m_selectedProperties];
-			ImGui::InputText(Tr("Name"), &group->m_name);
+			ImGui::InputText("名称", &group->m_name);
 		}
 		ImGui::EndPopup();
 	}
@@ -2611,7 +2611,7 @@ void FilterGraphEditor::DoAddMenu()
 	}
 	std::sort(sortedNames.begin(), sortedNames.end());
 
-	if(ImGui::BeginMenu(Tr("Import")))
+	if(ImGui::BeginMenu("导入"))
 	{
 		ImGui::PushFont(nullptr, 0);
 
@@ -2634,7 +2634,7 @@ void FilterGraphEditor::DoAddMenu()
 		ImGui::EndMenu();
 	}
 
-	if(ImGui::BeginMenu(Tr("Generate")))
+	if(ImGui::BeginMenu("生成"))
 	{
 		ImGui::PushFont(nullptr, 0);
 
@@ -2659,7 +2659,7 @@ void FilterGraphEditor::DoAddMenu()
 
 	ImGui::Separator();
 
-	if(ImGui::MenuItem(Tr("New Group")))
+	if(ImGui::MenuItem("新建组"))
 	{
 		auto group = make_shared<FilterGraphGroup>(*this);
 		auto id = GetID(group);
@@ -2675,7 +2675,7 @@ void FilterGraphEditor::DoAddMenu()
 		m_groups.emplace(group, id);
 	}
 
-	if(ImGui::BeginMenu(Tr("New Filter")))
+	if(ImGui::BeginMenu("新建滤波器"))
 	{
 		ImGui::PushFont(nullptr, 0);
 

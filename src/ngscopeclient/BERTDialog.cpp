@@ -100,7 +100,7 @@ bool BERTDialog::DoRender()
 	float width = 10 * ImGui::GetFontSize();
 
 	//Device information
-	if(ImGui::CollapsingHeader("Info"))
+	if(ImGui::CollapsingHeader("信息"))
 	{
 		ImGui::BeginDisabled();
 
@@ -112,12 +112,12 @@ bool BERTDialog::DoRender()
 			auto tname = transport->GetName();
 			auto tstring = transport->GetConnectionString();
 
-			ImGui::InputText(Tr("Make"), &vendor[0], vendor.size());
-			ImGui::InputText(Tr("Model"), &name[0], name.size());
-			ImGui::InputText(Tr("Serial"), &serial[0], serial.size());
-			ImGui::InputText(Tr("Driver"), &driver[0], driver.size());
-			ImGui::InputText(Tr("Transport"), &tname[0], tname.size());
-			ImGui::InputText(Tr("Path"), &tstring[0], tstring.size());
+			ImGui::InputText("制造商", &vendor[0], vendor.size());
+			ImGui::InputText("型号", &name[0], name.size());
+			ImGui::InputText("序列号", &serial[0], serial.size());
+			ImGui::InputText("驱动", &driver[0], driver.size());
+			ImGui::InputText("传输", &tname[0], tname.size());
+			ImGui::InputText("路径", &tstring[0], tstring.size());
 
 		ImGui::EndDisabled();
 	}
@@ -125,10 +125,10 @@ bool BERTDialog::DoRender()
 	//Global pattern generator settings
 	if(!m_bert->IsCustomPatternPerChannel())
 	{
-		if(ImGui::CollapsingHeader("Pattern Generator"))
+		if(ImGui::CollapsingHeader("码型发生器"))
 		{
 			ImGui::SetNextItemWidth(width);
-			if(ImGui::InputText(Tr("Custom Pattern"), &m_txPatternText))
+			if(ImGui::InputText("自定义码型", &m_txPatternText))
 			{
 				sscanf(m_txPatternText.c_str(), "%" PRIx64, &m_txPattern);
 				m_bert->SetGlobalCustomPattern(m_txPattern);
@@ -144,7 +144,7 @@ bool BERTDialog::DoRender()
 	}
 
 	//Timebase settings
-	if(ImGui::CollapsingHeader("Timebase"))
+	if(ImGui::CollapsingHeader("时基"))
 	{
 		Unit hz(Unit::UNIT_HZ);
 
@@ -162,14 +162,14 @@ bool BERTDialog::DoRender()
 
 				m_refclkFrequency = m_bert->GetRefclkOutFrequency();
 			}
-			HelpMarker("Select which clock to output from the reference clock output port");
+			HelpMarker("选择从参考时钟输出端口输出的时钟");
 
 			ImGui::SetNextItemWidth(width);
 			ImGui::BeginDisabled();
 			string srate = hz.PrettyPrint(m_refclkFrequency);
-			ImGui::InputText(Tr("Clock Out Frequency"), &srate);
+			ImGui::InputText("时钟输出频率", &srate);
 			ImGui::EndDisabled();
-			HelpMarker("Calculated frequency of the reference clock output");
+			HelpMarker("参考时钟输出的计算频率");
 		}
 
 		if(m_bert->HasRefclkIn())
@@ -177,9 +177,9 @@ bool BERTDialog::DoRender()
 			ImGui::SetNextItemWidth(width);
 			ImGui::BeginDisabled();
 			auto srate = hz.PrettyPrint(m_bert->GetRefclkInFrequency());
-			ImGui::InputText(Tr("Clock In Frequency"), &srate);
+			ImGui::InputText("时钟输入频率", &srate);
 			ImGui::EndDisabled();
-			HelpMarker("Required frequency for external reference clock");
+			HelpMarker("外部参考时钟所需频率");
 
 			ImGui::SetNextItemWidth(width);
 			const char* items[2] =
@@ -188,7 +188,7 @@ bool BERTDialog::DoRender()
 				"External"
 			};
 			int iext = m_bert->GetUseExternalRefclk() ? 1 : 0;
-			if(ImGui::Combo(Tr("Clock Source"), &iext, items, 2))
+			if(ImGui::Combo("时钟源", &iext, items, 2))
 				m_bert->SetUseExternalRefclk(iext == 1);
 		}
 
@@ -203,7 +203,7 @@ bool BERTDialog::DoRender()
 				m_refclkNames = m_bert->GetRefclkOutMuxNames();
 				m_refclkFrequency = m_bert->GetRefclkOutFrequency();
 			}
-			HelpMarker("PHY signaling rate for all transmit and receive ports");
+			HelpMarker("所有发送和接收端口的 PHY 信号速率");
 		}
 
 		ImGui::SetNextItemWidth(width);
@@ -217,11 +217,7 @@ bool BERTDialog::DoRender()
 			m_integrationLength = m_committedIntegrationLength;
 			m_bert->SetBERIntegrationLength(m_integrationLength);
 		}
-		HelpMarker(
-			"Number of UIs to sample for each BER measurement.\n\n"
-			"Larger integration periods lead to slower update rates, but\n"
-			"give better resolution at low BER values."
-			);
+		HelpMarker("每次 BER 测量采样的 UI 数量。\n\n较大的积分周期会降低更新率，但在低 BER 值下可提供更好的分辨率。");
 	}
 
 	return true;

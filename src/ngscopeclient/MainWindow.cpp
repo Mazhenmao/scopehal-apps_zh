@@ -313,7 +313,7 @@ string MainWindow::NameNewWaveformGroup()
 	{
 		//Avoid colliding, check if name is in use and skip if so
 		int id = (m_nextWaveformGroup ++);
-		auto nextid = string(Tr("Waveform Group ")) + to_string(id);
+		auto nextid = string("波形组 ") + to_string(id);
 		LogTrace("Candidate ID is %s\n", nextid.c_str());
 
 		//This is ugly but we dont currently have an index for this.
@@ -629,7 +629,7 @@ void MainWindow::RenderUI()
 	//Update window title only if necessary, in case this is expensive on some platforms
 	string title = m_title + " - ";
 	if(m_sessionFileName.empty())
-		title += "[unsaved session]";
+		title += "[未保存会话]";
 	else
 	{
 		std::filesystem::path path(m_sessionFileName);
@@ -833,7 +833,7 @@ void MainWindow::Toolbar()
 	float y = ImGui::GetCursorPosY();
 	ImGui::SetCursorPosY(y + 5);
 	ImGui::SetNextItemWidth(6 * toolbarHeight);
-	if(ImGui::SliderFloat(Tr("Intensity"), &m_traceAlpha, 0, 0.75, "", ImGuiSliderFlags_Logarithmic))
+	if(ImGui::SliderFloat("强度", &m_traceAlpha, 0, 0.75, "", ImGuiSliderFlags_Logarithmic))
 		SetNeedRender();
 
 	ImGui::End();
@@ -848,13 +848,13 @@ void MainWindow::LoadGradients()
 	LogIndenter li;
 
 	LoadGradient("CRT", "eye-gradient-crt");
-	LoadGradient("Grayscale", "eye-gradient-grayscale");
-	LoadGradient("Ironbow", "eye-gradient-ironbow");
-	LoadGradient("KRain", "eye-gradient-krain");
-	LoadGradient("Rainbow", "eye-gradient-rainbow");
-	LoadGradient("Reverse Grayscale", "eye-gradient-reverse-grayscale");
-	LoadGradient("Reverse Rainbow", "eye-gradient-reverse-rainbow");
-	LoadGradient("Reverse Viridis", "eye-gradient-reverse-viridis");
+	LoadGradient("灰度", "eye-gradient-grayscale");
+	LoadGradient("铁色", "eye-gradient-ironbow");
+	LoadGradient("K 彩虹", "eye-gradient-krain");
+	LoadGradient("彩虹", "eye-gradient-rainbow");
+	LoadGradient("反向灰度", "eye-gradient-reverse-grayscale");
+	LoadGradient("反向彩虹", "eye-gradient-reverse-rainbow");
+	LoadGradient("反向 Viridis", "eye-gradient-reverse-viridis");
 	LoadGradient("Viridis", "eye-gradient-viridis");
 }
 
@@ -893,9 +893,9 @@ void MainWindow::DoTriggerDropdown(const char* action, shared_ptr<TriggerGroup>&
 	if(ImGui::BeginTable("groups", 3, flags))
 	{
 		float width = ImGui::GetFontSize();
-		ImGui::TableSetupColumn(Tr("Default"), ImGuiTableColumnFlags_WidthFixed, 4*width);
-		ImGui::TableSetupColumn(Tr("Group"), ImGuiTableColumnFlags_WidthFixed, 12*width);
-		ImGui::TableSetupColumn(Tr("Actions"), ImGuiTableColumnFlags_WidthFixed, 8*width);
+		ImGui::TableSetupColumn("默认", ImGuiTableColumnFlags_WidthFixed, 4*width);
+		ImGui::TableSetupColumn("组", ImGuiTableColumnFlags_WidthFixed, 12*width);
+		ImGui::TableSetupColumn("操作", ImGuiTableColumnFlags_WidthFixed, 8*width);
 		ImGui::TableHeadersRow();
 
 		auto groups = m_session.GetTriggerGroups();
@@ -906,7 +906,7 @@ void MainWindow::DoTriggerDropdown(const char* action, shared_ptr<TriggerGroup>&
 
 			//Default checkbox
 			ImGui::TableSetColumnIndex(0);
-			ImGui::Checkbox(Tr("###default"), &g->m_default);
+			ImGui::Checkbox("###默认", &g->m_default);
 
 			//Group name
 			ImGui::TableSetColumnIndex(1);
@@ -923,7 +923,7 @@ void MainWindow::DoTriggerDropdown(const char* action, shared_ptr<TriggerGroup>&
 		ImGui::PushID("all");
 		ImGui::TableNextRow(ImGuiTableRowFlags_None);
 		ImGui::TableSetColumnIndex(1);
-		ImGui::TextUnformatted(Tr("All"));
+		ImGui::TextUnformatted("全部");
 
 		//Action buttons
 		ImGui::TableSetColumnIndex(2);
@@ -943,7 +943,7 @@ void MainWindow::TriggerStartDropdown(float buttonsize)
 	{
 		bool all = false;
 		shared_ptr<TriggerGroup> group;
-		DoTriggerDropdown("Start", group, all);
+		DoTriggerDropdown("启动", group, all);
 
 		if(group)
 			group->Arm(TriggerGroup::TRIGGER_TYPE_NORMAL);
@@ -962,7 +962,7 @@ void MainWindow::TriggerSingleDropdown(float buttonsize)
 	{
 		bool all = false;
 		shared_ptr<TriggerGroup> group;
-		DoTriggerDropdown("Single", group, all);
+		DoTriggerDropdown("单次", group, all);
 
 		//Start trigger for only a specific group
 		if(group)
@@ -984,7 +984,7 @@ void MainWindow::TriggerForceDropdown(float buttonsize)
 	{
 		bool all = false;
 		shared_ptr<TriggerGroup> group;
-		DoTriggerDropdown("Force", group, all);
+		DoTriggerDropdown("强制", group, all);
 
 		//Start trigger for only a specific group
 		if(group)
@@ -1006,7 +1006,7 @@ void MainWindow::TriggerStopDropdown(float buttonsize)
 	{
 		bool all = false;
 		shared_ptr<TriggerGroup> group;
-		DoTriggerDropdown("Stop", group, all);
+		DoTriggerDropdown("停止", group, all);
 
 		//Start trigger for only a specific group
 		if(group)
@@ -1037,7 +1037,7 @@ void MainWindow::ToolbarButtons()
 		if(m_tutorialDialog && (m_tutorialDialog->GetCurrentStep() == TutorialWizard::TUTORIAL_03_ACQUIRE) )
 			m_tutorialDialog->AdvanceToNextStep();
 	}
-	Dialog::Tooltip(Tr("Arm the trigger in normal mode"));
+	Dialog::Tooltip("常规触发模式");
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1052,12 +1052,12 @@ void MainWindow::ToolbarButtons()
 		ImVec2 anchorPos(
 			buttonEndPos.x - ImGui::GetFontSize(),
 			buttonStartPos.y + 2*ImGui::GetFontSize());
-		m_tutorialDialog->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "Arm the trigger");
+		m_tutorialDialog->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "启动触发");
 	}
 
 	if(ImGui::ImageButton("trigger-single", GetTexture("trigger-single"), buttonsize))
 		m_session.ArmTrigger(TriggerGroup::TRIGGER_TYPE_SINGLE);
-	Dialog::Tooltip(Tr("Arm the trigger in one-shot mode"));
+	Dialog::Tooltip("单次触发模式");
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1067,7 +1067,7 @@ void MainWindow::ToolbarButtons()
 	ImGui::SameLine(0.0, 0.0);
 	if(ImGui::ImageButton("trigger-force", GetTexture("trigger-force"), buttonsize))
 		m_session.ArmTrigger(TriggerGroup::TRIGGER_TYPE_FORCED);
-	Dialog::Tooltip(Tr("Acquire a waveform immediately, ignoring the trigger condition"));
+	Dialog::Tooltip("强制触发");
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1077,7 +1077,7 @@ void MainWindow::ToolbarButtons()
 	ImGui::SameLine(0.0, 0.0);
 	if(ImGui::ImageButton("trigger-stop", GetTexture("trigger-stop"), buttonsize))
 		m_session.StopTrigger();
-	Dialog::Tooltip(Tr("Stop acquiring waveforms"));
+	Dialog::Tooltip("停止采集");
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1096,7 +1096,7 @@ void MainWindow::ToolbarButtons()
 	}
 	if(hasHist)
 		ImGui::EndDisabled();
-	Dialog::Tooltip(Tr("Show waveform history window"));
+	Dialog::Tooltip("历史波形");
 
 	//Refresh scope settings
 	ImGui::SameLine();
@@ -1108,9 +1108,7 @@ void MainWindow::ToolbarButtons()
 		ClearPersistence();
 	}
 	Dialog::Tooltip(
-	 Tr("Flush PC-side cached instrument state and reload configuration from the instrument.\n\n"
-		"This will cause a brief slowdown of the application, but can be used to re-sync when\n"
-		"changes are made on the instrument front panel that ngscopeclient does not detect.")
+	 "清除 PC 端缓存的仪器状态，并从仪器重新加载配置\n此操作会导致应用程序短暂卡顿，但当在仪器前面板上进行了\nngscopeclient 未检测到的更改时，可通过该操作重新同步。"
 		);
 
 	//View settings
@@ -1120,7 +1118,7 @@ void MainWindow::ToolbarButtons()
 		ClearPersistence();
 		m_session.ClearSweeps();
 	}
-	Dialog::Tooltip(Tr("Clear waveform persistence, eye patterns, and accumulated filter block state"));
+	Dialog::Tooltip("清除波形余辉、眼图及滤波器模块累积状态");
 
 	//Fullscreen toggle
 	ImGui::SameLine(0.0, 0.0);
@@ -1128,13 +1126,13 @@ void MainWindow::ToolbarButtons()
 	{
 		if(ImGui::ImageButton("fullscreen-exit", GetTexture("fullscreen-exit"), buttonsize))
 			SetFullscreen(false);
-		Dialog::Tooltip(Tr("Leave fullscreen mode"));
+		Dialog::Tooltip("退出全屏显示");
 	}
 	else
 	{
 		if(ImGui::ImageButton("fullscreen-enter", GetTexture("fullscreen-enter"), buttonsize))
 			SetFullscreen(true);
-		Dialog::Tooltip(Tr("Enter fullscreen mode"));
+		Dialog::Tooltip("全屏显示");
 	}
 }
 
@@ -1636,8 +1634,8 @@ void MainWindow::SaveRecentInstrumentList()
 	if(!outfs)
 	{
 		ShowErrorPopup(
-			"Cannot open file",
-			string("Failed to open instrument history file \"") + path + "\" for writing");
+			"无法打开文件",
+			string("无法打开仪器历史文件 \"") + path + "\" 进行写入");
 		return;
 	}
 
@@ -1756,8 +1754,8 @@ SCPITransport* MainWindow::MakeTransport(const string& trans, const string& args
 	if(transport == nullptr)
 	{
 		ShowErrorPopup(
-			"Transport error",
-			"Failed to create transport of type \"" + trans + "\"");
+			"传输错误",
+			"无法创建类型为 \"" + trans + "\" 的传输");
 		return nullptr;
 	}
 
@@ -1765,7 +1763,7 @@ SCPITransport* MainWindow::MakeTransport(const string& trans, const string& args
 	if(!transport->IsConnected())
 	{
 		delete transport;
-		ShowErrorPopup("Connection error", "Failed to connect to \"" + args + "\"");
+		ShowErrorPopup("连接错误", "无法连接到 \"" + args + "\"");
 		return nullptr;
 	}
 
@@ -1803,17 +1801,17 @@ void MainWindow::ShowErrorPopup(const string& title, const string& msg)
  */
 void MainWindow::RenderReconnectPopup()
 {
-	const char* title = "Open Session";
+	const char* title = "打开会话";
 
 	if(!m_startupSession.empty())
 		ImGui::OpenPopup(title);
 
 	if(ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::TextUnformatted(Tr("Do you want to reconnect to the lab instruments or load session data for offline analysis?\n"));
+		ImGui::TextUnformatted("要重新连接实验室仪器，还是加载会话数据进行离线分析？\n");
 		ImGui::Separator();
 
-		if(ImGui::Button(Tr("Reconnect")))
+		if(ImGui::Button("重新连接"))
 		{
 			DoOpenFile(m_startupSession, true);
 			m_startupSession = "";
@@ -1821,7 +1819,7 @@ void MainWindow::RenderReconnectPopup()
 		}
 
 		ImGui::SameLine();
-		if(ImGui::Button(Tr("Load Offline")))
+		if(ImGui::Button("离线加载"))
 		{
 			DoOpenFile(m_startupSession, false);
 			m_startupSession = "";
@@ -1829,7 +1827,7 @@ void MainWindow::RenderReconnectPopup()
 		}
 
 		ImGui::SameLine();
-		if(ImGui::Button(Tr("Cancel")))
+		if(ImGui::Button("取消"))
 		{
 			m_startupSession = "";
 			ImGui::CloseCurrentPopup();
@@ -1851,7 +1849,7 @@ void MainWindow::RenderErrorPopup()
 	{
 		ImGui::TextUnformatted(m_errorPopupMessage.c_str());
 		ImGui::Separator();
-		if(ImGui::Button(Tr("OK")))
+		if(ImGui::Button("确定"))
 		{
 			m_errorPopupMessage = "";
 			m_errorPopupTitle = "";
@@ -1906,7 +1904,7 @@ void MainWindow::RenderLoadWarningPopup()
 	float width = ImGui::GetFontSize();
 	float warningSize = ImGui::GetFontSize() * 3;
 
-	const char* title = "WARNING: Potential for hardware damage!";
+	const char* title = "警告：可能造成硬件损坏！";
 
 	if(m_showingLoadWarnings)
 		ImGui::OpenPopup(title);
@@ -1919,7 +1917,7 @@ void MainWindow::RenderLoadWarningPopup()
 		if(!m_session.m_setupNotes.empty())
 		{
 			ImGui::TextUnformatted(
-				Tr("Please review your lab notes and confirm that the experimental setup matches your previous session.")
+				"请检查实验记录，并确认实验设置与之前的会话一致。"
 				);
 
 
@@ -1942,10 +1940,7 @@ void MainWindow::RenderLoadWarningPopup()
 				ImVec2(warningSize, warningSize));
 			ImGui::SameLine();
 			ImGui::TextUnformatted(
-				Tr(
-					"Some of the instrument settings in the session you are loading do not match "
-					"the current hardware configuration, and if set incorrectly could potentially "
-					"damage the instrument and/or DUT.")
+				"正在加载的会话中有部分仪器设置与当前硬件配置不匹配，如果设置错误，可能会损坏仪器和/或被测设备。"
 				);
 
 			ImGui::PopTextWrapPos();
@@ -1956,11 +1951,11 @@ void MainWindow::RenderLoadWarningPopup()
 			{
 				//Header row
 				ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-				ImGui::TableSetupColumn(Tr("Instrument"), ImGuiTableColumnFlags_WidthFixed, 5*width);
-				ImGui::TableSetupColumn(Tr("Object"), ImGuiTableColumnFlags_WidthFixed, 12*width);
-				ImGui::TableSetupColumn(Tr("Hardware"), ImGuiTableColumnFlags_WidthFixed, 5*width);
-				ImGui::TableSetupColumn(Tr("Session file"), ImGuiTableColumnFlags_WidthFixed, 5*width);
-				ImGui::TableSetupColumn(Tr("Info"), ImGuiTableColumnFlags_WidthFixed, 40*width);
+				ImGui::TableSetupColumn("仪器", ImGuiTableColumnFlags_WidthFixed, 5*width);
+				ImGui::TableSetupColumn("对象", ImGuiTableColumnFlags_WidthFixed, 12*width);
+				ImGui::TableSetupColumn("硬件", ImGuiTableColumnFlags_WidthFixed, 5*width);
+				ImGui::TableSetupColumn("会话文件", ImGuiTableColumnFlags_WidthFixed, 5*width);
+				ImGui::TableSetupColumn("信息", ImGuiTableColumnFlags_WidthFixed, 40*width);
 				ImGui::TableHeadersRow();
 
 				//Actual list of warnings
@@ -1998,10 +1993,10 @@ void MainWindow::RenderLoadWarningPopup()
 		ImGui::NewLine();
 		ImGui::Separator();
 
-		ImGui::Checkbox(Tr("I have reviewed the instrument configuration and confirmed it will not cause damage."),
+		ImGui::Checkbox("我已检查仪器配置，并确认不会造成损坏。",
 			&m_loadConfirmationChecked);
 
-		if(ImGui::Button(Tr("Abort")))
+		if(ImGui::Button("中止"))
 		{
 			CloseSession();
 			m_showingLoadWarnings = false;
@@ -2015,7 +2010,7 @@ void MainWindow::RenderLoadWarningPopup()
 		if(!m_loadConfirmationChecked)
 			ImGui::BeginDisabled();
 
-		if(ImGui::Button(Tr("Proceed")))
+		if(ImGui::Button("继续"))
 		{
 			//Continue with the load
 			//always loading online if we are warning, offline loads can't warn)
@@ -2363,8 +2358,8 @@ void MainWindow::OnOpenFile(bool online)
 	m_fileBrowser = MakeFileBrowser(
 		this,
 		".",
-		"Open Session",
-		"Session files (*.scopesession)",
+		"打开会话",
+		"会话文件 (*.scopesession)",
 		"*.scopesession",
 		false);
 }
@@ -2378,8 +2373,8 @@ void MainWindow::OnSaveAs()
 	m_fileBrowser = MakeFileBrowser(
 		this,
 		".",
-		"Save Session",
-		"Session files (*.scopesession)",
+		"保存会话",
+		"会话文件 (*.scopesession)",
 		"*.scopesession",
 		true);
 }
@@ -2433,10 +2428,10 @@ void MainWindow::DoOpenFile(const string& sessionPath, bool online)
 		if(m_fileBeingLoaded.size() != 1)
 		{
 			ShowErrorPopup(
-				"File loading error",
-				string("Could not load the file \"") + sessionPath + "\"!\n\n" +
-				"The file may not be in .scopesession format, or may have been corrupted.\n\n" +
-				"YAML parsing successful, but expected one document and found " + to_string(m_fileBeingLoaded.size()) + " instead.");
+				"文件加载错误",
+				string("无法加载文件 \"") + sessionPath + "\"！\n\n" +
+				"该文件可能不是 .scopesession 格式，或已经损坏。\n\n" +
+				"YAML 解析成功，但应只有一个文档，实际找到 " + to_string(m_fileBeingLoaded.size()) + " 个。");
 			return;
 		}
 
@@ -2480,7 +2475,7 @@ void MainWindow::DoOpenFile(const string& sessionPath, bool online)
 	{
 		LogTrace("yaml badfile\n");
 
-		ShowErrorPopup("Cannot open file", string("Unable to open the file \"") + sessionPath + "\"!");
+		ShowErrorPopup("无法打开文件", string("无法打开文件 \"") + sessionPath + "\"！");
 		return;
 	}
 	catch(const YAML::Exception& ex)
@@ -2488,10 +2483,10 @@ void MainWindow::DoOpenFile(const string& sessionPath, bool online)
 		LogTrace("yaml exception\n");
 
 		ShowErrorPopup(
-			"File loading error",
-			string("Could not load the file \"") + sessionPath + "\"!\n\n" +
-			"The file may not be in .scopesession format, or may have been corrupted.\n\n" +
-			"Debug information:\n" +
+			"文件加载错误",
+			string("无法加载文件 \"") + sessionPath + "\"！\n\n" +
+			"该文件可能不是 .scopesession 格式，或已经损坏。\n\n" +
+			"调试信息：\n" +
 			ex.what());
 		return;
 	}
@@ -2868,7 +2863,7 @@ bool MainWindow::LoadDialogs(const YAML::Node& node)
 			}
 			else
 			{
-				ShowErrorPopup("Invalid PSU", "PSU dialog references nonexistent instrument");
+				ShowErrorPopup("无效电源", "电源对话框引用了不存在的仪器");
 				continue;
 			}
 		}
@@ -2888,7 +2883,7 @@ bool MainWindow::LoadDialogs(const YAML::Node& node)
 			}
 			else
 			{
-				ShowErrorPopup("Invalid BERT", "BERT dialog references nonexistent instrument");
+				ShowErrorPopup("无效误码率测试仪", "误码率测试仪对话框引用了不存在的仪器");
 				continue;
 			}
 		}
@@ -2908,7 +2903,7 @@ bool MainWindow::LoadDialogs(const YAML::Node& node)
 			}
 			else
 			{
-				ShowErrorPopup("Invalid load", "Load dialog references nonexistent instrument");
+				ShowErrorPopup("无效电子负载", "电子负载对话框引用了不存在的仪器");
 				continue;
 			}
 		}
@@ -3038,8 +3033,8 @@ void MainWindow::DoSaveFile(string sessionPath)
 	if(!outfs)
 	{
 		ShowErrorPopup(
-			"Cannot open file",
-			string("Failed to open output session file \"") + sessionPath + "\" for writing");
+			"无法打开文件",
+			string("无法打开输出会话文件 \"") + sessionPath + "\" 进行写入");
 		return;
 	}
 
@@ -3049,8 +3044,8 @@ void MainWindow::DoSaveFile(string sessionPath)
 	if(!outfs)
 	{
 		ShowErrorPopup(
-			"Write failed",
-			string("Failed to write session file \"") + sessionPath + "\"");
+			"写入失败",
+			string("无法写入会话文件 \"") + sessionPath + "\"");
 	}
 
 	//Save the lab notes
@@ -3074,8 +3069,8 @@ void MainWindow::SaveLabNotes(const string& dataDir)
 	if(!setupfs)
 	{
 		ShowErrorPopup(
-			"Cannot open file",
-			string("Failed to open output markdown file \"") + setupfile + "\" for writing");
+			"无法打开文件",
+			string("无法打开输出 Markdown 文件 \"") + setupfile + "\" 进行写入");
 		return;
 	}
 
@@ -3085,8 +3080,8 @@ void MainWindow::SaveLabNotes(const string& dataDir)
 	if(!setupfs)
 	{
 		ShowErrorPopup(
-			"Write failed",
-			string("Failed to write markdown file \"") + setupfile + "\"");
+			"写入失败",
+			string("无法写入 Markdown 文件 \"") + setupfile + "\"");
 	}
 
 	//General notes
@@ -3095,8 +3090,8 @@ void MainWindow::SaveLabNotes(const string& dataDir)
 	if(!genfs)
 	{
 		ShowErrorPopup(
-			"Cannot open file",
-			string("Failed to open output markdown file \"") + genfile + "\" for writing");
+			"无法打开文件",
+			string("无法打开输出 Markdown 文件 \"") + genfile + "\" 进行写入");
 		return;
 	}
 
@@ -3106,8 +3101,8 @@ void MainWindow::SaveLabNotes(const string& dataDir)
 	if(!genfs)
 	{
 		ShowErrorPopup(
-			"Write failed",
-			string("Failed to write markdown file \"") + genfile + "\"");
+			"写入失败",
+			string("无法写入 Markdown 文件 \"") + genfile + "\"");
 	}
 }
 
@@ -3201,8 +3196,8 @@ bool MainWindow::SaveSessionToYaml(YAML::Node& node, const string& dataDir)
 	if(!outfs)
 	{
 		ShowErrorPopup(
-			"Failed to save filter graph configuration",
-			"Unable to open filtergraph.json for writing");
+			"无法保存滤波器图配置",
+			"无法打开 filtergraph.json 进行写入");
 		return false;
 	}
 	outfs << m_graphEditorConfigBlob;
@@ -3238,8 +3233,8 @@ bool MainWindow::SetupDataDirectory(const string& dataDir)
 		else
 		{
 			ShowErrorPopup(
-				"Cannot save session",
-				string("The requested data directory ") + dataDir + " already exists, but is not a directory!");
+				"无法保存会话",
+				string("请求的数据目录 ") + dataDir + " 已存在，但它不是目录！");
 			return false;
 		}
 	}
@@ -3258,8 +3253,8 @@ bool MainWindow::SetupDataDirectory(const string& dataDir)
 		{
 			// Its some other file
 			ShowErrorPopup(
-				"Cannot save session",
-				string("The requested data directory ") + dataDir + " already exists, but is not a directory!");
+				"无法保存会话",
+				string("请求的数据目录 ") + dataDir + " 已存在，但它不是目录！");
 			return false;
 		}
 	}
@@ -3277,8 +3272,8 @@ bool MainWindow::SetupDataDirectory(const string& dataDir)
 		if(0 != result)
 		{
 			ShowErrorPopup(
-				"Failed to save session",
-				string("The data directory ") + dataDir + " could not be created!");
+				"无法保存会话",
+				string("无法创建数据目录 ") + dataDir + "！");
 			return false;
 		}
 	}
@@ -3288,16 +3283,16 @@ bool MainWindow::SetupDataDirectory(const string& dataDir)
 	if(nullptr == getcwd(cwd, PATH_MAX))
 	{
 		ShowErrorPopup(
-			"Failed to save session",
-			"Could not get working directory");
+			"无法保存会话",
+			"无法获取工作目录");
 		return false;
 	}
 
 	if(0 != chdir(dataDir.c_str()))
 	{
 		ShowErrorPopup(
-			"Failed to save session",
-			string("The data directory ") + cwd + " could not be entered!");
+			"无法保存会话",
+			string("无法进入数据目录 ") + cwd + "！");
 		return false;
 	}
 
@@ -3308,8 +3303,8 @@ bool MainWindow::SetupDataDirectory(const string& dataDir)
 	if(0 != chdir(cwd))
 	{
 		ShowErrorPopup(
-			"Failed to save session",
-			string("The parent directory ") + cwd + " could not be entered!");
+			"无法保存会话",
+			string("无法进入父目录 ") + cwd + "！");
 		return false;
 	}
 
@@ -3620,8 +3615,8 @@ void MainWindow::SaveRecentFileList()
 	if(!outfs)
 	{
 		ShowErrorPopup(
-			"Cannot open file",
-			string("Failed to open recent-files file \"") + fname + "\" for writing");
+			"无法打开文件",
+			string("无法打开最近文件列表 \"") + fname + "\" 进行写入");
 		return;
 	}
 	outfs << node;

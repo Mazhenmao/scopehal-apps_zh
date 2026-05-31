@@ -43,49 +43,49 @@ using namespace std;
 // Construction / destruction
 
 CreateFilterBrowser::CreateFilterBrowser(Session& session, MainWindow* parent)
-	: Dialog(Tr("Filter Palette"), "Filter Palette", ImVec2(550, 400), &session, parent)
+	: Dialog("滤波器面板", "Filter Palette", ImVec2(550, 400), &session, parent)
 	, m_selectedCategoryIndex(0)
 {
-	m_categoryNames.push_back(Tr("All"));
+	m_categoryNames.push_back("全部");
 	m_categoryValues.push_back(Filter::CAT_COUNT);
 
-	m_categoryNames.push_back(Tr("Bus"));
+	m_categoryNames.push_back("总线");
 	m_categoryValues.push_back(Filter::CAT_BUS);
 
-	m_categoryNames.push_back(Tr("Clocking"));
+	m_categoryNames.push_back("时钟");
 	m_categoryValues.push_back(Filter::CAT_CLOCK);
 
-	m_categoryNames.push_back(Tr("Export"));
+	m_categoryNames.push_back("导出");
 	m_categoryValues.push_back(Filter::CAT_EXPORT);
 
-	m_categoryNames.push_back(Tr("Generation"));
+	m_categoryNames.push_back("信号生成");
 	m_categoryValues.push_back(Filter::CAT_GENERATION);
 
-	m_categoryNames.push_back(Tr("Math"));
+	m_categoryNames.push_back("数学运算");
 	m_categoryValues.push_back(Filter::CAT_MATH);
 
-	m_categoryNames.push_back(Tr("Measurement"));
+	m_categoryNames.push_back("测量");
 	m_categoryValues.push_back(Filter::CAT_MEASUREMENT);
 
-	m_categoryNames.push_back(Tr("Memory"));
+	m_categoryNames.push_back("存储/内存");
 	m_categoryValues.push_back(Filter::CAT_MEMORY);
 
-	m_categoryNames.push_back(Tr("Miscellaneous"));
+	m_categoryNames.push_back("杂项");
 	m_categoryValues.push_back(Filter::CAT_MISC);
 
-	m_categoryNames.push_back(Tr("Optical"));
+	m_categoryNames.push_back("光学/光信号");
 	m_categoryValues.push_back(Filter::CAT_OPTICAL);
 
-	m_categoryNames.push_back(Tr("Power"));
+	m_categoryNames.push_back("电源/功率");
 	m_categoryValues.push_back(Filter::CAT_POWER);
 
-	m_categoryNames.push_back(Tr("RF"));
+	m_categoryNames.push_back("射频信号处理");
 	m_categoryValues.push_back(Filter::CAT_RF);
 
-	m_categoryNames.push_back(Tr("Serial_p"));
+	m_categoryNames.push_back("串行");
 	m_categoryValues.push_back(Filter::CAT_SERIAL);
 
-	m_categoryNames.push_back(Tr("Signal Integrity"));
+	m_categoryNames.push_back("信号完整性");
 	m_categoryValues.push_back(Filter::CAT_ANALYSIS);
 }
 
@@ -108,11 +108,11 @@ bool CreateFilterBrowser::DoRender()
 
 	//Filter bars
 	ImGui::SetNextItemWidth(8 * ImGui::GetFontSize());
-	Combo(Tr("Category"), m_categoryNames, m_selectedCategoryIndex);
+	Combo("分类", m_categoryNames, m_selectedCategoryIndex);
 	auto cat = m_categoryValues[m_selectedCategoryIndex];
 
 	ImGui::SetNextItemWidth(8 * ImGui::GetFontSize());
-	ImGui::InputText(Tr("Search"), &m_searchString);
+	ImGui::InputText("搜索", &m_searchString);
 
 	//Need to check if the mouse is down HERE because we get incorrect values later on in the function!
 	//Not yet sure why, but this is at least a usable workaround.

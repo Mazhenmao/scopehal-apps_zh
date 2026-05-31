@@ -109,7 +109,7 @@ bool DigitalIOChannelDialog::DoRender()
 	if(!inst)
 		return true;
 
-	if(ImGui::CollapsingHeader("Info"))
+	if(ImGui::CollapsingHeader("信息"))
 	{
 		auto nickname = inst->m_nickname;
 		auto hwname = m_channel->GetHwname();
@@ -117,31 +117,31 @@ bool DigitalIOChannelDialog::DoRender()
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Instrument"), &nickname);
+			ImGui::InputText("仪器", &nickname);
 		ImGui::EndDisabled();
-		HelpMarker("The instrument this channel was measured by");
+		HelpMarker("测量此通道的仪器");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Hardware Channel"), &index);
+			ImGui::InputText("硬件通道", &index);
 		ImGui::EndDisabled();
-		HelpMarker("Physical channel number (starting from 1) on the instrument front panel");
+		HelpMarker("仪器前面板上的物理通道编号（从 1 开始）");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText(Tr("Hardware Name"), &hwname);
+			ImGui::InputText("硬件名称", &hwname);
 		ImGui::EndDisabled();
-		HelpMarker("Hardware name for the channel (as used in the instrument API)");
+		HelpMarker("通道的硬件名称（仪器 API 使用的名称）");
 	}
 
 	//All channels have display settings
-	if(ImGui::CollapsingHeader("Display", defaultOpenFlags))
+	if(ImGui::CollapsingHeader("显示", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
 		if(TextInputWithImplicitApply("Nickname", m_displayName, m_committedDisplayName))
 			m_channel->SetDisplayName(m_committedDisplayName);
 
-		HelpMarker("Display name for the channel");
+		HelpMarker("通道显示名称");
 
 		if(ImGui::ColorEdit3(
 			"Color",
@@ -160,26 +160,26 @@ bool DigitalIOChannelDialog::DoRender()
 	//Buffered channels have input voltage selector, if available
 	if(bsi && bsi->MuxHasConfigurableThreshold())
 	{
-		if(ImGui::CollapsingHeader("Input buffer", defaultOpenFlags))
+		if(ImGui::CollapsingHeader("输入缓冲器", defaultOpenFlags))
 		{
 			ImGui::SetNextItemWidth(width);
 			if(UnitInputWithImplicitApply("Threshold", m_threshold, m_committedThreshold, Unit(Unit::UNIT_VOLTS)))
 				bsi->SetMuxInputThreshold(m_committedThreshold);
 
-			HelpMarker("Nominal threshold level of the input driver\n");
+			HelpMarker("输入驱动器的标称阈值电平\n");
 		}
 	}
 
 	//Buffered channels have output voltage selector, if available
 	if(bsi && bsi->MuxHasConfigurableDrive())
 	{
-		if(ImGui::CollapsingHeader("Output buffer", defaultOpenFlags))
+		if(ImGui::CollapsingHeader("输出缓冲器", defaultOpenFlags))
 		{
 			ImGui::SetNextItemWidth(width);
 			if(UnitInputWithExplicitApply("Level", m_drive, m_committedDrive, Unit(Unit::UNIT_VOLTS)))
 				bsi->SetMuxOutputDrive(m_committedDrive);
 
-			HelpMarker("Nominal VCC level of the output driver\n");
+			HelpMarker("输出驱动器的标称 VCC 电平\n");
 		}
 	}
 
