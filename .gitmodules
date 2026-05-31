@@ -13,3 +13,12 @@
 [submodule "src/imgui_markdown"]
 	path = src/imgui_markdown
 	url = https://github.com/juliettef/imgui_markdown
+[submodule "lib/VkFFT"]
+	path = lib/VkFFT
+	url = https://github.com/ngscopeclient/VkFFT.git
+[submodule "lib/xptools"]
+	path = lib/xptools
+	url = https://github.com/ngscopeclient/xptools.git
+[submodule "lib/log"]
+	path = lib/log
+	url = https://github.com/ngscopeclient/logtools.git
