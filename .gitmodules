@@ -1,6 +1,3 @@
-[submodule "lib"]
-	path = lib
-	url = ../scopehal.git
 [submodule "doc"]
 	path = doc
 	url = ../scopehal-docs.git
