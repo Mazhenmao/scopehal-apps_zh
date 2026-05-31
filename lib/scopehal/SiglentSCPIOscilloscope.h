@@ -1,0 +1,477 @@
+/***********************************************************************************************************************
+*                                                                                                                      *
+* libscopehal                                                                                                          *
+*                                                                                                                      *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
+* All rights reserved.                                                                                                 *
+*                                                                                                                      *
+* Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
+* following conditions are met:                                                                                        *
+*                                                                                                                      *
+*    * Redistributions of source code must retain the above copyright notice, this list of conditions, and the         *
+*      following disclaimer.                                                                                           *
+*                                                                                                                      *
+*    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the       *
+*      following disclaimer in the documentation and/or other materials provided with the distribution.                *
+*                                                                                                                      *
+*    * Neither the name of the author nor the names of any contributors may be used to endorse or promote products     *
+*      derived from this software without specific prior written permission.                                           *
+*                                                                                                                      *
+* THIS SOFTWARE IS PROVIDED BY THE AUTHORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED   *
+* TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL *
+* THE AUTHORS BE HELD LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES        *
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR       *
+* BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT *
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE       *
+* POSSIBILITY OF SUCH DAMAGE.                                                                                          *
+*                                                                                                                      *
+***********************************************************************************************************************/
+
+#ifndef SiglentSCPIOscilloscope_h
+#define SiglentSCPIOscilloscope_h
+
+#include <mutex>
+#include <chrono>
+
+class DropoutTrigger;
+class EdgeTrigger;
+class GlitchTrigger;
+class PulseWidthTrigger;
+class RuntTrigger;
+class SlewRateTrigger;
+class UartTrigger;
+class WindowTrigger;
+
+/**
+	@brief A Siglent new generation scope based on linux (SDS2000X+/SDS5000/SDS6000)
+
+ */
+
+#define MAX_ANALOG 4
+#define MAX_DIGITAL 16
+#define WAVEDESC_SIZE 346
+
+// These SDS2000/SDS5000 scopes will actually sample 200MPoints, but the maximum it can transfer in one
+// chunk is 10MPoints
+// TODO(dannas): Can the Siglent SDS1104x-e really transfer 14MPoints? Update comment and constant
+#define WAVEFORM_SIZE (14 * 1000 * 1000)
+
+#define c_digiChannelsPerBus 8
+
+class SiglentSCPIOscilloscope 	: public virtual SCPIOscilloscope
+								, public virtual SCPIFunctionGenerator
+{
+public:
+	SiglentSCPIOscilloscope(SCPITransport* transport);
+	virtual ~SiglentSCPIOscilloscope();
+
+	//not copyable or assignable
+	SiglentSCPIOscilloscope(const SiglentSCPIOscilloscope& rhs) = delete;
+	SiglentSCPIOscilloscope& operator=(const SiglentSCPIOscilloscope& rhs) = delete;
+
+private:
+	std::string converse(const char* fmt, ...);
+	void sendOnly(const char* fmt, ...);
+	void flush();
+	void flushWaveformData();
+	void protocolError(std::string message = "");
+
+protected:
+	void IdentifyHardware();
+	void DetectBandwidth();
+	void SharedCtorInit();
+	virtual void DetectAnalogChannels();
+	void AddDigitalChannels(unsigned int count);
+	void DetectOptions();
+	void ParseFirmwareVersion();
+	uint64_t GetMaxPoints();
+	uint64_t GetAcqPoints();
+	uint64_t GetDigitalAcqPoints();
+
+public:
+	//Device information
+	virtual unsigned int GetInstrumentTypes() const override;
+	virtual unsigned int GetMeasurementTypes();
+	virtual uint32_t GetInstrumentTypesForChannel(size_t i) const override;
+
+	virtual void FlushConfigCache() override;
+
+	void ForceHDMode(bool mode);
+
+	//Channel configuration
+	virtual bool IsChannelEnabled(size_t i) override;
+	virtual void EnableChannel(size_t i) override;
+	virtual bool CanEnableChannel(size_t i) override;
+	virtual void DisableChannel(size_t i) override;
+	virtual OscilloscopeChannel::CouplingType GetChannelCoupling(size_t i) override;
+	virtual void SetChannelCoupling(size_t i, OscilloscopeChannel::CouplingType type) override;
+	virtual std::vector<OscilloscopeChannel::CouplingType> GetAvailableCouplings(size_t i) override;
+	virtual double GetChannelAttenuation(size_t i) override;
+	virtual void SetChannelAttenuation(size_t i, double atten) override;
+	virtual unsigned int GetChannelBandwidthLimit(size_t i) override;
+	virtual void SetChannelBandwidthLimit(size_t i, unsigned int limit_mhz) override;
+	virtual float GetChannelVoltageRange(size_t i, size_t stream) override;
+	virtual void SetChannelVoltageRange(size_t i, size_t stream, float range) override;
+	virtual OscilloscopeChannel* GetExternalTrigger() override;
+	virtual float GetChannelOffset(size_t i, size_t stream) override;
+	virtual void SetChannelOffset(size_t i, size_t stream, float offset) override;
+	virtual std::string GetChannelDisplayName(size_t i) override;
+	virtual void SetChannelDisplayName(size_t i, std::string name) override;
+	virtual std::vector<unsigned int> GetChannelBandwidthLimiters(size_t i) override;
+	virtual bool CanInvert(size_t i) override;
+	virtual void Invert(size_t i, bool invert) override;
+	virtual bool IsInverted(size_t i) override;
+
+	//Triggering
+	virtual Oscilloscope::TriggerMode PollTrigger() override;
+	virtual bool AcquireData() override;
+	virtual void Start() override;
+	virtual void StartSingleTrigger() override;
+	virtual void Stop() override;
+	virtual void ForceTrigger() override;
+	virtual bool IsTriggerArmed() override;
+	virtual void PushTrigger() override;
+	virtual void PullTrigger() override;
+	virtual void EnableTriggerOutput() override;
+	virtual std::vector<std::string> GetTriggerTypes() override;
+
+	//Scope communication protocol.
+	enum Protocol
+	{
+		PROTOCOL_SPO,
+		PROTOCOL_ESERIES,
+		// Refers to E11 Siglent Programming Guide :
+		// https://www.siglenteu.com/wp-content/uploads/dlm_uploads/2024/03/ProgrammingGuide_EN11F.pdf
+		PROTOCOL_E11,
+		PROTOCOL_UNKNOWN
+	};
+
+	//Scope models.
+	//We only distinguish down to the series of scope, exact SKU is mostly irrelevant.
+	enum Model
+	{
+		MODEL_SIGLENT_SDS800X_HD,
+		MODEL_SIGLENT_SDS1000,
+		MODEL_SIGLENT_SDS1000X_HD,
+		MODEL_SIGLENT_SDS2000XE,
+		MODEL_SIGLENT_SDS2000XP,
+		MODEL_SIGLENT_SDS2000X_HD,
+		MODEL_SIGLENT_SDS3000X_HD,
+		MODEL_SIGLENT_SDS5000X,
+		MODEL_SIGLENT_SDS6000L,
+		MODEL_SIGLENT_SDS6000A,
+		MODEL_SIGLENT_SDS6000PRO,
+		MODEL_SIGLENT_SDS7000A,
+		MODEL_UNKNOWN
+	};
+
+	//Scope channel mode (only relevant for E11 models).
+	enum ChannelMode
+	{
+		CHANNEL_MODE_SINGLE,
+		CHANNEL_MODE_DUAL,
+		CHANNEL_MODE_MULTI
+	};
+
+	Model GetModelID() { return m_modelid; }
+
+   	std::string GetModelString() const
+    {
+        switch(m_modelid)
+        {
+            case MODEL_SIGLENT_SDS800X_HD:   return "SIGLENT_SDS800X_HD";
+            case MODEL_SIGLENT_SDS1000:      return "SIGLENT_SDS1000";
+            case MODEL_SIGLENT_SDS1000X_HD:  return "SIGLENT_SDS1000X_HD";
+            case MODEL_SIGLENT_SDS2000XE:    return "SIGLENT_SDS2000XE";
+            case MODEL_SIGLENT_SDS2000XP:    return "SIGLENT_SDS2000XP";
+            case MODEL_SIGLENT_SDS2000X_HD:  return "SIGLENT_SDS2000X_HD";
+            case MODEL_SIGLENT_SDS3000X_HD:  return "SIGLENT_SDS3000X_HD";
+            case MODEL_SIGLENT_SDS5000X:     return "SIGLENT_SDS5000X";
+            case MODEL_SIGLENT_SDS6000L:     return "SIGLENT_SDS6000L";
+            case MODEL_SIGLENT_SDS6000A:     return "SIGLENT_SDS6000A";
+            case MODEL_SIGLENT_SDS6000PRO:   return "SIGLENT_SDS6000PRO";
+            case MODEL_SIGLENT_SDS7000A:     return "SIGLENT_SDS7000A";
+            default:
+			case MODEL_UNKNOWN:              return "UNKNOWN";
+        }
+    }
+
+	//Timebase
+	virtual std::vector<uint64_t> GetSampleRatesNonInterleaved() override;
+	virtual std::vector<uint64_t> GetSampleRatesInterleaved() override;
+	virtual std::set<InterleaveConflict> GetInterleaveConflicts() override;
+	virtual std::vector<uint64_t> GetSampleDepthsNonInterleaved() override;
+	virtual std::vector<uint64_t> GetSampleDepthsInterleaved() override;
+	virtual uint64_t GetSampleRate() override;
+	virtual uint64_t GetSampleDepth() override;
+	virtual void SetSampleDepth(uint64_t depth) override;
+	virtual void SetSampleRate(uint64_t rate) override;
+	virtual void SetUseExternalRefclk(bool external) override;
+	virtual bool IsInterleaving() override;
+	virtual bool SetInterleaving(bool combine) override;
+
+	virtual void SetTriggerOffset(int64_t offset) override;
+	virtual int64_t GetTriggerOffset() override;
+	virtual void SetDeskewForChannel(size_t channel, int64_t skew) override;
+	virtual int64_t GetDeskewForChannel(size_t channel) override;
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Function generator
+
+	virtual std::vector<WaveShape> GetAvailableWaveformShapes(int chan) override;
+
+	//Configuration
+	virtual bool GetFunctionChannelActive(int chan) override;
+	virtual void SetFunctionChannelActive(int chan, bool on) override;
+
+	virtual float GetFunctionChannelDutyCycle(int chan) override;
+	virtual void SetFunctionChannelDutyCycle(int chan, float duty) override;
+
+	virtual float GetFunctionChannelAmplitude(int chan) override;
+	virtual void SetFunctionChannelAmplitude(int chan, float amplitude) override;
+
+	virtual float GetFunctionChannelOffset(int chan) override;
+	virtual void SetFunctionChannelOffset(int chan, float offset) override;
+
+	virtual float GetFunctionChannelFrequency(int chan) override;
+	virtual void SetFunctionChannelFrequency(int chan, float hz) override;
+
+	virtual WaveShape GetFunctionChannelShape(int chan) override;
+	virtual void SetFunctionChannelShape(int chan, WaveShape shape) override;
+
+	virtual bool HasFunctionRiseFallTimeControls(int chan) override;
+
+	virtual OutputImpedance GetFunctionChannelOutputImpedance(int chan) override;
+	virtual void SetFunctionChannelOutputImpedance(int chan, OutputImpedance z) override;
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Logic analyzer configuration
+
+	virtual std::vector<DigitalBank> GetDigitalBanks() override;
+	virtual DigitalBank GetDigitalBank(size_t channel) override;
+	virtual bool IsDigitalHysteresisConfigurable() override;
+	virtual bool IsDigitalThresholdConfigurable() override;
+	virtual float GetDigitalHysteresis(size_t channel) override;
+	virtual float GetDigitalThreshold(size_t channel) override;
+	virtual void SetDigitalHysteresis(size_t channel, float level) override;
+	virtual void SetDigitalThreshold(size_t channel, float level) override;
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// ADC bit depth configuration
+
+	//All currently supported Sig2 scopes have only one analog bank (same ADC config for all channels)
+	//so no need to override those
+
+	enum ADCMode
+	{
+		ADC_MODE_8BIT	= 0,
+		ADC_MODE_10BIT	= 1
+	};
+
+	virtual bool IsADCModeConfigurable() override;
+	virtual std::vector<std::string> GetADCModeNames(size_t channel) override;
+	virtual size_t GetADCMode(size_t channel) override;
+	virtual void SetADCMode(size_t channel, size_t mode) override;
+
+protected:
+	void PullDropoutTrigger();
+	void PullEdgeTrigger();
+	void PullPulseWidthTrigger();
+	void PullRuntTrigger();
+	void PullSlewRateTrigger();
+	void PullUartTrigger();
+	void PullWindowTrigger();
+	void PullTriggerSource(Trigger* trig, const std::string& triggerModeName, bool isUart);
+
+	void GetTriggerSlope(EdgeTrigger* trig, std::string reply);
+	Trigger::Condition GetCondition(std::string reply);
+
+	void PushDropoutTrigger(DropoutTrigger* trig);
+	void PushEdgeTrigger(EdgeTrigger* trig, const std::string& trigType);
+	void PushGlitchTrigger(GlitchTrigger* trig);
+	void PushCondition(const std::string& path, Trigger::Condition cond);
+	void PushPatternCondition(const std::string& path, Trigger::Condition cond);
+	void PushFloat(const std::string& path, float f);
+	void PushPulseWidthTrigger(PulseWidthTrigger* trig);
+	void PushRuntTrigger(RuntTrigger* trig);
+	void PushSlewRateTrigger(SlewRateTrigger* trig);
+	void PushUartTrigger(UartTrigger* trig);
+	void PushWindowTrigger(WindowTrigger* trig);
+
+	void BulkCheckChannelEnableState();
+
+    ChannelMode GetChannelMode();
+
+	void PrepareAcquisition();
+
+	std::string GetPossiblyEmptyString(const std::string& property);
+
+	int ReadWaveformBlock(uint32_t maxsize, size_t& readBytes, char* data, bool hdSizeWorkaround = false, std::function<void(float)> progress = nullptr);
+	bool ReadWavedescs(
+		char wavedescs[MAX_ANALOG][WAVEDESC_SIZE], bool* analogEnabled, bool* digitalEnabled, bool& anyAnalogEnabled, bool& anyDigitalEnabled);
+
+	time_t ExtractTimestamp(unsigned char* wavedesc, double& basetime);
+
+	std::vector<WaveformBase*> ProcessAnalogWaveform(
+		AcceleratorBuffer<uint8_t>& data,
+		size_t datalen,
+		char* wavedesc,
+		uint32_t num_sequences,
+		time_t ttime,
+		double basetime,
+		double* wavetime,
+		int i);
+
+	std::vector<SparseDigitalWaveform*> ProcessDigitalWaveform(const char* data,
+		size_t datalen,
+		char* wavedesc,
+		uint32_t num_sequences,
+		time_t ttime,
+		double basetime,
+		double* wavetime,
+		int i);
+
+	//hardware analog channel count, independent of LA option etc
+	unsigned int m_analogChannelCount;
+	unsigned int m_digitalChannelCount;
+	unsigned int m_analogAndDigitalChannelCount;
+	size_t m_digitalChannelBase;
+
+	Model m_modelid;
+	Protocol m_protocolId;
+
+	// Firmware version
+	int m_ubootMajorVersion;
+	int m_ubootMinorVersion;
+	int m_ubootPatchVersion;
+	int m_fwMajorVersion;
+	int m_fwMinorVersion;
+	int m_fwPatchVersion;
+	int m_fwPatchRevision;
+
+	//set of SW/HW options we have
+	bool m_hasLA;
+	bool m_hasDVM;
+	bool m_hasFunctionGen;
+	bool m_hasFastSampleRate;	 //-M models
+	int m_memoryDepthOption;	 //0 = base, after that number is max sample count in millions
+	bool m_hasI2cTrigger;
+	bool m_hasSpiTrigger;
+	bool m_hasUartTrigger;
+
+	//SDS2000XP firmware <=1.3.6R6 has data size bug while in 10 bit mode
+	bool m_requireSizeWorkaround;
+
+	///Maximum bandwidth we support, in MHz
+	unsigned int m_maxBandwidth;
+
+	bool m_triggerForced;
+
+	// Pagination state
+	bool m_paginated;
+
+	//Cached configuration
+	std::map<size_t, float> m_channelVoltageRanges;
+	std::map<size_t, float> m_channelOffsets;
+	std::map<size_t, float> m_channelDigitalThresholds;
+	std::map<int, bool> m_channelsEnabled;
+	bool m_sampleRateValid;
+	int64_t m_sampleRate;
+	bool m_memoryDepthValid;
+	int64_t m_memoryDepth;
+	bool m_triggerOffsetValid;
+	int64_t m_triggerOffset;
+	bool m_maxPointsValid;
+	uint64_t m_maxPoints;
+	bool m_acqPointsValid;
+	uint64_t m_acqPoints;
+	bool m_digitalAcqPointsValid;
+	uint64_t m_digitalAcqPoints;
+	std::map<size_t, int64_t> m_channelDeskew;
+	Multimeter::MeasurementTypes m_meterMode;
+	bool m_meterModeValid;
+	std::map<size_t, bool> m_probeIsActive;
+	std::map<size_t, bool> m_awgEnabled;
+	std::map<size_t, float> m_awgDutyCycle;
+	std::map<size_t, float> m_awgRange;
+	std::map<size_t, float> m_awgOffset;
+	std::map<size_t, float> m_awgFrequency;
+	std::map<size_t, FunctionGenerator::WaveShape> m_awgShape;
+	std::map<size_t, FunctionGenerator::OutputImpedance> m_awgImpedance;
+	ADCMode m_adcMode;
+	bool m_adcModeValid;
+
+	std::map<std::string, std::string> ParseCommaSeparatedNameValueList(std::string str, bool forwardMap = true);
+
+	int64_t m_timeDiv;
+
+	//True if we have >8 bit capture depth
+	bool m_highDefinition;
+
+	//Other channels
+	OscilloscopeChannel* m_extTrigChannel;
+	FunctionGeneratorChannel* m_awgChannel;
+	std::vector<OscilloscopeChannel*> m_digitalChannels;
+
+	///@brief Buffers for raw waveform data before conversion to float32
+	std::map<int, AcceleratorBuffer<uint8_t> > m_rawWaveformBuffers;
+
+	///@brief Compute pipeline for converting raw ADC codes to float32 samples
+	std::unique_ptr<ComputePipeline> m_conversion8BitPipeline;
+
+	///@brief Compute pipeline for converting raw ADC codes to float32 samples
+	std::unique_ptr<ComputePipeline> m_conversion16BitPipeline;
+
+public:
+	static std::string GetDriverNameInternal();
+
+	//This is intentionally not virtual since it's a static method used by enumeration
+	//cppcheck-suppress duplInheritedMember
+	static std::vector<SCPIInstrumentModel> GetDriverSupportedModels()
+	{
+		return {
+		{"SDS800X HD", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS1000X HD", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS2000X HD", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS3000X HD", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS2000X+", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS1000X-E", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS2000X-E", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS5000X", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS6000A/L/Pro", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		{"SDS7000A", {
+			{ SCPITransportType::TRANSPORT_LAN, "<ip_address>:5025" },
+			{ SCPITransportType::TRANSPORT_USBTMC, "/dev/usbtmc<x>" },
+		}},
+		};
+	}
+	OSCILLOSCOPE_INITPROC(SiglentSCPIOscilloscope)
+};
+#endif

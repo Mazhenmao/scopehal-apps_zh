@@ -43,49 +43,49 @@ using namespace std;
 // Construction / destruction
 
 CreateFilterBrowser::CreateFilterBrowser(Session& session, MainWindow* parent)
-	: Dialog("Filter Palette", "Filter Palette", ImVec2(550, 400), &session, parent)
+	: Dialog(Tr("Filter Palette"), "Filter Palette", ImVec2(550, 400), &session, parent)
 	, m_selectedCategoryIndex(0)
 {
-	m_categoryNames.push_back("All");
+	m_categoryNames.push_back(Tr("All"));
 	m_categoryValues.push_back(Filter::CAT_COUNT);
 
-	m_categoryNames.push_back("Bus");
+	m_categoryNames.push_back(Tr("Bus"));
 	m_categoryValues.push_back(Filter::CAT_BUS);
 
-	m_categoryNames.push_back("Clocking");
+	m_categoryNames.push_back(Tr("Clocking"));
 	m_categoryValues.push_back(Filter::CAT_CLOCK);
 
-	m_categoryNames.push_back("Export");
+	m_categoryNames.push_back(Tr("Export"));
 	m_categoryValues.push_back(Filter::CAT_EXPORT);
 
-	m_categoryNames.push_back("Generation");
+	m_categoryNames.push_back(Tr("Generation"));
 	m_categoryValues.push_back(Filter::CAT_GENERATION);
 
-	m_categoryNames.push_back("Math");
+	m_categoryNames.push_back(Tr("Math"));
 	m_categoryValues.push_back(Filter::CAT_MATH);
 
-	m_categoryNames.push_back("Measurement");
+	m_categoryNames.push_back(Tr("Measurement"));
 	m_categoryValues.push_back(Filter::CAT_MEASUREMENT);
 
-	m_categoryNames.push_back("Memory");
+	m_categoryNames.push_back(Tr("Memory"));
 	m_categoryValues.push_back(Filter::CAT_MEMORY);
 
-	m_categoryNames.push_back("Miscellaneous");
+	m_categoryNames.push_back(Tr("Miscellaneous"));
 	m_categoryValues.push_back(Filter::CAT_MISC);
 
-	m_categoryNames.push_back("Optics");
+	m_categoryNames.push_back(Tr("Optical"));
 	m_categoryValues.push_back(Filter::CAT_OPTICAL);
 
-	m_categoryNames.push_back("Power");
+	m_categoryNames.push_back(Tr("Power"));
 	m_categoryValues.push_back(Filter::CAT_POWER);
 
-	m_categoryNames.push_back("RF");
+	m_categoryNames.push_back(Tr("RF"));
 	m_categoryValues.push_back(Filter::CAT_RF);
 
-	m_categoryNames.push_back("Serial");
+	m_categoryNames.push_back(Tr("Serial_p"));
 	m_categoryValues.push_back(Filter::CAT_SERIAL);
 
-	m_categoryNames.push_back("Signal Integrity");
+	m_categoryNames.push_back(Tr("Signal Integrity"));
 	m_categoryValues.push_back(Filter::CAT_ANALYSIS);
 }
 
@@ -108,11 +108,11 @@ bool CreateFilterBrowser::DoRender()
 
 	//Filter bars
 	ImGui::SetNextItemWidth(8 * ImGui::GetFontSize());
-	Combo("Category", m_categoryNames, m_selectedCategoryIndex);
+	Combo(Tr("Category"), m_categoryNames, m_selectedCategoryIndex);
 	auto cat = m_categoryValues[m_selectedCategoryIndex];
 
 	ImGui::SetNextItemWidth(8 * ImGui::GetFontSize());
-	ImGui::InputText("Search", &m_searchString);
+	ImGui::InputText(Tr("Search"), &m_searchString);
 
 	//Need to check if the mouse is down HERE because we get incorrect values later on in the function!
 	//Not yet sure why, but this is at least a usable workaround.

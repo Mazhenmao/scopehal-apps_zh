@@ -126,7 +126,7 @@ bool AddInstrumentDialog::DoRender()
 	if(tutorial && (tutorial->GetCurrentStep() != TutorialWizard::TUTORIAL_02_CONNECT) )
 		tutorial = nullptr;
 
-	if(ImGui::InputText("Nickname", &m_nickname))
+	if(ImGui::InputText(Tr("Nickname"), &m_nickname))
 		m_nicknameEdited = !(m_nickname.empty() || (m_nickname == m_defaultNickname));
 	HelpMarker(
 		"Text nickname for this instrument so you can distinguish between multiple similar devices.\n"
@@ -134,7 +134,7 @@ bool AddInstrumentDialog::DoRender()
 		"This is shown on the list of recent instruments, to disambiguate channel names in multi-instrument setups, etc.");
 
 	bool dropdownOpen = false;
-	if(Combo("Driver", m_drivers, m_selectedDriver,&dropdownOpen))
+	if(Combo(Tr("Driver"), m_drivers, m_selectedDriver,&dropdownOpen))
 	{
 		m_selectedModel = 0;
 		m_selectedTransport = 0;
@@ -172,7 +172,7 @@ bool AddInstrumentDialog::DoRender()
 			"Selecting the model will adapt the instrument nickname and connection string.");
 	}
 
-	if(Combo("Transport", m_transports, m_selectedTransport, &dropdownOpen))
+	if(Combo(Tr("Transport"), m_transports, m_selectedTransport, &dropdownOpen))
 		UpdateCombos();
 
 	HelpMarker(
@@ -209,12 +209,12 @@ bool AddInstrumentDialog::DoRender()
 		}
 		HelpMarker("Select the transport endpoint from the list and/or edit the path manually.");
 		ImGui::SameLine();
-		if(ImGui::Button("⟳"))
+		if(ImGui::Button("鉄?"))
 		{
 			UpdateCombos();
 		}
 	}
-	if(ImGui::InputText("Path", &m_path))
+	if(ImGui::InputText(Tr("Path"), &m_path))
 		m_pathEdited = !(m_path.empty() || (m_path == m_defaultPath));
 	HelpMarker(
 		"Transport-specific description of how to connect to the instrument.\n",
@@ -228,7 +228,7 @@ bool AddInstrumentDialog::DoRender()
 			}
 		);
 
-	if(ImGui::Button("Add"))
+	if(ImGui::Button(Tr("Add")))
 	{
 		if(m_nickname.empty())
 		{

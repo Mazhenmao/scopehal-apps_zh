@@ -39,7 +39,7 @@
 
 using namespace std;
 
-#define ELLIPSIS_CHAR "â€¦"
+#define ELLIPSIS_CHAR "â€?"
 #define PLUS_CHAR "+"
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +119,7 @@ StreamBrowserTimebaseInfo::StreamBrowserTimebaseInfo(shared_ptr<Oscilloscope> sc
 // Construction / destruction
 
 StreamBrowserDialog::StreamBrowserDialog(Session& session, MainWindow* parent)
-	: Dialog("Stream Browser", "Stream Browser", ImVec2(550, 400), &session, parent)
+	: Dialog(Tr("Stream Browser"), "Stream Browser", ImVec2(550, 400), &session, parent)
 
 	//only used during rendering but static analysis doesn't like leaving them uninitialized until then
 	, m_badgeXMin(0)
@@ -822,7 +822,7 @@ void StreamBrowserDialog::renderAwgProperties(std::shared_ptr<FunctionGenerator>
 	auto& prefs = m_session->GetPreferences();
 
 	// Row 1
-	ImGui::Text("Waveform:");
+	ImGui::Text(Tr("Waveform:"));
 	startBadgeLine(); // Needed for shape combo
 	// Shape combo
 	// Get current shape and  shape index
@@ -1378,17 +1378,17 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 		ImGui::SetNextItemWidth(width);
 		bool disabled = !scope->CanInterleave();
 		ImGui::BeginDisabled(disabled);
-		if(renderOnOffToggle("Interleaving", false, config->m_interleaving))
+		if(renderOnOffToggle(Tr("Interleaving"), false, config->m_interleaving))
 		{
 			scope->SetInterleaving(config->m_interleaving);
 			refresh = true;
 		}
 		ImGui::EndDisabled();
 		HelpMarker(
-			"Combine ADCs from multiple channels to get higher sampling rate on a subset of channels.\n"
+		 Tr("Combine ADCs from multiple channels to get higher sampling rate on a subset of channels.\n"
 			"\n"
 			"Some instruments do not have an explicit interleaving switch, but available sample rates "
-			"may vary depending on which channels are active."
+			"may vary depending on which channels are active.")
 			);
 	}
 
@@ -1403,7 +1403,7 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 			"Equivalent time"
 		};
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Combo("Sampling mode", &config->m_samplingMode, items, 2))
+		if(ImGui::Combo(Tr("Sampling mode"), &config->m_samplingMode, items, 2))
 		{
 			if(config->m_samplingMode == Oscilloscope::REAL_TIME)
 				scope->SetSamplingMode(Oscilloscope::REAL_TIME);
@@ -1414,16 +1414,16 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 		}
 
 		HelpMarker(
-			"Switch the acquisition system between real time (continuous capture of consecutive samples\n"
+		 Tr("Switch the acquisition system between real time (continuous capture of consecutive samples\n"
 			"and equivalent time (undersampling with a narrow sample-and-hold to build up a high resolution\n"
-			"view of a repetitive signal over many acquisitions)"
+			"view of a repetitive signal over many acquisitions)")
 			);
 	}
 
 	//Sample rate
 	ImGui::SetNextItemWidth(width);
 	if(renderCombo(
-		"Sample Rate",
+		Tr("Sample Rate"),
 		false,
 		ImGui::GetStyleColorVec4(ImGuiCol_FrameBg),
 		config->m_rate,
@@ -1436,14 +1436,14 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 		refresh = true;
 	}
 	HelpMarker(
-		"Adjust the ADC sampling rate.\n\n"
-		"Note that with some instruments, the set of available sampling rates varies depending on which channels are active."
+	 Tr("Adjust the ADC sampling rate.\n\n"
+		"Note that with some instruments, the set of available sampling rates varies depending on which channels are active.")
 		);
 
 	//Memory depth
 	ImGui::SetNextItemWidth(width);
 	if(renderCombo(
-		"Memory Depth",
+		Tr("Memory Depth"),
 		false,
 		ImGui::GetStyleColorVec4(ImGuiCol_FrameBg),
 		config->m_depth,
@@ -1456,8 +1456,8 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 		refresh = true;
 	}
 	HelpMarker(
-		"Adjust the number of samples captured each trigger event.\n\n"
-		"Note that with some instruments, the maximum memory depth varies depending on which channels are active."
+	 Tr("Adjust the number of samples captured each trigger event.\n\n"
+		"Note that with some instruments, the maximum memory depth varies depending on which channels are active.")
 		);
 
 	//Global ADC mode switch
@@ -2139,8 +2139,7 @@ bool StreamBrowserDialog::BeginBlock(const char* label, bool withButton, const c
 	}
 	ImGui::BeginChild(label, ImVec2(0, 0), flags);
 	if(withButton)
-	{
-		// Create a "+" button on the top right corner of the box
+	{	// Create a "+" button on the top right corner of the box
 		ImVec2 oldPos = ImGui::GetCursorPos();
 		float padding = ImGui::GetStyle().FramePadding.x;
 		float shift = withBorders ? padding*1.5 : 0;

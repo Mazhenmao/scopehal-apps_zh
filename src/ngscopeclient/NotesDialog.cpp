@@ -44,7 +44,7 @@ using namespace std;
 // Construction / destruction
 
 NotesDialog::NotesDialog(MainWindow* parent)
-	: Dialog("Lab Notes", "Lab Notes", ImVec2(800, 400), nullptr, parent)
+	: Dialog(Tr("Lab Notes"), Tr("Lab Notes"), ImVec2(800, 400), nullptr, parent)
 {
 }
 
@@ -66,13 +66,13 @@ bool NotesDialog::DoRender()
 	ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
 	if (ImGui::BeginTabBar("NotesFile", tab_bar_flags))
 	{
-		if (ImGui::BeginTabItem("Setup Notes"))
+		if (ImGui::BeginTabItem(Tr("Setup Notes")))
 		{
 			SetupNotes();
 			ImGui::EndTabItem();
 		}
 
-		if (ImGui::BeginTabItem("General Notes"))
+		if (ImGui::BeginTabItem(Tr("General Notes")))
 		{
 			GeneralNotes();
 			ImGui::EndTabItem();
@@ -87,10 +87,10 @@ bool NotesDialog::DoRender()
 void NotesDialog::SetupNotes()
 {
 	ImGui::TextWrapped(
-		"Describe your experimental setup in sufficient detail that you could verify it's wired correctly. "
+	 Tr("Describe your experimental setup in sufficient detail that you could verify it's wired correctly. "
 		"Limited Markdown syntax is supported.\n\n"
 		"These notes will be displayed when re-loading the session so you can confirm all instrument channels "
-		"are connected correctly before making any changes to hardware configuration."
+		"are connected correctly before making any changes to hardware configuration.")
 		);
 
 	MarkdownEditor(m_parent->GetSession().m_setupNotes);
@@ -99,7 +99,7 @@ void NotesDialog::SetupNotes()
 void NotesDialog::GeneralNotes()
 {
 	ImGui::TextWrapped(
-		"Take notes on your testing here. Limited Markdown syntax is supported."
+	  Tr("Take notes on your testing here. Limited Markdown syntax is supported.")
 		);
 
 	MarkdownEditor(m_parent->GetSession().m_generalNotes);
@@ -123,7 +123,7 @@ void NotesDialog::MarkdownEditor(string& str)
 
 		//Editor
 		ImGui::TableSetColumnIndex(0);
-		ImGui::InputTextMultiline("###Setup Notes", &str, ImGui::GetContentRegionAvail());
+		ImGui::InputTextMultiline(Tr("###Setup Notes"), &str, ImGui::GetContentRegionAvail());
 
 		//Render the markdown
 		ImGui::TableSetColumnIndex(1);

@@ -102,12 +102,12 @@ bool LoadDialog::DoRender()
 			auto tname = transport->GetName();
 			auto tstring = transport->GetConnectionString();
 
-			ImGui::InputText("Make", &vendor[0], vendor.size());
-			ImGui::InputText("Model", &name[0], name.size());
-			ImGui::InputText("Serial", &serial[0], serial.size());
-			ImGui::InputText("Driver", &driver[0], driver.size());
-			ImGui::InputText("Transport", &tname[0], tname.size());
-			ImGui::InputText("Path", &tstring[0], tstring.size());
+			ImGui::InputText(Tr("Make"), &vendor[0], vendor.size());
+			ImGui::InputText(Tr("Model"), &name[0], name.size());
+			ImGui::InputText(Tr("Serial"), &serial[0], serial.size());
+			ImGui::InputText(Tr("Driver"), &driver[0], driver.size());
+			ImGui::InputText(Tr("Transport"), &tname[0], tname.size());
+			ImGui::InputText(Tr("Path"), &tstring[0], tstring.size());
 
 		ImGui::EndDisabled();
 	}
@@ -166,7 +166,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 	Unit watts(Unit::UNIT_WATTS);
 	Unit ohms(Unit::UNIT_OHMS);
 
-	if(ImGui::Checkbox("Load Enable", &m_channelUIState[channel].m_loadEnabled))
+	if(ImGui::Checkbox(Tr("Load Enable"), &m_channelUIState[channel].m_loadEnabled))
 		m_load->SetLoadActive(channel, m_channelUIState[channel].m_loadEnabled);
 
 	ImGui::SetNextItemOpen(true, ImGuiCond_Appearing);
@@ -199,7 +199,7 @@ void LoadDialog::ChannelSettings(size_t channel)
 		};
 
 		ImGui::SetNextItemWidth(valueWidth);
-		if(ImGui::Combo("Mode", (int*)&m_channelUIState[channel].m_mode, modes, 4))
+		if(ImGui::Combo(Tr("Mode"), (int*)&m_channelUIState[channel].m_mode, modes, 4))
 		{
 			//Turn the load off before changing mode, to avoid accidental overloading of the DUT
 			m_load->SetLoadActive(channel, false);

@@ -196,7 +196,7 @@ void FilterGraphGroup::MoveBy(ImVec2 displacement)
 // Construction / destruction
 
 FilterGraphEditor::FilterGraphEditor(Session& session, MainWindow* parent)
-	: Dialog("Filter Graph Editor", "Filter Graph Editor", ImVec2(800, 600), &session, parent)
+	: Dialog(Tr("Filter Graph Editor"), "Filter Graph Editor", ImVec2(800, 600), &session, parent)
 	, m_nextID(1)
 	, m_errorWindow(&session)
 {
@@ -772,7 +772,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 
 	//Figure out how big the port text is
 	float oportmax = 1;
-	float iportmax = ImGui::CalcTextSize("â€£").x;
+	float iportmax = ImGui::CalcTextSize("â€?").x;
 	vector<string> onames;
 	for(auto it : group->m_hierInputMap)
 	{
@@ -787,7 +787,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 		else if(trig)
 			sinkname = trig->GetScope()->m_nickname;
 
-		auto name = sinkname + " â€£";
+		auto name = sinkname + " â€?";
 		onames.push_back(name);
 		oportmax = max(oportmax,
 			ImGui::CalcTextSize(name.c_str()).x +
@@ -821,8 +821,8 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 	//Table of input ports
 	if(ImGui::BeginTable("Ports", 2, 0, ImVec2(nodewidth, 0 ) ) )
 	{
-		ImGui::TableSetupColumn("inputs", ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
-		ImGui::TableSetupColumn("outputs", ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
+		ImGui::TableSetupColumn(Tr("inputs"), ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
+		ImGui::TableSetupColumn(Tr("outputs"), ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
 
 		for(auto it : group->m_hierInputMap)
 		{
@@ -841,7 +841,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
-				ImGui::TextUnformatted("â€£");
+				ImGui::TextUnformatted("â€?");
 			ax::NodeEditor::EndPin();
 
 			//TODO refactor into function
@@ -857,7 +857,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(group->m_hierInputInternalMap[sink], ax::NodeEditor::PinKind::Output);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(1, 0.5));
-				RightJustifiedText(sinkname + "." + sink.first->GetInputName(sink.second) + " â€£");
+				RightJustifiedText(sinkname + "." + sink.first->GetInputName(sink.second) + " â€?");
 			ax::NodeEditor::EndPin();
 		}
 		ImGui::EndTable();
@@ -879,13 +879,13 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 
 	//Figure out how big the port text is
 	float oportmax = 1;
-	float iportmax = ImGui::CalcTextSize("â€£").x;
+	float iportmax = ImGui::CalcTextSize("â€?").x;
 	vector<string> onames;
 	for(auto it : group->m_hierOutputMap)
 	{
 		auto stream = it.first;
 
-		auto name = stream.GetName() + " â€£";
+		auto name = stream.GetName() + " â€?";
 		onames.push_back(name);
 		oportmax = max(oportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}
@@ -920,8 +920,8 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 
 	if(ImGui::BeginTable("Ports", 2, 0, ImVec2(nodewidth, 0 ) ) )
 	{
-		ImGui::TableSetupColumn("inputs", ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
-		ImGui::TableSetupColumn("outputs", ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
+		ImGui::TableSetupColumn(Tr("inputs"), ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
+		ImGui::TableSetupColumn(Tr("outputs"), ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
 
 		for(auto it : group->m_hierOutputMap)
 		{
@@ -934,14 +934,14 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(group->m_hierOutputInternalMap[stream], ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
-				ImGui::TextUnformatted("â€£");
+				ImGui::TextUnformatted("â€?");
 			ax::NodeEditor::EndPin();
 
 			//Output side (path from hierarchical port to external node)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Output);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(1, 0.5));
-				RightJustifiedText(stream.GetName() + " â€£");
+				RightJustifiedText(stream.GetName() + " â€?");
 			ax::NodeEditor::EndPin();
 
 			if(sid == ax::NodeEditor::GetHoveredPin())
@@ -1056,47 +1056,47 @@ void FilterGraphEditor::OutputPortTooltip(StreamDescriptor stream)
 		switch(stype)
 		{
 			case Stream::STREAM_TYPE_ANALOG:
-				ImGui::TextUnformatted("Analog channel");
+				ImGui::TextUnformatted(Tr("Analog channel"));
 				break;
 
 			case Stream::STREAM_TYPE_DIGITAL:
-				ImGui::TextUnformatted("Digital channel");
+				ImGui::TextUnformatted(Tr("Digital channel"));
 				break;
 
 			case Stream::STREAM_TYPE_DIGITAL_BUS:
-				ImGui::TextUnformatted("Digital bus");
+				ImGui::TextUnformatted(Tr("Digital bus"));
 				break;
 
 			case Stream::STREAM_TYPE_EYE:
-				ImGui::TextUnformatted("Eye pattern");
+				ImGui::TextUnformatted(Tr("Eye pattern"));
 				break;
 
 			case Stream::STREAM_TYPE_SPECTROGRAM:
-				ImGui::TextUnformatted("Spectrogram");
+				ImGui::TextUnformatted(Tr("Spectrogram"));
 				break;
 
 			case Stream::STREAM_TYPE_WATERFALL:
-				ImGui::TextUnformatted("Waterfall");
+				ImGui::TextUnformatted(Tr("Waterfall"));
 				break;
 
 			case Stream::STREAM_TYPE_PROTOCOL:
-				ImGui::TextUnformatted("Protocol data");
+				ImGui::TextUnformatted(Tr("Protocol data"));
 				break;
 
 			case Stream::STREAM_TYPE_TRIGGER:
-				ImGui::TextUnformatted("External trigger");
+				ImGui::TextUnformatted(Tr("External trigger"));
 				break;
 
 			case Stream::STREAM_TYPE_ANALOG_SCALAR:
 				{
-					ImGui::TextUnformatted("Analog value:");
+					ImGui::TextUnformatted(Tr("Analog value:"));
 					string value = stream.GetYAxisUnits().PrettyPrint(stream.GetScalarValue());
 					ImGui::TextUnformatted(value.c_str());
 				}
 				break;
 
 			default:
-				ImGui::TextUnformatted("Unknown channel type");
+				ImGui::TextUnformatted(Tr("Unknown channel type"));
 				break;
 		}
 
@@ -1105,25 +1105,25 @@ void FilterGraphEditor::OutputPortTooltip(StreamDescriptor stream)
 		{
 			auto data = stream.GetData();
 			if(!data)
-				ImGui::Text("No waveform data");
+				ImGui::Text(Tr("No waveform data"));
 			else
 			{
 				auto srate = stream.GetXAxisUnits().PrettyPrint(data->m_timescale);
 				auto ssamples = Unit(Unit::UNIT_SAMPLEDEPTH).PrettyPrint(data->size());
 				if(dynamic_cast<DensityFunctionWaveform*>(data))
-					ImGui::Text("2D density plot");
+					ImGui::Text(Tr("2D density plot"));
 				else if(dynamic_cast<UniformAnalogWaveform*>(data))
-					ImGui::Text("Uniformly sampled analog data, %s at %s intervals", ssamples.c_str(), srate.c_str());
+					ImGui::Text(Tr("Uniformly sampled analog data, %s at %s intervals"), ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<UniformDigitalWaveform*>(data))
-					ImGui::Text("Uniformly sampled digital data, %s at %s intervals", ssamples.c_str(), srate.c_str());
+					ImGui::Text(Tr("Uniformly sampled digital data, %s at %s intervals"), ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<SparseAnalogWaveform*>(data))
-					ImGui::Text("Sparsely sampled analog data, %s at %s resolution", ssamples.c_str(), srate.c_str());
+					ImGui::Text(Tr("Sparsely sampled analog data, %s at %s resolution"), ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<SparseDigitalWaveform*>(data))
-					ImGui::Text("Sparsely sampled digital data, %s at %s resolution", ssamples.c_str(), srate.c_str());
+					ImGui::Text(Tr("Sparsely sampled digital data, %s at %s resolution"), ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<UniformWaveformBase*>(data))
-					ImGui::Text("Uniformly sampled data, %s at %s intervals", ssamples.c_str(), srate.c_str());
+					ImGui::Text(Tr("Uniformly sampled data, %s at %s intervals"), ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<SparseWaveformBase*>(data))
-					ImGui::Text("Sparsely sampled data, %s at %s resolution", ssamples.c_str(), srate.c_str());
+					ImGui::Text(Tr("Sparsely sampled data, %s at %s resolution"), ssamples.c_str(), srate.c_str());
 			}
 		}
 
@@ -1660,7 +1660,7 @@ bool FilterGraphEditor::IsBackEdge(FlowGraphNode* src, FlowGraphNode* dst)
  */
 void FilterGraphEditor::CreateChannelMenu()
 {
-	if(ImGui::BeginMenu("Channels"))
+	if(ImGui::BeginMenu(Tr("Channels")))
 	{
 		vector<StreamDescriptor> streams;
 
@@ -1714,7 +1714,7 @@ void FilterGraphEditor::CreateChannelMenu()
 
 		ImGui::EndMenu();
 	}
-	if(ImGui::BeginMenu("Create"))
+	if(ImGui::BeginMenu(Tr("Create")))
 	{
 		auto& refs = m_parent->GetSession().GetReferenceFilters();
 
@@ -1772,25 +1772,25 @@ void FilterGraphEditor::FilterMenu(StreamDescriptor stream)
 		auto dlg = m_parent->GetMeasurementsDialog(false);
 		if(!dlg || !dlg->HasStream(stream))
 		{
-			if(ImGui::MenuItem("Measure"))
+			if(ImGui::MenuItem(Tr("Measure")))
 				m_parent->GetMeasurementsDialog(true)->AddStream(stream);
 			ImGui::Separator();
 		}
 	}
 
-	FilterSubmenu(stream, "Bus", Filter::CAT_BUS);
-	FilterSubmenu(stream, "Clocking", Filter::CAT_CLOCK);
-	FilterSubmenu(stream, "Export", Filter::CAT_EXPORT);
-	FilterSubmenu(stream, "Generation", Filter::CAT_GENERATION);
-	FilterSubmenu(stream, "Math", Filter::CAT_MATH);
-	FilterSubmenu(stream, "Measurement", Filter::CAT_MEASUREMENT);
-	FilterSubmenu(stream, "Memory", Filter::CAT_MEMORY);
-	FilterSubmenu(stream, "Miscellaneous", Filter::CAT_MISC);
-	FilterSubmenu(stream, "Optical", Filter::CAT_OPTICAL);
-	FilterSubmenu(stream, "Power", Filter::CAT_POWER);
-	FilterSubmenu(stream, "RF", Filter::CAT_RF);
-	FilterSubmenu(stream, "Serial", Filter::CAT_SERIAL);
-	FilterSubmenu(stream, "Signal integrity", Filter::CAT_ANALYSIS);
+	FilterSubmenu(stream, Tr("Bus"), Filter::CAT_BUS);
+	FilterSubmenu(stream, Tr("Clocking"), Filter::CAT_CLOCK);
+	FilterSubmenu(stream, Tr("Export"), Filter::CAT_EXPORT);
+	FilterSubmenu(stream, Tr("Generation"), Filter::CAT_GENERATION);
+	FilterSubmenu(stream, Tr("Math"), Filter::CAT_MATH);
+	FilterSubmenu(stream, Tr("Measurement"), Filter::CAT_MEASUREMENT);
+	FilterSubmenu(stream, Tr("Memory"), Filter::CAT_MEMORY);
+	FilterSubmenu(stream, Tr("Miscellaneous"), Filter::CAT_MISC);
+	FilterSubmenu(stream, Tr("Optical"), Filter::CAT_OPTICAL);
+	FilterSubmenu(stream, Tr("Power"), Filter::CAT_POWER);
+	FilterSubmenu(stream, Tr("RF"), Filter::CAT_RF);
+	FilterSubmenu(stream, Tr("Serial_p"), Filter::CAT_SERIAL);
+	FilterSubmenu(stream, Tr("Signal integrity"), Filter::CAT_ANALYSIS);
 }
 
 /**
@@ -1981,7 +1981,7 @@ void FilterGraphEditor::DoNodeForTrigger(Trigger* trig)
 		{
 			auto sid = GetID(pair<FlowGraphNode*, size_t>(trig, i));
 
-			string portname("â€£ ");
+			string portname("â€? ");
 			portname += trig->GetInputName(i);
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
@@ -2111,13 +2111,13 @@ void FilterGraphEditor::DoNodeForChannel(
 	vector<string> onames;
 	for(size_t i=0; i<channel->GetInputCount(); i++)
 	{
-		auto name = string("â€£ ") + channel->GetInputName(i);
+		auto name = string("â€? ") + channel->GetInputName(i);
 		inames.push_back(name);
 		iportmax = max(iportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}
 	for(size_t i=0; i<channel->GetStreamCount(); i++)
 	{
-		auto name = channel->GetStreamName(i) + " â€£";
+		auto name = channel->GetStreamName(i) + " â€?";
 		onames.push_back(name);
 		oportmax = max(oportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}
@@ -2143,9 +2143,9 @@ void FilterGraphEditor::DoNodeForChannel(
 	{
 		size_t maxports = max(channel->GetInputCount(), channel->GetStreamCount());
 
-		ImGui::TableSetupColumn("inputs", ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
-		ImGui::TableSetupColumn("icon", ImGuiTableColumnFlags_WidthFixed, iconcolwidth + 2);
-		ImGui::TableSetupColumn("outputs", ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
+		ImGui::TableSetupColumn(Tr("inputs"), ImGuiTableColumnFlags_WidthFixed, iportmax + 2);
+		ImGui::TableSetupColumn(Tr("icon"), ImGuiTableColumnFlags_WidthFixed, iconcolwidth + 2);
+		ImGui::TableSetupColumn(Tr("outputs"), ImGuiTableColumnFlags_WidthFixed, oportmax + 2);
 
 		for(size_t i=0; i<maxports; i++)
 		{
@@ -2563,7 +2563,7 @@ bool FilterGraphEditor::HandleNodeProperties()
 		if(m_groups.HasEntry(m_selectedProperties))
 		{
 			auto group = m_groups[m_selectedProperties];
-			ImGui::InputText("Name", &group->m_name);
+			ImGui::InputText(Tr("Name"), &group->m_name);
 		}
 		ImGui::EndPopup();
 	}
@@ -2611,7 +2611,7 @@ void FilterGraphEditor::DoAddMenu()
 	}
 	std::sort(sortedNames.begin(), sortedNames.end());
 
-	if(ImGui::BeginMenu("Import"))
+	if(ImGui::BeginMenu(Tr("Import")))
 	{
 		ImGui::PushFont(nullptr, 0);
 
@@ -2634,7 +2634,7 @@ void FilterGraphEditor::DoAddMenu()
 		ImGui::EndMenu();
 	}
 
-	if(ImGui::BeginMenu("Generate"))
+	if(ImGui::BeginMenu(Tr("Generate")))
 	{
 		ImGui::PushFont(nullptr, 0);
 
@@ -2659,7 +2659,7 @@ void FilterGraphEditor::DoAddMenu()
 
 	ImGui::Separator();
 
-	if(ImGui::MenuItem("New Group"))
+	if(ImGui::MenuItem(Tr("New Group")))
 	{
 		auto group = make_shared<FilterGraphGroup>(*this);
 		auto id = GetID(group);
@@ -2675,7 +2675,7 @@ void FilterGraphEditor::DoAddMenu()
 		m_groups.emplace(group, id);
 	}
 
-	if(ImGui::BeginMenu("New Filter"))
+	if(ImGui::BeginMenu(Tr("New Filter")))
 	{
 		ImGui::PushFont(nullptr, 0);
 

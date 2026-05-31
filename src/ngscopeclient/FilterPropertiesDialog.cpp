@@ -497,7 +497,7 @@ bool FilterPropertiesDialog::DoParameter(FilterParameter& param, string name, ma
 			break;
 
 		default:
-			ImGui::Text("Parameter %s is unimplemented type", name.c_str());
+			ImGui::Text(Tr("Parameter %s is unimplemented type"), name.c_str());
 			break;
 	}
 

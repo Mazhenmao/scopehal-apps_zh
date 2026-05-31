@@ -31,7 +31,46 @@
 #include "FontManager.h"
 #include "PreferenceManager.h"
 
+#include <vector>
+
 using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Helpers
+
+static string FindChineseFont()
+{
+	vector<string> candidates =
+	{
+#ifdef _WIN32
+		"C:/Windows/Fonts/msyh.ttc",
+		"C:/Windows/Fonts/msyh.ttf",
+		"C:/Windows/Fonts/simhei.ttf",
+		"C:/Windows/Fonts/simsun.ttc",
+#elif defined(__APPLE__)
+		"/System/Library/Fonts/PingFang.ttc",
+		"/System/Library/Fonts/STHeiti Light.ttc",
+#else
+		"/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+		"/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+		"/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+#endif
+		FindDataFile("fonts/NotoSansCJK-Regular.ttc"),
+		FindDataFile("fonts/NotoSansSC-Regular.otf")
+	};
+
+	for(auto path : candidates)
+	{
+		FILE* fp = fopen(path.c_str(), "rb");
+		if(fp)
+		{
+			fclose(fp);
+			return path;
+		}
+	}
+
+	return "";
+}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction / destruction
@@ -85,6 +124,7 @@ bool FontManager::UpdateFonts(PreferenceCategory& root)
 	config.OversampleH = 5;
 	config.OversampleV = 5;
 	string defaultFontPath = FindDataFile("fonts/DejaVuSans.ttf");
+	string chineseFontPath = FindChineseFont();
 	for(auto f : fonts)
 	{
 		//See if the file exists, if it doesn't exist use the default font
@@ -104,6 +144,19 @@ bool FontManager::UpdateFonts(PreferenceCategory& root)
 		}
 
 		m_fonts[f] = atlas->AddFontFromFileTTF(fname.c_str(), 0.0, &config);
+
+		//Merge a CJK fallback into every configured font so localized Chinese UI text renders correctly.
+		if(!chineseFontPath.empty())
+		{
+			ImFontConfig mergeConfig = config;
+			mergeConfig.MergeMode = true;
+			mergeConfig.PixelSnapH = true;
+			atlas->AddFontFromFileTTF(
+				chineseFontPath.c_str(),
+				0.0,
+				&mergeConfig,
+				atlas->GetGlyphRangesChineseFull());
+		}
 	}
 
 	//Done loading fonts, build the texture

@@ -143,7 +143,7 @@ size_t WaveformGroup::GetAreaPosition(WaveformArea& area)
 				position = i;
 				break;
 			}
-		}
+		}		
 		return position;
 	}
 }
@@ -237,7 +237,7 @@ bool WaveformGroup::Render()
 	//see https://github.com/ocornut/imgui/issues/7914
 	if(ImGui::BeginPopupContextItem())
 	{
-		ImGui::InputText("Name", &m_title);
+		ImGui::InputText(Tr("Name"), &m_title);
 		ImGui::EndPopup();
 	}
 
@@ -361,13 +361,13 @@ void WaveformGroup::DoCursorReadouts()
 			//Header row
 			//TODO: only show in-band power column if units match up?
 			ImGui::TableSetupScrollFreeze(0, 1); 	//Header row does not scroll
-			ImGui::TableSetupColumn("Channel", ImGuiTableColumnFlags_WidthFixed, 10*width);
-			ImGui::TableSetupColumn("Value 1", ImGuiTableColumnFlags_WidthFixed, 8*width);
+			ImGui::TableSetupColumn(Tr("Channel"), ImGuiTableColumnFlags_WidthFixed, 10*width);
+			ImGui::TableSetupColumn(Tr("Value 1"), ImGuiTableColumnFlags_WidthFixed, 8*width);
 			if(hasSecondCursor)
 			{
-				ImGui::TableSetupColumn("Value 2", ImGuiTableColumnFlags_WidthFixed, 8*width);
-				ImGui::TableSetupColumn("Delta", ImGuiTableColumnFlags_WidthFixed, 8*width);
-				ImGui::TableSetupColumn("Band", ImGuiTableColumnFlags_WidthFixed, 8*width);
+				ImGui::TableSetupColumn(Tr("Value 2"), ImGuiTableColumnFlags_WidthFixed, 8*width);
+				ImGui::TableSetupColumn(Tr("Delta"), ImGuiTableColumnFlags_WidthFixed, 8*width);
+				ImGui::TableSetupColumn(Tr("Band"), ImGuiTableColumnFlags_WidthFixed, 8*width);
 			}
 			ImGui::TableHeadersRow();
 
@@ -963,7 +963,7 @@ void WaveformGroup::RenderTimeline(float width, float height)
 
 	if(ImGui::BeginPopupContextWindow())
 	{
-		if(ImGui::MenuItem("Autofit")){
+		if(ImGui::MenuItem(Tr("Autofit"))){
 			AutofitHorizontal(width);
 		}
 		ImGui::EndPopup();

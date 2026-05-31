@@ -85,8 +85,8 @@ bool MeasurementsDialog::DoRender()
 	if(ImGui::BeginTable("table", ncols, flags))
 	{
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-		ImGui::TableSetupColumn("Channel", ImGuiTableColumnFlags_WidthFixed, 15*width);
-		ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 10*width);
+		ImGui::TableSetupColumn(Tr("Channel"), ImGuiTableColumnFlags_WidthFixed, 15*width);
+		ImGui::TableSetupColumn(Tr("Value"), ImGuiTableColumnFlags_WidthFixed, 10*width);
 		ImGui::TableHeadersRow();
 
 		//TODO: double click value opens properties dialog
@@ -126,7 +126,7 @@ bool MeasurementsDialog::DoRender()
 
 			if(ImGui::BeginPopupContextItem())
 			{
-				if(ImGui::MenuItem("Delete"))
+				if(ImGui::MenuItem(Tr("Delete")))
 				{
 					deleteRow = true;
 					rowToDelete = i;
@@ -170,7 +170,7 @@ bool MeasurementsDialog::DoRender()
 			ImGui::TableNextRow(ImGuiTableRowFlags_None);
 			ImGui::TableSetColumnIndex(0);
 
-			ImGui::Text("(drag stream here)");
+			ImGui::Text(Tr("(drag stream here)"));
 			if(ImGui::BeginDragDropTarget())
 			{
 				auto payload = ImGui::AcceptDragDropPayload("Scalar");

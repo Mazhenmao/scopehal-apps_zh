@@ -43,7 +43,7 @@ using namespace std;
 // Construction / destruction
 
 PersistenceSettingsDialog::PersistenceSettingsDialog(MainWindow* parent)
-	: Dialog("Persistence", "Persistence", ImVec2(600, 150), nullptr, parent)
+	: Dialog(Tr("Persistence"), "Persistence", ImVec2(600, 150), nullptr, parent)
 {
 
 }
@@ -64,7 +64,7 @@ PersistenceSettingsDialog::~PersistenceSettingsDialog()
 bool PersistenceSettingsDialog::DoRender()
 {
 	float decay = m_parent->GetPersistDecay();
-	if(ImGui::SliderFloat("Decay Coefficient", &decay, 0, 1, "%.3f", ImGuiSliderFlags_AlwaysClamp))
+	if(ImGui::SliderFloat(Tr("Decay Coefficient"), &decay, 0, 1, "%.3f", ImGuiSliderFlags_AlwaysClamp))
 		m_parent->SetPersistDecay(decay);
 
 	return true;

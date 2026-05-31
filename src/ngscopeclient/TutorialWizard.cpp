@@ -106,7 +106,7 @@ bool TutorialWizard::DoRender()
 	//TODO: is this necessary? will it break things? For now turn it off
 	/*
 	ImGui::BeginDisabled(m_step == TUTORIAL_00_INTRO);
-		if(ImGui::Button("<< Back"))
+		if(ImGui::Button(Tr("<< Back")))
 			m_step --;
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -117,13 +117,13 @@ bool TutorialWizard::DoRender()
 	auto buttonStartPos = ImGui::GetCursorScreenPos();
 	if(m_step == (m_markdownText.size()-1) )
 	{
-		if(ImGui::Button("Finish"))
+		if(ImGui::Button(Tr("Finish")))
 			return false;
 	}
 	else
 	{
 		ImGui::BeginDisabled(!m_continueEnabled);
-			if(ImGui::Button("Continue >>"))
+			if(ImGui::Button(Tr("Continue >>")))
 				AdvanceToNextStep();
 		ImGui::EndDisabled();
 	}
@@ -204,7 +204,7 @@ void TutorialWizard::DrawSpeechBubble(
 
 	//Outline
 	MakePathSpeechBubble(list, dirTip, anchorPos, textsize, tailLength, radius, leftOverhang);
-	list->PathStroke(outlineColor, 0, 0.25 * size);
+	list->PathStroke(outlineColor, 0.25 * size, ImDrawFlags_None);
 
 	//Text
 	auto textColor = ImGui::GetColorU32(ImGuiCol_Text);

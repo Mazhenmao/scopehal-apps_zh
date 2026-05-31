@@ -108,12 +108,12 @@ bool PowerSupplyDialog::DoRender()
 			auto tname = transport->GetName();
 			auto tstring = transport->GetConnectionString();
 
-			ImGui::InputText("Make", &vendor[0], vendor.size());
-			ImGui::InputText("Model", &name[0], name.size());
-			ImGui::InputText("Serial", &serial[0], serial.size());
-			ImGui::InputText("Driver", &driver[0], driver.size());
-			ImGui::InputText("Transport", &tname[0], tname.size());
-			ImGui::InputText("Path", &tstring[0], tstring.size());
+			ImGui::InputText(Tr("Make"), &vendor[0], vendor.size());
+			ImGui::InputText(Tr("Model"), &name[0], name.size());
+			ImGui::InputText(Tr("Serial"), &serial[0], serial.size());
+			ImGui::InputText(Tr("Driver"), &driver[0], driver.size());
+			ImGui::InputText(Tr("Transport"), &tname[0], tname.size());
+			ImGui::InputText(Tr("Path"), &tstring[0], tstring.size());
 
 		ImGui::EndDisabled();
 	}
@@ -123,7 +123,7 @@ bool PowerSupplyDialog::DoRender()
 	{
 		if(ImGui::CollapsingHeader("Global", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			if(ImGui::Checkbox("Output Enable", &m_masterEnable))
+			if(ImGui::Checkbox(Tr("Output Enable"), &m_masterEnable))
 				m_psu->SetMasterPowerEnable(m_masterEnable);
 
 			HelpMarker(
@@ -200,7 +200,7 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 
 		if(m_psu->SupportsIndividualOutputSwitching())
 		{
-			if(ImGui::Checkbox("Output Enable", &m_channelUIState[i].m_outputEnabled))
+			if(ImGui::Checkbox(Tr("Output Enable"), &m_channelUIState[i].m_outputEnabled))
 			{
 				m_psu->SetPowerChannelActive(i, m_channelUIState[i].m_outputEnabled);
 				// Tell intrument thread that the PSU state has to be updated
@@ -213,7 +213,7 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 
 				ImGui::SameLine();
 				ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1*alpha, 0, 0, 1*alpha));
-				ImGui::TextUnformatted("Overload shutdown");
+				ImGui::TextUnformatted(Tr("Overload shutdown"));
 				ImGui::PopStyleColor();
 				Tooltip(
 					"Overcurrent shutdown has been triggered.\n\n"
@@ -232,7 +232,7 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 			{
 				if(ocp)
 				{
-					if(ImGui::Checkbox("Overcurrent Shutdown", &m_channelUIState[i].m_overcurrentShutdownEnabled))
+					if(ImGui::Checkbox(Tr("Overcurrent Shutdown"), &m_channelUIState[i].m_overcurrentShutdownEnabled))
 					{
 						m_psu->SetPowerOvercurrentShutdownEnabled(i, m_channelUIState[i].m_overcurrentShutdownEnabled);
 						// Tell intrument thread that the PSU state has to be updated
@@ -247,7 +247,7 @@ void PowerSupplyDialog::ChannelSettings(int i, float v, float a, float etime)
 
 				if(ss)
 				{
-					if(ImGui::Checkbox("Soft Start", &m_channelUIState[i].m_softStartEnabled))
+					if(ImGui::Checkbox(Tr("Soft Start"), &m_channelUIState[i].m_softStartEnabled))
 					{
 						m_psu->SetSoftStartEnabled(i, m_channelUIState[i].m_softStartEnabled);
 						// Tell intrument thread that the PSU state has to be updated

@@ -112,16 +112,16 @@ void MainWindow::MainMenu()
  */
 void MainWindow::FileMenu()
 {
-	if(ImGui::BeginMenu("File"))
+	if(ImGui::BeginMenu(Tr("File")))
 	{
 		bool hasFileBrowser = (m_fileBrowser != nullptr);
 
 		//Don't allow opening a second file browser if we already have one open
 		if(hasFileBrowser)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Open Online..."))
+		if(ImGui::MenuItem(Tr("Open Online...")))
 			OnOpenFile(true);
-		if(ImGui::MenuItem("Open Offline..."))
+		if(ImGui::MenuItem(Tr("Open Offline...")))
 			OnOpenFile(false);
 		if(hasFileBrowser)
 			ImGui::EndDisabled();
@@ -133,7 +133,7 @@ void MainWindow::FileMenu()
 		bool alreadyHaveSession = (m_sessionFileName != "");
 		if(!alreadyHaveSession)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Save"))
+		if(ImGui::MenuItem(Tr("Save")))
 			DoSaveFile(m_sessionFileName);
 		if(!alreadyHaveSession)
 			ImGui::EndDisabled();
@@ -141,19 +141,19 @@ void MainWindow::FileMenu()
 		//Don't allow opening a second file browser if we already have one open
 		if(hasFileBrowser)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Save As..."))
+		if(ImGui::MenuItem(Tr("Save As...")))
 			OnSaveAs();
 		if(hasFileBrowser)
 			ImGui::EndDisabled();
 
 		ImGui::Separator();
 
-		if(ImGui::MenuItem("Close"))
+		if(ImGui::MenuItem(Tr("Close")))
 			QueueCloseSession();
 
 		ImGui::Separator();
 
-		if(ImGui::MenuItem("Exit"))
+		if(ImGui::MenuItem(Tr("Exit")))
 			glfwSetWindowShouldClose(m_window, 1);
 
 		ImGui::EndMenu();
@@ -165,7 +165,7 @@ void MainWindow::FileMenu()
  */
 void MainWindow::FileRecentMenu()
 {
-	if(ImGui::BeginMenu("Recent Files"))
+	if(ImGui::BeginMenu(Tr("Recent Files")))
 	{
 		//Make a reverse mapping
 		std::map<time_t, vector<string> > reverseMap;
@@ -192,10 +192,10 @@ void MainWindow::FileRecentMenu()
 			{
 				if(ImGui::BeginMenu(path.c_str()))
 				{
-					if(ImGui::MenuItem("Open Online"))
+					if(ImGui::MenuItem(Tr("Open Online")))
 						DoOpenFile(path, true);
 
-					if(ImGui::MenuItem("Open Offline"))
+					if(ImGui::MenuItem(Tr("Open Offline")))
 						DoOpenFile(path, false);
 
 					ImGui::EndMenu();
@@ -216,14 +216,22 @@ void MainWindow::FileRecentMenu()
  */
 void MainWindow::ViewMenu()
 {
-	if(ImGui::BeginMenu("View"))
+	if(ImGui::BeginMenu(Tr("View")))
 	{
-		if(ImGui::MenuItem("Fullscreen"))
-			SetFullscreen(!m_fullscreen);
+		if(m_fullscreen == false)
+		{
+			if(ImGui::MenuItem(Tr("Fullscreen")))
+				SetFullscreen(!m_fullscreen);
+		}
+		else
+		{
+			if(ImGui::MenuItem(Tr("Leave fullscreen mode")))
+				SetFullscreen(!m_fullscreen);
+		}
 
 		ImGui::Separator();
 
-		if(ImGui::MenuItem("Persistence Setup"))
+		if(ImGui::MenuItem(Tr("Persistence Setup")))
 		{
 			m_persistenceDialog = make_shared<PersistenceSettingsDialog>(this);
 			AddDialog(m_persistenceDialog);
@@ -240,7 +248,7 @@ void MainWindow::AddMenu()
 {
 	auto menuStartPos = ImGui::GetCursorScreenPos();
 
-	if(ImGui::BeginMenu("Add"))
+	if(ImGui::BeginMenu(Tr("Add")))
 	{
 		//Make a reverse mapping: timestamp -> instruments last used at that time
 		map<time_t, vector<string> > reverseMap;
@@ -256,17 +264,17 @@ void MainWindow::AddMenu()
 			timestamps.push_back(t);
 		std::sort(timestamps.begin(), timestamps.end());
 
-		DoAddSubMenu(timestamps, reverseMap, "BERT", "bert", "bert");
-		DoAddSubMenu(timestamps, reverseMap, "Function Generator", "funcgen", "funcgen");
-		DoAddSubMenu(timestamps, reverseMap, "Load", "load", "load");
-		DoAddSubMenu(timestamps, reverseMap, "Misc", "inst", "misc");
-		DoAddSubMenu(timestamps, reverseMap, "Multimeter", "meter", "multimeter");
-		DoAddSubMenu(timestamps, reverseMap, "Oscilloscope", "scope", "oscilloscope");
-		DoAddSubMenu(timestamps, reverseMap, "Power Supply", "psu", "psu");
-		DoAddSubMenu(timestamps, reverseMap, "RF Generator", "rfgen", "rfgen");
-		DoAddSubMenu(timestamps, reverseMap, "SDR", "sdr", "sdr");
-		DoAddSubMenu(timestamps, reverseMap, "Spectrometer", "spec", "spectrometer");
-		DoAddSubMenu(timestamps, reverseMap, "VNA", "vna", "vna");
+		DoAddSubMenu(timestamps, reverseMap, Tr("BERT"), "bert", "bert");
+		DoAddSubMenu(timestamps, reverseMap, Tr("Function Generator"), "funcgen", "funcgen");
+		DoAddSubMenu(timestamps, reverseMap, Tr("Load"), "load", "load");
+		DoAddSubMenu(timestamps, reverseMap, Tr("Misc"), "inst", "misc");
+		DoAddSubMenu(timestamps, reverseMap, Tr("Multimeter"), "meter", "multimeter");
+		DoAddSubMenu(timestamps, reverseMap, Tr("Oscilloscope"), "scope", "oscilloscope");
+		DoAddSubMenu(timestamps, reverseMap, Tr("Power Supply"), "psu", "psu");
+		DoAddSubMenu(timestamps, reverseMap, Tr("RF Generator"), "rfgen", "rfgen");
+		DoAddSubMenu(timestamps, reverseMap, Tr("SDR"), "sdr", "sdr");
+		DoAddSubMenu(timestamps, reverseMap, Tr("Spectrometer"), "spec", "spectrometer");
+		DoAddSubMenu(timestamps, reverseMap, Tr("VNA"), "vna", "vna");
 
 		ImGui::Separator();
 
@@ -287,7 +295,7 @@ void MainWindow::AddMenu()
 			(menuStartPos.x + menuEndPos.x)/2,
 			menuStartPos.y + 2*ImGui::GetFontSize());
 
-		m_tutorialDialog->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "Add an oscilloscope to your session");
+		m_tutorialDialog->DrawSpeechBubble(anchorPos, ImGuiDir_Up, Tr("Add an oscilloscope to your session"));
 	}
 }
 
@@ -305,17 +313,17 @@ void MainWindow::DoAddSubMenu(
 	if(ImGui::BeginMenu(typePretty.c_str()))
 	{
 		//Spawn the connect dialog
-		if(ImGui::MenuItem("Connect..."))
+		if(ImGui::MenuItem(Tr("Connect...")))
 		{
 			m_dialogs.emplace(make_shared<AddInstrumentDialog>(
-				string("Add ") + typePretty,
+				Tr("Add ") + Tr(typePretty),
 				defaultName,
 				&m_session,
 				this,
 				typeInternal));
 
 			//Move to the next step of the tutorial if needed
-			if((typeInternal == "oscilloscope") &&
+			if((typeInternal == Tr("oscilloscope")) &&
 				m_tutorialDialog &&
 				(m_tutorialDialog->GetCurrentStep() == TutorialWizard::TUTORIAL_01_ADDINSTRUMENT) )
 			{
@@ -382,7 +390,7 @@ void MainWindow::DoAddSubMenu(
 						if(!success)
 						{	// Spawn an AddInstrument dialog here, prefilled with intrument informations, to allow changing connection path
 							m_dialogs.emplace(make_shared<AddInstrumentDialog>(
-								string("Update ") + typePretty,
+								Tr("Update ") + Tr(typePretty),
 								nick,
 								&m_session,
 								this,
@@ -405,7 +413,7 @@ void MainWindow::DoAddSubMenu(
  */
 void MainWindow::AddChannelsMenu()
 {
-	if(ImGui::BeginMenu("Channels"))
+	if(ImGui::BeginMenu(Tr("Channels")))
 	{
 		auto insts = m_session.GetInstruments();
 		for(auto inst : insts)
@@ -460,7 +468,7 @@ void MainWindow::AddImportMenu()
 {
 	auto& refs = m_session.GetReferenceFilters();
 
-	if(ImGui::BeginMenu("Import"))
+	if(ImGui::BeginMenu(Tr("Import")))
 	{
 		//Find all filters in this category and sort them alphabetically
 		vector<string> sortedNames;
@@ -495,7 +503,7 @@ void MainWindow::AddGenerateMenu()
 {
 	auto& refs = m_session.GetReferenceFilters();
 
-	if(ImGui::BeginMenu("Generate"))
+	if(ImGui::BeginMenu(Tr("Generate")))
 	{
 		//Find all filters in this category and sort them alphabetically
 		vector<string> sortedNames;
@@ -530,12 +538,12 @@ void MainWindow::AddGenerateMenu()
  */
 void MainWindow::SetupMenu()
 {
-	if(ImGui::BeginMenu("Setup"))
+	if(ImGui::BeginMenu(Tr("Setup")))
 	{
 		bool manageVisible = (m_manageInstrumentsDialog != nullptr);
 		if(manageVisible)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Manage Instruments..."))
+		if(ImGui::MenuItem(Tr("Manage Instruments...")))
 			ShowManageInstruments();
 		if(manageVisible)
 			ImGui::EndDisabled();
@@ -543,7 +551,7 @@ void MainWindow::SetupMenu()
 		bool triggerVisible = (m_triggerDialog != nullptr);
 		if(triggerVisible)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Trigger..."))
+		if(ImGui::MenuItem(Tr("Trigger...")))
 			ShowTriggerProperties();
 		if(triggerVisible)
 			ImGui::EndDisabled();
@@ -553,7 +561,7 @@ void MainWindow::SetupMenu()
 		bool prefsVisible = (m_preferenceDialog != nullptr);
 		if(prefsVisible)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Preferences..."))
+		if(ImGui::MenuItem(Tr("Preferences...")))
 		{
 			m_preferenceDialog = make_shared<PreferenceDialog>(m_session.GetPreferences());
 			AddDialog(m_preferenceDialog);
@@ -570,7 +578,7 @@ void MainWindow::SetupMenu()
  */
 void MainWindow::WindowMenu()
 {
-	if(ImGui::BeginMenu("Window"))
+	if(ImGui::BeginMenu(Tr("Window")))
 	{
 		WindowAnalyzerMenu();
 		WindowPSUMenu();
@@ -579,7 +587,7 @@ void MainWindow::WindowMenu()
 		if(hasLabNotes)
 			ImGui::BeginDisabled();
 
-		if(ImGui::MenuItem("Lab Notes"))
+		if(ImGui::MenuItem(Tr("Lab Notes")))
 		{
 			m_notesDialog = make_shared<NotesDialog>(this);
 			AddDialog(m_notesDialog);
@@ -592,7 +600,7 @@ void MainWindow::WindowMenu()
 		if(hasLogViewer)
 			ImGui::BeginDisabled();
 
-		if(ImGui::MenuItem("Log Viewer"))
+		if(ImGui::MenuItem(Tr("Log Viewer")))
 		{
 			m_logViewerDialog = make_shared<LogViewerDialog>(this);
 			AddDialog(m_logViewerDialog);
@@ -605,7 +613,7 @@ void MainWindow::WindowMenu()
 		if(hasMeasurements)
 			ImGui::BeginDisabled();
 
-		if(ImGui::MenuItem("Measurements"))
+		if(ImGui::MenuItem(Tr("Measurements")))
 		{
 			m_measurementsDialog = make_shared<MeasurementsDialog>(m_session);
 			AddDialog(m_measurementsDialog);
@@ -618,7 +626,7 @@ void MainWindow::WindowMenu()
 		if(hasMetrics)
 			ImGui::BeginDisabled();
 
-		if(ImGui::MenuItem("Performance Metrics"))
+		if(ImGui::MenuItem(Tr("Performance Metrics")))
 		{
 			m_metricsDialog = make_shared<MetricsDialog>(&m_session);
 			AddDialog(m_metricsDialog);
@@ -631,7 +639,7 @@ void MainWindow::WindowMenu()
 		if(hasMemory)
 			ImGui::BeginDisabled();
 
-		if(ImGui::MenuItem("Memory Analysis"))
+		if(ImGui::MenuItem(Tr("Memory Analysis")))
 		{
 			m_memoryDialog = make_shared<MemoryDialog>(&m_session, this);
 			AddDialog(m_memoryDialog);
@@ -643,7 +651,7 @@ void MainWindow::WindowMenu()
 		bool hasHistory = m_historyDialog != nullptr;
 		if(hasHistory)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("History"))
+		if(ImGui::MenuItem(Tr("History")))
 		{
 			m_historyDialog = make_shared<HistoryDialog>(m_session.GetHistory(), &m_session, this);
 			AddDialog(m_historyDialog);
@@ -654,7 +662,7 @@ void MainWindow::WindowMenu()
 		bool hasGraphEditor = m_graphEditor != nullptr;
 		if(hasGraphEditor)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Filter Graph"))
+		if(ImGui::MenuItem(Tr("Filter Graph")))
 		{
 			m_graphEditor = make_shared<FilterGraphEditor>(m_session, this);
 			AddDialog(m_graphEditor);
@@ -665,7 +673,7 @@ void MainWindow::WindowMenu()
 		bool hasStreamBrowser = m_streamBrowser != nullptr;
 		if(hasStreamBrowser)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Stream Browser"))
+		if(ImGui::MenuItem(Tr("Stream Browser")))
 		{
 			m_streamBrowser = make_shared<StreamBrowserDialog>(m_session, this);
 			AddDialog(m_streamBrowser);
@@ -676,7 +684,7 @@ void MainWindow::WindowMenu()
 		bool hasFilterPalette = m_filterPalette != nullptr;
 		if(hasFilterPalette)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("Filter Palette"))
+		if(ImGui::MenuItem(Tr("Filter Palette")))
 		{
 			m_filterPalette = make_shared<CreateFilterBrowser>(m_session, this);
 			AddDialog(m_filterPalette);
@@ -684,7 +692,7 @@ void MainWindow::WindowMenu()
 		if(hasFilterPalette)
 			ImGui::EndDisabled();
 
-		if(ImGui::MenuItem("New Workspace"))
+		if(ImGui::MenuItem(Tr("New Workspace")))
 			m_workspaces.emplace(make_shared<Workspace>(m_session, this));
 
 		ImGui::EndMenu();
@@ -710,7 +718,7 @@ void MainWindow::WindowAnalyzerMenu()
 
 	if(decoders.empty())
 		ImGui::BeginDisabled();
-	if(ImGui::BeginMenu("Analyzer"))
+	if(ImGui::BeginMenu(Tr("Analyzer")))
 	{
 		//Make a list of all filters
 		for(auto pd : decoders)
@@ -763,7 +771,7 @@ void MainWindow::WindowPSUMenu()
 	}
 
 	ImGui::BeginDisabled(psus.empty());
-	if(ImGui::BeginMenu("Power Supply"))
+	if(ImGui::BeginMenu(Tr("Power Supply")))
 	{
 		for(auto psu : psus)
 		{
@@ -794,7 +802,7 @@ void MainWindow::DebugSCPIConsoleMenu()
 
 	ImGui::BeginDisabled(targets.empty());
 
-	if(ImGui::BeginMenu("SCPI Console"))
+	if(ImGui::BeginMenu(Tr("SCPI Console")))
 	{
 		for(auto inst : targets)
 		{
@@ -817,22 +825,22 @@ void MainWindow::DebugSCPIConsoleMenu()
  */
 void MainWindow::DebugMenu()
 {
-	if(ImGui::BeginMenu("Debug"))
+	if(ImGui::BeginMenu(Tr("Debug")))
 	{
 		DebugSCPIConsoleMenu();
 
 		bool showDemo = m_showDemo;
 		if(showDemo)
 			ImGui::BeginDisabled();
-		if(ImGui::MenuItem("ImGui Demo"))
+		if(ImGui::MenuItem(Tr("ImGui Demo")))
 			m_showDemo = true;
 		if(showDemo)
 			ImGui::EndDisabled();
 
-		if(ImGui::MenuItem("Memory Leaker"))
+		if(ImGui::MenuItem(Tr("Memory Leaker")))
 			AddDialog(make_shared<MemoryLeakerDialog>(this));
 
-		if(ImGui::MenuItem("Hardware Flags"))
+		if(ImGui::MenuItem(Tr("Hardware Flags")))
 			AddDialog(make_shared<HardwareFlagsDialog>());
 
 		ImGui::EndMenu();
@@ -844,10 +852,10 @@ void MainWindow::DebugMenu()
  */
 void MainWindow::HelpMenu()
 {
-	if(ImGui::BeginMenu("Help"))
+	if(ImGui::BeginMenu(Tr("Help")))
 	{
 		ImGui::BeginDisabled(m_tutorialDialog != nullptr);
-			if(ImGui::MenuItem("Tutorial..."))
+			if(ImGui::MenuItem(Tr("Tutorial...")))
 			{
 				m_tutorialDialog = make_shared<TutorialWizard>(&m_session, this);
 				AddDialog(m_tutorialDialog);
@@ -856,7 +864,7 @@ void MainWindow::HelpMenu()
 
 		ImGui::Separator();
 
-		if(ImGui::MenuItem("About..."))
+		if(ImGui::MenuItem(Tr("About...")))
 			AddDialog(make_shared<AboutDialog>(this));
 
 		ImGui::EndMenu();

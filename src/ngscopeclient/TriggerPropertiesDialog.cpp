@@ -181,7 +181,7 @@ void TriggerPropertiesPage::Render(bool graphEditorMode)
 				if(cdrtrig->IsAutomaticBitRateCalculationAvailable())
 				{
 					ImGui::SameLine();
-					if(ImGui::Button("Auto"))
+					if(ImGui::Button(Tr("Auto")))
 					{
 						cdrtrig->CalculateBitRate();
 
@@ -200,7 +200,7 @@ void TriggerPropertiesPage::Render(bool graphEditorMode)
 				}
 
 				ImGui::BeginDisabled();
-				ImGui::Checkbox("PLL Lock", &locked);
+				ImGui::Checkbox(Tr("PLL Lock"), &locked);
 				ImGui::EndDisabled();
 
 				if(locked != m_cdrLockState)
@@ -262,7 +262,7 @@ void TriggerPropertiesPage::FindAllStreams(vector<StreamDescriptor>& streams)
 // Construction / destruction
 
 TriggerPropertiesDialog::TriggerPropertiesDialog(Session* session)
-	: Dialog("Trigger", "Trigger", ImVec2(300, 400), session)
+	: Dialog(Tr("Trigger"), "Trigger", ImVec2(300, 400), session)
 {
 	Refresh();
 }

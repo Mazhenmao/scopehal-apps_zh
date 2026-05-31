@@ -1,0 +1,529 @@
+/***********************************************************************************************************************
+*                                                                                                                      *
+* libscopeprotocols                                                                                                    *
+*                                                                                                                      *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
+* All rights reserved.                                                                                                 *
+*                                                                                                                      *
+* Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
+* following conditions are met:                                                                                        *
+*                                                                                                                      *
+*    * Redistributions of source code must retain the above copyright notice, this list of conditions, and the         *
+*      following disclaimer.                                                                                           *
+*                                                                                                                      *
+*    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the       *
+*      following disclaimer in the documentation and/or other materials provided with the distribution.                *
+*                                                                                                                      *
+*    * Neither the name of the author nor the names of any contributors may be used to endorse or promote products     *
+*      derived from this software without specific prior written permission.                                           *
+*                                                                                                                      *
+* THIS SOFTWARE IS PROVIDED BY THE AUTHORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED   *
+* TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL *
+* THE AUTHORS BE HELD LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES        *
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR       *
+* BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT *
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE       *
+* POSSIBILITY OF SUCH DAMAGE.                                                                                          *
+*                                                                                                                      *
+***********************************************************************************************************************/
+
+#include "../scopehal/scopehal.h"
+#include "CouplerDeEmbedFilter.h"
+
+using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Construction / destruction
+
+CouplerDeEmbedFilter::CouplerDeEmbedFilter(const string& color)
+	: Filter(color, CAT_RF)
+	, m_maxGainName("Max Gain")
+	, m_scalarTempBuf1("CouplerDeEmbedFilter.m_scalarTempBuf1")
+	, m_normalizeComputePipeline("shaders/DeEmbedNormalization.spv", 2, sizeof(DeEmbedNormalizationArgs))
+	, m_forwardPathComputePipeline("shaders/CouplerDeEmbedFilter_ForwardPath.spv", 9, sizeof(uint32_t))
+{
+	AddStream(Unit(Unit::UNIT_VOLTS), "forward", Stream::STREAM_TYPE_ANALOG);
+	AddStream(Unit(Unit::UNIT_VOLTS), "reverse", Stream::STREAM_TYPE_ANALOG);
+
+	CreateInput("forward");
+	CreateInput("reverse");
+	CreateInput("forwardCoupMag");
+	CreateInput("forwardCoupAng");
+	CreateInput("reverseCoupMag");
+	CreateInput("reverseCoupAng");
+
+	CreateInput("forwardLeakMag");
+	CreateInput("forwardLeakAng");
+	CreateInput("reverseLeakMag");
+	CreateInput("reverseLeakAng");
+
+	m_parameters[m_maxGainName] = FilterParameter(FilterParameter::TYPE_FLOAT, Unit(Unit::UNIT_DB));
+	m_parameters[m_maxGainName].SetFloatVal(30);
+
+	m_cachedNumPoints = 0;
+	m_cachedMaxGain = 0;
+
+	m_scalarTempBuf1.SetCpuAccessHint(AcceleratorBuffer<float>::HINT_NEVER);
+	m_scalarTempBuf1.SetGpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
+}
+
+CouplerDeEmbedFilter::~CouplerDeEmbedFilter()
+{
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Factory methods
+
+bool CouplerDeEmbedFilter::ValidateChannel(size_t i, StreamDescriptor stream)
+{
+	if(stream.m_channel == nullptr)
+		return false;
+
+	switch(i)
+	{
+		//forward and reverse path signals
+		case 0:
+		case 1:
+			return (stream.GetType() == Stream::STREAM_TYPE_ANALOG);
+
+		//mag
+		case 2:
+		case 4:
+		case 6:
+		case 8:
+			return (stream.GetType() == Stream::STREAM_TYPE_ANALOG) &&
+					(stream.GetYAxisUnits() == Unit::UNIT_DB);
+
+		//angle
+		case 3:
+		case 5:
+		case 7:
+		case 9:
+			return (stream.GetType() == Stream::STREAM_TYPE_ANALOG) &&
+					(stream.GetYAxisUnits() == Unit::UNIT_DEGREES);
+
+		default:
+			return false;
+	}
+
+	return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Accessors
+
+string CouplerDeEmbedFilter::GetProtocolName()
+{
+	return "Coupler De-Embed";
+}
+
+Filter::DataLocation CouplerDeEmbedFilter::GetInputLocation()
+{
+	//We explicitly manage our input memory and don't care where it is when Refresh() is called
+	return LOC_DONTCARE;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Actual decoder logic
+
+void CouplerDeEmbedFilter::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_ptr<QueueHandle> queue)
+{
+	#ifdef HAVE_NVTX
+		nvtx3::scoped_range nrange("CouplerDeEmbedFilter::Refresh");
+	#endif
+
+	//TODO: implement fallback
+	if(!g_hasPushDescriptor)
+	{
+		AddErrorMessage(
+			"Missing GPU support",
+			"This filter requires a GPU with VK_KHR_push_descriptor support and does not currently have a fallback implementation");
+
+		SetData(nullptr, 0);
+		return;
+	}
+
+	//Make sure we've got valid inputs
+	if(!VerifyAllInputsOK())
+	{
+		if(!GetInput(0))
+			AddErrorMessage("Missing inputs", "No signal input connected");
+		else if(!GetInputWaveform(0))
+			AddErrorMessage("Missing inputs", "No waveform available at input");
+
+		SetData(nullptr, 0);
+		return;
+	}
+
+	//Extract forward and reverse port waveforms
+	auto dinFwd = dynamic_cast<UniformAnalogWaveform*>(GetInputWaveform(0));
+	auto dinRev = dynamic_cast<UniformAnalogWaveform*>(GetInputWaveform(1));
+	if(!dinFwd || !dinRev)
+	{
+		if(!dinFwd)
+			AddErrorMessage("Missing inputs", "No waveform on forward input)");
+		if(!dinRev)
+			AddErrorMessage("Missing inputs", "No waveform on reverse input)");
+
+		SetData(nullptr, 0);
+		return;
+	}
+	const size_t npoints = min(dinFwd->size(), dinRev->size());
+
+	//Format the input data as raw samples for the FFT
+	size_t nouts = npoints/2 + 1;
+
+	//Invalidate old vkFFT plans if size has changed
+	if(m_vkForwardPlan)
+	{
+		if(m_vkForwardPlan->size() != npoints)
+			m_vkForwardPlan = nullptr;
+	}
+	if(m_vkForwardPlan2)
+	{
+		if(m_vkForwardPlan2->size() != npoints)
+			m_vkForwardPlan2 = nullptr;
+	}
+	if(m_vkReversePlan)
+	{
+		if(m_vkReversePlan->size() != npoints)
+			m_vkReversePlan = nullptr;
+	}
+
+	//Set up temporary buffers, these always get resized
+	ScratchBuffer_float32_t vectorTempBuf1(ScratchBufferManager::F32_GPU_WAVEFORM);
+	ScratchBuffer_float32_t vectorTempBuf2(ScratchBufferManager::F32_GPU_WAVEFORM);
+	ScratchBuffer_float32_t vectorTempBuf3(ScratchBufferManager::F32_GPU_WAVEFORM);
+	vectorTempBuf1->resize(2 * nouts, true);
+	vectorTempBuf2->resize(2 * nouts, true);
+	vectorTempBuf3->resize(2 * nouts, true);
+
+	m_scalarTempBuf1.resize(npoints, true);
+
+	//Set up the FFT and allocate buffers if we change point count
+	bool sizechange = false;
+	if(m_cachedNumPoints != npoints)
+	{
+		m_cachedNumPoints = npoints;
+		sizechange = true;
+	}
+
+	//Set up new FFT plans
+	if(!m_vkForwardPlan)
+		m_vkForwardPlan = make_unique<VulkanFFTPlan>(npoints, nouts, VulkanFFTPlan::DIRECTION_FORWARD);
+	if(!m_vkForwardPlan2)
+		m_vkForwardPlan2 = make_unique<VulkanFFTPlan>(npoints, nouts, VulkanFFTPlan::DIRECTION_FORWARD);
+	if(!m_vkReversePlan)
+		m_vkReversePlan = make_unique<VulkanFFTPlan>(npoints, nouts, VulkanFFTPlan::DIRECTION_REVERSE);
+
+	//Calculate size of each bin
+	double fs = dinFwd->m_timescale;
+	double sample_ghz = 1e6 / fs;
+	double bin_hz = round((0.5f * sample_ghz * 1e9f) / nouts);
+
+	//Did we change the max gain?
+	bool clipchange = false;
+	float maxgain = m_parameters[m_maxGainName].GetFloatVal();
+	if(maxgain != m_cachedMaxGain)
+	{
+		m_cachedMaxGain = maxgain;
+		clipchange = true;
+		ClearSweeps();
+	}
+
+	float maxGain = pow(10, m_parameters[m_maxGainName].GetFloatVal()/20);
+
+	//Resample S-parameters to our FFT bin size and cache where possible
+
+	//Coupled paths
+	auto dmag = GetInput(2).GetData();
+	auto dang = GetInput(3).GetData();
+	if(sizechange || clipchange || m_forwardCoupledParams.NeedUpdate(dmag, dang, bin_hz) )
+		m_forwardCoupledParams.Refresh(dmag, dang, bin_hz, true, nouts, maxGain, dinFwd->m_timescale, npoints);
+
+	dmag = GetInput(4).GetData();
+	dang = GetInput(5).GetData();
+	if(sizechange || clipchange || m_reverseCoupledParams.NeedUpdate(dmag, dang, bin_hz))
+		m_reverseCoupledParams.Refresh(dmag, dang, bin_hz, true, nouts, maxGain, dinFwd->m_timescale, npoints);
+
+	//Leakage paths
+	dmag = GetInput(6).GetData();
+	dang = GetInput(7).GetData();
+	if(sizechange || clipchange || m_forwardLeakageParams.NeedUpdate(dmag, dang, bin_hz))
+		m_forwardLeakageParams.Refresh(dmag, dang, bin_hz, false, nouts, maxGain, dinFwd->m_timescale, npoints);
+
+	dmag = GetInput(8).GetData();
+	dang = GetInput(9).GetData();
+	if(sizechange || clipchange || m_reverseLeakageParams.NeedUpdate(dmag, dang, bin_hz))
+		m_reverseLeakageParams.Refresh(dmag, dang, bin_hz, false, nouts, maxGain, dinFwd->m_timescale, npoints);
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//Prepare to do all of our compute stuff in one dispatch call to reduce overhead
+	cmdBuf.begin({});
+
+	//FFT both inputs
+	//vec1 = raw rev, vec3 = raw fwd
+	//m_vkForwardPlan->AppendForward(dinFwd->m_samples, *vectorTempBuf3, cmdBuf);
+	//m_vkForwardPlan2->AppendForward(dinRev->m_samples, *vectorTempBuf1, cmdBuf);
+
+	//I don't understand why doing this in reverse order is necessary.
+	//Original design called for fwd -> tempBuf1 and rev->tempBuf3.
+	//But this seems to consistently work???
+	//Need a second set of eyes to figure out if we got the ordering backwards in the original code
+	m_vkForwardPlan->AppendForward(dinFwd->m_samples, *vectorTempBuf1, cmdBuf);
+	m_vkForwardPlan2->AppendForward(dinRev->m_samples, *vectorTempBuf3, cmdBuf);
+	m_normalizeComputePipeline.AddComputeMemoryBarrier(cmdBuf);
+
+	//De-embed the forward path, then calculate forward path leakage from that
+	//TODO: calculate and correct for group delay in the leakage path
+	//Given signal minus leakage (enhanced isolation at the coupler output), de-embed coupler response
+	//to get signal at coupler input
+	//vec1 = raw reverse, vec2 = fwd leakage, vec3 = raw fwd, vec4 = clean reverse
+	ForwardPath(
+		cmdBuf,
+		*vectorTempBuf1,
+		*vectorTempBuf3,
+		*vectorTempBuf2,
+		m_forwardCoupledParams,
+		m_forwardLeakageParams,
+		m_reverseCoupledParams,
+		npoints,
+		nouts);
+
+	//Generate final clean reverse path output
+	size_t istart = 0;
+	size_t iend = npoints;
+	int64_t phaseshift = 0;
+	GroupDelayCorrection(m_reverseCoupledParams, istart, iend, phaseshift, true);
+	GenerateScalarOutput(
+		cmdBuf, m_vkReversePlan, istart, iend, dinRev, 1, npoints, phaseshift, *vectorTempBuf2, m_scalarTempBuf1);
+
+	//De-embed reverse path then calculate reverse path leakage
+	//TODO: calculate and correct for group delay in the leakage path
+	//Calculate forward path signal minus leakage from the reverse path
+	//Given signal minus leakage (enhanced isolation at the coupler output), de-embed coupler response
+	//to get signal at coupler input
+	//vec1 = raw rev, vec2 = reverse leakage, vec3 = clean forward, vec4 = final reverse output
+	ForwardPath(
+		cmdBuf,
+		*vectorTempBuf3,
+		*vectorTempBuf1,
+		*vectorTempBuf2,
+		m_reverseCoupledParams,
+		m_reverseLeakageParams,
+		m_forwardCoupledParams,
+		npoints,
+		nouts);
+
+	//Generate final clean forward path output
+	istart = 0;
+	iend = npoints;
+	GroupDelayCorrection(m_forwardCoupledParams, istart, iend, phaseshift, true);
+	GenerateScalarOutput(
+		cmdBuf, m_vkReversePlan, istart, iend, dinFwd, 0, npoints, phaseshift, *vectorTempBuf2, m_scalarTempBuf1);
+
+	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	//Done, block until the compute operations finish
+	cmdBuf.end();
+	queue->SubmitAndBlock(cmdBuf);
+}
+
+/**
+	@brief Calculate bounds for the *meaningful* output data.
+	Since we're phase shifting, there's gonna be some garbage response at one end of the channel.
+ */
+void CouplerDeEmbedFilter::GroupDelayCorrection(
+	CouplerSParameters& params,
+	size_t& istart,
+	size_t& iend,
+	int64_t& phaseshift,
+	bool invert)
+{
+	if(invert)
+	{
+		iend -= params.m_groupDelaySamples;
+		phaseshift = -params.m_groupDelayFs;
+	}
+	else
+	{
+		istart += params.m_groupDelaySamples;
+		phaseshift = params.m_groupDelayFs;
+	}
+}
+
+/**
+	@brief Generates a scalar output from a complex input
+ */
+void CouplerDeEmbedFilter::GenerateScalarOutput(
+	vk::raii::CommandBuffer& cmdBuf,
+	unique_ptr<VulkanFFTPlan>& plan,
+	size_t istart,
+	size_t iend,
+	WaveformBase* refin,
+	size_t stream,
+	size_t npoints,
+	int64_t phaseshift,
+	AcceleratorBuffer<float>& samplesIn,
+	AcceleratorBuffer<float>& samplesOut)
+{
+	//Prepare the output waveform
+	float scale = 1.0f / npoints;
+	size_t outlen = iend - istart;
+	auto cap = SetupEmptyUniformAnalogOutputWaveform(refin, stream);
+	cap->Resize(outlen);
+
+	//Apply phase shift for the group delay so we draw the waveform in the right place
+	cap->m_triggerPhase = phaseshift;
+
+	//Do the actual FFT operation
+	plan->AppendReverse(samplesIn, samplesOut, cmdBuf);
+
+	//Copy and normalize output
+	//TODO: is there any way to fold this into vkFFT? They can normalize, but offset might be tricky...
+	DeEmbedNormalizationArgs nargs;
+	nargs.outlen = outlen;
+	nargs.istart = istart;
+	nargs.scale = scale;
+	m_normalizeComputePipeline.Bind(cmdBuf);
+	m_normalizeComputePipeline.BindBufferNonblocking(0, samplesOut, cmdBuf);
+	m_normalizeComputePipeline.BindBufferNonblocking(1, cap->m_samples, cmdBuf, true);
+
+	const uint32_t compute_block_count = GetComputeBlockCount(npoints, 64);
+	m_normalizeComputePipeline.DispatchNoRebind(cmdBuf, nargs,
+		min(compute_block_count, 32768u),
+		compute_block_count / 32768 + 1);
+	m_normalizeComputePipeline.AddComputeMemoryBarrier(cmdBuf);
+
+	cap->MarkModifiedFromGpu();
+}
+
+/**
+	@brief Forward de-embedding path
+
+	out = (inP - (inN * (paramsA * paramsB)) ) * paramsC
+ */
+void CouplerDeEmbedFilter::ForwardPath(
+		vk::raii::CommandBuffer& cmdBuf,
+		AcceleratorBuffer<float>& samplesInP,
+		AcceleratorBuffer<float>& samplesInN,
+		AcceleratorBuffer<float>& samplesOut,
+		CouplerSParameters& paramsA,
+		CouplerSParameters& paramsB,
+		CouplerSParameters& paramsC,
+		size_t npoints,
+		size_t nouts)
+{
+	m_forwardPathComputePipeline.Bind(cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(0, samplesInP, cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(1, samplesInN, cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(2, paramsA.m_resampledSparamSines, cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(3, paramsA.m_resampledSparamCosines, cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(4, paramsB.m_resampledSparamSines, cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(5, paramsB.m_resampledSparamCosines, cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(6, paramsC.m_resampledSparamSines, cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(7, paramsC.m_resampledSparamCosines, cmdBuf);
+	m_forwardPathComputePipeline.BindBufferNonblocking(8, samplesOut, cmdBuf, true);
+
+	const uint32_t compute_block_count = GetComputeBlockCount(npoints, 64);
+	m_forwardPathComputePipeline.DispatchNoRebind(
+		cmdBuf, (uint32_t)nouts,
+		min(compute_block_count, 32768u),
+		compute_block_count / 32768 + 1);
+	m_forwardPathComputePipeline.AddComputeMemoryBarrier(cmdBuf);
+
+	samplesOut.MarkModifiedFromGpu();
+}
+
+/**
+	@brief Returns the max mid-band group delay of the channel
+ */
+int64_t CouplerSParameters::GetGroupDelay()
+{
+	float max_delay = 0;
+	size_t mid = m_cachedSparams.size() / 2;
+	for(size_t i=0; i<50; i++)
+	{
+		size_t n = i+mid;
+		if(n >= m_cachedSparams.size())
+			break;
+
+		max_delay = max(max_delay, m_cachedSparams.GetGroupDelay(n));
+	}
+	return max_delay * FS_PER_SECOND;
+}
+
+/**
+	@brief Recalculate the cached S-parameters (and clamp gain if requested)
+ */
+void CouplerSParameters::InterpolateSparameters(
+	WaveformBase* wmag,
+	WaveformBase* wang,
+	float bin_hz,
+	bool invert,
+	size_t nouts,
+	float maxGain)
+{
+	m_cachedBinSize = bin_hz;
+
+	wmag->PrepareForCpuAccess();
+	wang->PrepareForCpuAccess();
+
+	m_resampledSparamSines.SetCpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
+	m_resampledSparamSines.SetGpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
+
+	m_resampledSparamCosines.SetCpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
+	m_resampledSparamCosines.SetGpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
+
+	auto smag = dynamic_cast<SparseAnalogWaveform*>(wmag);
+	auto sang = dynamic_cast<SparseAnalogWaveform*>(wang);
+	auto umag = dynamic_cast<UniformAnalogWaveform*>(wmag);
+	auto uang = dynamic_cast<UniformAnalogWaveform*>(wang);
+
+	if(smag && sang)
+		m_cachedSparams.ConvertFromWaveforms(smag, sang);
+	else
+		m_cachedSparams.ConvertFromWaveforms(umag, uang);
+
+	m_resampledSparamSines.resize(nouts);
+	m_resampledSparamCosines.resize(nouts);
+
+	//De-embedding
+	if(invert)
+	{
+		for(size_t i=0; i<nouts; i++)
+		{
+			float freq = bin_hz * i;
+			auto pt = m_cachedSparams.InterpolatePoint(freq);
+			float mag = pt.m_amplitude;
+			float ang = pt.m_phase;
+
+			float amp = 0;
+			if(fabs(mag) > FLT_EPSILON)
+				amp = 1.0f / mag;
+			amp = min(amp, maxGain);
+
+			m_resampledSparamSines[i] = sin(-ang) * amp;
+			m_resampledSparamCosines[i] = cos(-ang) * amp;
+		}
+	}
+
+	//Channel emulation
+	else
+	{
+		for(size_t i=0; i<nouts; i++)
+		{
+			float freq = bin_hz * i;
+			auto pt = m_cachedSparams.InterpolatePoint(freq);
+			float mag = pt.m_amplitude;
+			float ang = pt.m_phase;
+
+			m_resampledSparamSines[i] = sin(ang) * mag;
+			m_resampledSparamCosines[i] = cos(ang) * mag;
+		}
+	}
+
+	m_resampledSparamSines.MarkModifiedFromCpu();
+	m_resampledSparamCosines.MarkModifiedFromCpu();
+}

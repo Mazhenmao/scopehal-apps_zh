@@ -41,6 +41,7 @@
 #include <backends/imgui_impl_vulkan.h>
 
 #include "ImGuiDisabler.h"
+#include "Localization.h"
 
 #include <atomic>
 

@@ -1,0 +1,119 @@
+/***********************************************************************************************************************
+*                                                                                                                      *
+* libscopehal                                                                                                          *
+*                                                                                                                      *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
+* All rights reserved.                                                                                                 *
+*                                                                                                                      *
+* Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
+* following conditions are met:                                                                                        *
+*                                                                                                                      *
+*    * Redistributions of source code must retain the above copyright notice, this list of conditions, and the         *
+*      following disclaimer.                                                                                           *
+*                                                                                                                      *
+*    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the       *
+*      following disclaimer in the documentation and/or other materials provided with the distribution.                *
+*                                                                                                                      *
+*    * Neither the name of the author nor the names of any contributors may be used to endorse or promote products     *
+*      derived from this software without specific prior written permission.                                           *
+*                                                                                                                      *
+* THIS SOFTWARE IS PROVIDED BY THE AUTHORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED   *
+* TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL *
+* THE AUTHORS BE HELD LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES        *
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR       *
+* BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT *
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE       *
+* POSSIBILITY OF SUCH DAMAGE.                                                                                          *
+*                                                                                                                      *
+***********************************************************************************************************************/
+
+#include "scopehal.h"
+
+using namespace std;
+
+SCPIInstrument::GetTransportMapType SCPIInstrument::m_getTransportProcs;
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Construction / destruction
+
+SCPIInstrument::SCPIInstrument(SCPITransport* transport, bool identify)
+	: SCPIDevice(transport, identify)
+{
+	m_serializers.push_back(sigc::mem_fun(*this, &SCPIInstrument::DoSerializeConfiguration));
+}
+
+SCPIInstrument::~SCPIInstrument()
+{
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Default background processing - just flush the transport
+
+void SCPIInstrument::BackgroundProcessing()
+{
+	m_transport->FlushCommandQueue();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Accessors
+
+string SCPIInstrument::GetTransportName()
+{
+	return m_transport->GetName();
+}
+
+string SCPIInstrument::GetTransportConnectionString()
+{
+	return m_transport->GetConnectionString();
+}
+
+string SCPIInstrument::GetName() const
+{
+	return m_model;
+}
+
+string SCPIInstrument::GetVendor() const
+{
+	return m_vendor;
+}
+
+string SCPIInstrument::GetSerial() const
+{
+	return m_serial;
+}
+
+void SCPIInstrument::DoAddDriverClass(const string& name, GetTransportsProcType proc)
+{
+	m_getTransportProcs[name] = proc;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Serialization
+
+void SCPIInstrument::DoSerializeConfiguration(YAML::Node& node, IDTable& /*table*/)
+{
+	node["transport"] = GetTransportName();
+	node["args"] = GetTransportConnectionString();
+	node["driver"] = GetDriverName();
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Static functions
+
+std::vector<SCPIInstrumentModel> SCPIInstrument::GetSupportedModels(const string& driver)
+{
+	if(m_getTransportProcs.find(driver) != m_getTransportProcs.end())
+		return m_getTransportProcs[driver]();
+
+	LogError("Invalid oscilloscope driver name \"%s\"\n", driver.c_str());
+	return std::vector<SCPIInstrumentModel>();
+}
+
+// Default implementation returns no transport
+std::vector<SCPIInstrumentModel> SCPIInstrument::GetDriverSupportedModels()
+{
+	return std::vector<SCPIInstrumentModel>();
+}
+

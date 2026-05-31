@@ -105,16 +105,16 @@ bool MemoryDialog::DoRender()
 		auto scratchBufferColor = ColorFromString("#404040");
 
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-		ImGui::TableSetupColumn("Object", ImGuiTableColumnFlags_WidthFixed, 8*width);
-		ImGui::TableSetupColumn("Name", ImGuiTableColumnFlags_WidthStretch, 0.0f);
-		ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 7*width);
-		ImGui::TableSetupColumn("Size (elements)", ImGuiTableColumnFlags_WidthFixed, 7*width);
-		ImGui::TableSetupColumn("Size (bytes)", ImGuiTableColumnFlags_WidthFixed, 7*width);
-		ImGui::TableSetupColumn("Capacity (elements)", ImGuiTableColumnFlags_WidthFixed, 7*width);
-		ImGui::TableSetupColumn("Capacity (bytes)", ImGuiTableColumnFlags_WidthFixed, 7*width);
-		ImGui::TableSetupColumn("Overhead (elements)", ImGuiTableColumnFlags_WidthFixed, 12*width);
-		ImGui::TableSetupColumn("Overhead (bytes)", ImGuiTableColumnFlags_WidthFixed, 12*width);
-		ImGui::TableSetupColumn("Overhead (%)", ImGuiTableColumnFlags_WidthFixed, 5*width);
+		ImGui::TableSetupColumn(Tr("Object"), ImGuiTableColumnFlags_WidthFixed, 8*width);
+		ImGui::TableSetupColumn(Tr("Name"), ImGuiTableColumnFlags_WidthStretch, 0.0f);
+		ImGui::TableSetupColumn(Tr("Type"), ImGuiTableColumnFlags_WidthFixed, 7*width);
+		ImGui::TableSetupColumn(Tr("Size (elements)"), ImGuiTableColumnFlags_WidthFixed, 7*width);
+		ImGui::TableSetupColumn(Tr("Size (bytes)"), ImGuiTableColumnFlags_WidthFixed, 7*width);
+		ImGui::TableSetupColumn(Tr("Capacity (elements)"), ImGuiTableColumnFlags_WidthFixed, 7*width);
+		ImGui::TableSetupColumn(Tr("Capacity (bytes)"), ImGuiTableColumnFlags_WidthFixed, 7*width);
+		ImGui::TableSetupColumn(Tr("Overhead (elements)"), ImGuiTableColumnFlags_WidthFixed, 12*width);
+		ImGui::TableSetupColumn(Tr("Overhead (bytes)"), ImGuiTableColumnFlags_WidthFixed, 12*width);
+		ImGui::TableSetupColumn(Tr("Overhead (%)"), ImGuiTableColumnFlags_WidthFixed, 5*width);
 
 		ImGui::TableHeadersRow();
 

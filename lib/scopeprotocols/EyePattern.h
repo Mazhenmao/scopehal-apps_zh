@@ -1,0 +1,265 @@
+/***********************************************************************************************************************
+*                                                                                                                      *
+* libscopeprotocols                                                                                                    *
+*                                                                                                                      *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
+* All rights reserved.                                                                                                 *
+*                                                                                                                      *
+* Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
+* following conditions are met:                                                                                        *
+*                                                                                                                      *
+*    * Redistributions of source code must retain the above copyright notice, this list of conditions, and the         *
+*      following disclaimer.                                                                                           *
+*                                                                                                                      *
+*    * Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the       *
+*      following disclaimer in the documentation and/or other materials provided with the distribution.                *
+*                                                                                                                      *
+*    * Neither the name of the author nor the names of any contributors may be used to endorse or promote products     *
+*      derived from this software without specific prior written permission.                                           *
+*                                                                                                                      *
+* THIS SOFTWARE IS PROVIDED BY THE AUTHORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED   *
+* TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL *
+* THE AUTHORS BE HELD LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES        *
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR       *
+* BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT *
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE       *
+* POSSIBILITY OF SUCH DAMAGE.                                                                                          *
+*                                                                                                                      *
+***********************************************************************************************************************/
+
+/**
+	@file
+	@author Andrew D. Zonenberg
+	@brief Declaration of EyePattern
+ */
+
+#ifndef EyePattern_h
+#define EyePattern_h
+
+#include "EyeMask.h"
+#include "../scopehal/EyeWaveform.h"
+
+class EyeIndexConstants
+{
+public:
+	int64_t		timescale;
+	int64_t		triggerPhase;
+	uint32_t	len;
+	uint32_t	numSamplesPerThread;
+};
+
+class EyeFilterConstants
+{
+public:
+	uint64_t	width;
+	uint64_t	halfwidth;
+	int64_t		timescale;
+	int64_t		triggerPhase;
+	int64_t		xoff;
+	uint32_t	wend;
+	uint32_t	cend;
+	uint32_t	xmax;
+	uint32_t	ymax;
+	uint32_t	mwidth;
+	uint32_t	numSamplesPerThread;
+	float		xtimescale;
+	float		yscale;
+	float		yoff;
+	float		xscale;
+};
+
+class EyePattern : public Filter
+{
+public:
+	EyePattern(const std::string& color);
+
+	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
+
+	static std::string GetProtocolName();
+
+	virtual bool ValidateChannel(size_t i, StreamDescriptor stream) override;
+	virtual DataLocation GetInputLocation() override;
+
+	virtual float GetVoltageRange(size_t stream) override;
+	virtual float GetOffset(size_t stream) override;
+
+	virtual void ClearSweeps() override;
+
+	EyeWaveform* ReallocateWaveform();
+
+	void SetWidth(size_t width)
+	{
+		if(m_width != width)
+		{
+			SetData(NULL, 0);
+			m_width = width;
+		}
+	}
+
+	void SetHeight(size_t height)
+	{
+		if(m_height != height)
+		{
+			SetData(NULL, 0);
+			m_height = height;
+		}
+	}
+
+	int64_t GetXOffset()
+	{ return m_xoff; }
+
+	float GetXScale()
+	{ return m_xscale; }
+
+	size_t GetWidth() const
+	{ return m_width; }
+
+	size_t GetHeight() const
+	{ return m_height; }
+
+	EyeMask& GetMask()
+	{ return m_mask; }
+
+	enum ClockPolarity
+	{
+		CLOCK_RISING	= 1,
+		CLOCK_FALLING	= 2,
+		CLOCK_BOTH 		= 3	//CLOCK_RISING | CLOCK_FALLING
+	};
+
+	enum RangeMode
+	{
+		RANGE_AUTO		= 0,
+		RANGE_FIXED		= 1
+	};
+
+	enum ClockAlignment
+	{
+		ALIGN_CENTER,
+		ALIGN_EDGE
+	};
+
+	enum UIMode
+	{
+		MODE_AUTO,
+		MODE_FIXED
+	};
+
+	PROTOCOL_DECODER_INITPROC(EyePattern)
+
+protected:
+	void DoMaskTest(EyeWaveform* cap);
+
+	void RecalculateUIWidth(EyeWaveform* cap);
+
+	void SparsePackedInnerLoop(
+		SparseAnalogWaveform* waveform,
+		int64_t* data,
+		size_t wend,
+		size_t cend,
+		int32_t xmax,
+		int32_t ymax,
+		float xtimescale,
+		float yscale,
+		float yoff
+		);
+
+	void DensePackedInnerLoop(
+		UniformAnalogWaveform* waveform,
+		int64_t* data,
+		size_t wend,
+		size_t cend,
+		int32_t xmax,
+		int32_t ymax,
+		float xtimescale,
+		float yscale,
+		float yoff
+		);
+
+	void DensePackedInnerLoopGPU(
+		vk::raii::CommandBuffer& cmdBuf,
+		std::shared_ptr<QueueHandle> queue,
+		UniformAnalogWaveform* waveform,
+		AcceleratorBuffer<int64_t>& data,
+		size_t wend,
+		size_t cend,
+		int32_t xmax,
+		int32_t ymax,
+		float xtimescale,
+		float yscale,
+		float yoff
+		);
+
+#ifdef __x86_64__
+	void DensePackedInnerLoopAVX2(
+		UniformAnalogWaveform* waveform,
+		int64_t* data,
+		size_t wend,
+		size_t cend,
+		int32_t xmax,
+		int32_t ymax,
+		float xtimescale,
+		float yscale,
+		float yoff
+		);
+
+	void DensePackedInnerLoopAVX2FMA(
+		UniformAnalogWaveform* waveform,
+		int64_t* data,
+		size_t wend,
+		size_t cend,
+		int32_t xmax,
+		int32_t ymax,
+		float xtimescale,
+		float yscale,
+		float yoff
+		);
+
+	void DensePackedInnerLoopAVX512F(
+		UniformAnalogWaveform* waveform,
+		int64_t* data,
+		size_t wend,
+		size_t cend,
+		int32_t xmax,
+		int32_t ymax,
+		float xtimescale,
+		float yscale,
+		float yoff
+		);
+#endif
+
+	size_t m_height;
+	size_t m_width;
+
+	int64_t m_xoff;
+	float m_xscale;
+	ClockAlignment m_lastClockAlign;
+
+	std::string m_saturationName;
+	std::string m_centerName;
+	std::string m_maskName;
+	std::string m_polarityName;
+	std::string m_vmodeName;
+	std::string m_rangeName;
+	std::string m_clockAlignName;
+	std::string m_rateModeName;
+	std::string m_rateName;
+	std::string m_numLevelsName;
+
+	EyeMask m_mask;
+
+	AcceleratorBuffer<int64_t> m_clockEdges;
+	AcceleratorBuffer<uint32_t> m_indexBuffer;
+
+	AcceleratorBuffer<int64_t>* m_clockEdgesMuxed;
+	AcceleratorBuffer<int64_t> m_normalizeMaxBuf;
+
+	std::shared_ptr<ComputePipeline> m_eyeComputePipeline;
+	std::shared_ptr<ComputePipeline> m_eyeNormalizeReduceComputePipeline;
+	std::shared_ptr<ComputePipeline> m_eyeNormalizeScaleComputePipeline;
+	std::shared_ptr<ComputePipeline> m_eyeIndexSearchPipeline;
+
+	size_t FindCenterOfMass(std::vector<float>& hist, size_t start, size_t end);
+};
+
+#endif

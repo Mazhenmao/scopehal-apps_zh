@@ -139,19 +139,19 @@ bool BERTOutputChannelDialog::DoRender()
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText("Instrument", &nickname);
+				ImGui::InputText(Tr("Instrument"), &nickname);
 			ImGui::EndDisabled();
 			HelpMarker("The instrument this channel was measured by");
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText("Hardware Channel", &index);
+				ImGui::InputText(Tr("Hardware Channel"), &index);
 			ImGui::EndDisabled();
 			HelpMarker("Physical channel number (starting from 1) on the instrument front panel");
 
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText("Hardware Name", &hwname);
+				ImGui::InputText(Tr("Hardware Name"), &hwname);
 			ImGui::EndDisabled();
 			HelpMarker("Hardware name for the channel (as used in the instrument API)");
 		}
@@ -161,7 +161,7 @@ bool BERTOutputChannelDialog::DoRender()
 	if(ImGui::CollapsingHeader("Display", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(TextInputWithImplicitApply("Nickname", m_displayName, m_committedDisplayName))
+		if(TextInputWithImplicitApply(Tr("Nickname"), m_displayName, m_committedDisplayName))
 			m_channel->SetDisplayName(m_committedDisplayName);
 
 		HelpMarker("Display name for the channel");
@@ -195,12 +195,12 @@ bool BERTOutputChannelDialog::DoRender()
 	if(ImGui::CollapsingHeader("PHY Control", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Checkbox("Enable", &m_enable))
+		if(ImGui::Checkbox(Tr("Enable"), &m_enable))
 			m_channel->Enable(m_enable);
 		HelpMarker("Enable the output driver");
 
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Checkbox("Invert", &m_invert))
+		if(ImGui::Checkbox(Tr("Invert"), &m_invert))
 			m_channel->SetInvert(m_invert);
 		HelpMarker("Invert polarity of the output");
 
@@ -209,11 +209,11 @@ bool BERTOutputChannelDialog::DoRender()
 			m_channel->SetDriveStrength(m_driveValues[m_driveIndex]);
 		HelpMarker("Peak-to-peak swing of the output (with no emphasis)");
 
-		if(ImGui::SliderFloat("Pre-cursor", &m_precursor, 0.0, 1.0, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+		if(ImGui::SliderFloat(Tr("Pre-cursor"), &m_precursor, 0.0, 1.0, "%.2f", ImGuiSliderFlags_AlwaysClamp))
 			m_channel->SetPreCursor(m_precursor);
 		HelpMarker("Pre-cursor FFE tap value");
 
-		if(ImGui::SliderFloat("Post-cursor", &m_postcursor, 0.0, 1.0, "%.2f", ImGuiSliderFlags_AlwaysClamp))
+		if(ImGui::SliderFloat(Tr("Post-cursor"), &m_postcursor, 0.0, 1.0, "%.2f", ImGuiSliderFlags_AlwaysClamp))
 			m_channel->SetPostCursor(m_postcursor);
 		HelpMarker("Post-cursor FFE tap value");
 

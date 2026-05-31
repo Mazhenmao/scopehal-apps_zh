@@ -101,8 +101,8 @@ bool FilterGraphErrorWindow::DoRender()
 	{
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
 
-		ImGui::TableSetupColumn("Channel", ImGuiTableColumnFlags_WidthFixed, 12*width);
-		ImGui::TableSetupColumn("Error", ImGuiTableColumnFlags_WidthStretch, 0);
+		ImGui::TableSetupColumn(Tr("Channel"), ImGuiTableColumnFlags_WidthFixed, 12*width);
+		ImGui::TableSetupColumn(Tr("Error"), ImGuiTableColumnFlags_WidthStretch, 0);
 		ImGui::TableHeadersRow();
 
 		for(auto f : m_nodesWithErrors)

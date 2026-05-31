@@ -196,12 +196,12 @@ bool RFGeneratorDialog::DoRender()
 			auto tname = transport->GetName();
 			auto tstring = transport->GetConnectionString();
 
-			ImGui::InputText("Make", &vendor[0], vendor.size());
-			ImGui::InputText("Model", &name[0], name.size());
-			ImGui::InputText("Serial", &serial[0], serial.size());
-			ImGui::InputText("Driver", &driver[0], driver.size());
-			ImGui::InputText("Transport", &tname[0], tname.size());
-			ImGui::InputText("Path", &tstring[0], tstring.size());
+			ImGui::InputText(Tr("Make"), &vendor[0], vendor.size());
+			ImGui::InputText(Tr("Model"), &name[0], name.size());
+			ImGui::InputText(Tr("Serial"), &serial[0], serial.size());
+			ImGui::InputText(Tr("Driver"), &driver[0], driver.size());
+			ImGui::InputText(Tr("Transport"), &tname[0], tname.size());
+			ImGui::InputText(Tr("Path"), &tstring[0], tstring.size());
 
 		ImGui::EndDisabled();
 	}
@@ -236,7 +236,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 	{
 		ImGui::PushID(chname.c_str());
 
-		if(ImGui::Checkbox("Output Enable", &m_uiState[i].m_outputEnabled))
+		if(ImGui::Checkbox(Tr("Output Enable"), &m_uiState[i].m_outputEnabled))
 			m_generator->SetChannelOutputEnable(i, m_uiState[i].m_outputEnabled);
 		HelpMarker("Turns the RF signal from this channel on or off");
 
@@ -249,7 +249,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 		if(sweepingPower)
 		{
 			ImGui::BeginDisabled();
-			ImGui::InputText("Level", &p);
+			ImGui::InputText(Tr("Level"), &p);
 			ImGui::EndDisabled();
 
 			HelpMarker(
@@ -269,7 +269,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 		if(sweepingFrequency)
 		{
 			ImGui::BeginDisabled();
-			ImGui::InputText("Frequency", &f);
+			ImGui::InputText(Tr("Frequency"), &f);
 			ImGui::EndDisabled();
 
 			HelpMarker(
@@ -365,7 +365,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 		{
 			if(ImGui::TreeNode("Analog Modulation"))
 			{
-				if(ImGui::Checkbox("Modulation Enable", &m_uiState[i].m_analogModEnabled))
+				if(ImGui::Checkbox(Tr("Modulation Enable"), &m_uiState[i].m_analogModEnabled))
 					m_generator->SetAnalogModulationEnable(i, m_uiState[i].m_analogModEnabled);
 				HelpMarker("Turn analog modulation on or off");
 
@@ -378,7 +378,7 @@ void RFGeneratorDialog::DoChannel(size_t i)
 				}
 				if(ImGui::TreeNode("FM"))
 				{
-					if(ImGui::Checkbox("FM Enable", &m_uiState[i].m_fmEnabled))
+					if(ImGui::Checkbox(Tr("FM Enable"), &m_uiState[i].m_fmEnabled))
 						m_generator->SetAnalogFMEnable(i, m_uiState[i].m_fmEnabled);
 					HelpMarker("Turn analog frequency modulation on or off");
 

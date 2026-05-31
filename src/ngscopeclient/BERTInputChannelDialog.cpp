@@ -179,19 +179,19 @@ bool BERTInputChannelDialog::DoRender()
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText("Instrument", &nickname);
+			ImGui::InputText(Tr("Instrument"), &nickname);
 		ImGui::EndDisabled();
 		HelpMarker("The instrument this channel was measured by");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText("Hardware Channel", &index);
+			ImGui::InputText(Tr("Hardware Channel"), &index);
 		ImGui::EndDisabled();
 		HelpMarker("Physical channel number (starting from 1) on the instrument front panel");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText("Hardware Name", &hwname);
+			ImGui::InputText(Tr("Hardware Name"), &hwname);
 		ImGui::EndDisabled();
 		HelpMarker("Hardware name for the channel (as used in the instrument API)");
 	}
@@ -200,7 +200,7 @@ bool BERTInputChannelDialog::DoRender()
 	if(ImGui::CollapsingHeader("Display", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(TextInputWithImplicitApply("Nickname", m_displayName, m_committedDisplayName))
+		if(TextInputWithImplicitApply(Tr("Nickname"), m_displayName, m_committedDisplayName))
 			m_channel->SetDisplayName(m_committedDisplayName);
 
 		HelpMarker("Display name for the channel");
@@ -222,7 +222,7 @@ bool BERTInputChannelDialog::DoRender()
 	if(ImGui::CollapsingHeader("Receiver", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Checkbox("Invert", &m_invert))
+		if(ImGui::Checkbox(Tr("Invert"), &m_invert))
 			m_channel->SetInvert(m_invert);
 		HelpMarker("Inverts the polarity of the input");
 
@@ -239,7 +239,7 @@ bool BERTInputChannelDialog::DoRender()
 	{
 		ImGui::BeginDisabled();
 			auto lock = m_channel->GetCdrLockState();
-			ImGui::Checkbox("Lock", &lock);
+			ImGui::Checkbox(Tr("Lock"), &lock);
 		ImGui::EndDisabled();
 		HelpMarker(
 			"Indicates whether the clock recovery loop and PRBS checker are locked to incoming data.\n"
@@ -295,7 +295,7 @@ bool BERTInputChannelDialog::DoRender()
 		}
 
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::SliderFloat("Sample X", &m_sampleX, -uiWidth/2, uiWidth/2))
+		if(ImGui::SliderFloat(Tr("Sample X"), &m_sampleX, -uiWidth/2, uiWidth/2))
 		{
 			m_channel->SetBERSamplingPoint(m_sampleX * 1e3, m_sampleY);
 			m_committedSampleX = m_sampleX;
@@ -303,7 +303,7 @@ bool BERTInputChannelDialog::DoRender()
 		HelpMarker("Sampling time for BER measurements, in ps relative to center of UI");
 
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::SliderFloat("Sample Y", &m_sampleY, -0.2, 0.2))
+		if(ImGui::SliderFloat(Tr("Sample Y"), &m_sampleY, -0.2, 0.2))
 		{
 			m_channel->SetBERSamplingPoint(m_sampleX * 1e3, m_sampleY);
 			m_committedSampleY = m_sampleY;
@@ -311,7 +311,7 @@ bool BERTInputChannelDialog::DoRender()
 		HelpMarker("Sampling offset for BER measurements, in V relative to center of UI");
 
 		ImGui::SetNextItemWidth(width);
-		if(ImGui::Button("Horz Bathtub"))
+		if(ImGui::Button(Tr("Horz Bathtub")))
 		{
 			//Make sure we have a plot to see the data in
 			m_parent->AddAreaForStreamIfNotAlreadyVisible(m_channel->GetHBathtubStream());
@@ -327,11 +327,11 @@ bool BERTInputChannelDialog::DoRender()
 		if(m_channel->IsHBathtubScanInProgress())
 			ImGui::ProgressBar(m_channel->GetScanProgress(), ImVec2(2*width, 0));
 		else
-			ImGui::Text("Estimated %s", fs.PrettyPrint(m_channel->GetExpectedBathtubCaptureTime(), 5).c_str());
+			ImGui::Text(Tr("Estimated %s"), fs.PrettyPrint(m_channel->GetExpectedBathtubCaptureTime(), 5).c_str());
 
 		HelpMarker("Acquire a single horizontal bathtub measurement");
 
-		if(ImGui::Button("Eye"))
+		if(ImGui::Button(Tr("Eye")))
 		{
 			//Make sure we have a plot to see the data in
 			m_parent->AddAreaForStreamIfNotAlreadyVisible(m_channel->GetEyeStream());
@@ -345,7 +345,7 @@ bool BERTInputChannelDialog::DoRender()
 		if(m_channel->IsEyeScanInProgress())
 			ImGui::ProgressBar(m_channel->GetScanProgress(), ImVec2(2*width, 0));
 		else
-			ImGui::Text("Estimated %s", fs.PrettyPrint(m_channel->GetExpectedEyeCaptureTime(), 5).c_str());
+			ImGui::Text(Tr("Estimated %s"), fs.PrettyPrint(m_channel->GetExpectedEyeCaptureTime(), 5).c_str());
 		HelpMarker("Acquire a single eye pattern measurement");
 
 		//Input path
@@ -371,7 +371,7 @@ bool BERTInputChannelDialog::DoRender()
 				LogTrace("file dialog is already open, ignoring additional button click\n");
 		}
 		ImGui::SameLine();
-		ImGui::TextUnformatted("Mask file");
+		ImGui::TextUnformatted(Tr("Mask file"));
 		HelpMarker("Mask data file for pass/fail testing");
 	}
 

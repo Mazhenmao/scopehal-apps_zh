@@ -163,11 +163,6 @@ DisplayedChannel::~DisplayedChannel()
  */
 bool DisplayedChannel::UpdateSize(ImVec2 newSize, MainWindow* top)
 {
-	//Sanity check and bail if size is negative
-	//(can happen during the first frame after loading older scopesessions when imgui padding has changed)
-	if( (newSize.x < 0) || (newSize.y < 0) )
-		return false;
-
 	size_t x = newSize.x;
 	size_t y = newSize.y;
 
@@ -748,7 +743,7 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 	float heightPerArea = totalHeightAvailable / numAreas;
 	float totalSpacing = (numAreas-1)*spacing;
 	float unspacedHeightPerArea = floor( (totalHeightAvailable - totalSpacing) / numAreas);
-	unspacedHeightPerArea -= (ImGui::GetStyle().FramePadding.y + ImGui::GetStyle().ItemSpacing.y);
+	unspacedHeightPerArea -= ImGui::GetStyle().FramePadding.y;
 	if(numAreas == 1)
 		unspacedHeightPerArea = heightPerArea;
 
@@ -775,14 +770,10 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 	float vtop = 0.0f;
 
 	auto cpos = ImGui::GetCursorPos();
-	if(ImGui::BeginChild(ImGui::GetID(this), ImVec2(clientArea.x/* - yAxisWidthSpaced*/, unspacedHeightPerArea)))
+	if(ImGui::BeginChild(ImGui::GetID(this), ImVec2(clientArea.x - yAxisWidthSpaced, unspacedHeightPerArea)))
 	{
-		auto startCursor = ImGui::GetCursorScreenPos();
-		auto pos = ImGui::GetWindowPos();
-
-		//Allocate room for the Y axis ourselves since it's no longer a child window of its own in imgui
 		auto csize = ImGui::GetContentRegionAvail();
-		csize.x -= yAxisWidthSpaced;
+		auto pos = ImGui::GetWindowPos();
 
 		m_width = csize.x;
 
@@ -829,25 +820,14 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 
 		//Draw control widgets
 		m_mouseOverButton = false;
-		ImGui::SetCursorScreenPos(startCursor);
+		ImGui::SetCursorPos(ImGui::GetWindowContentRegionMin());
 		ImGui::BeginGroup();
 
 			for(size_t i=0; i<m_displayedChannels.size(); i++)
 				ChannelButton(m_displayedChannels[i], i);
 
 		ImGui::EndGroup();
-
-		//Draw the vertical scale on the right side of the plot
-		ImGui::SetCursorScreenPos(ImVec2(startCursor.x + csize.x, startCursor.y));
-		RenderYAxis(
-			ImVec2(yAxisWidth, unspacedHeightPerArea),
-			gridmap,
-			vbot,
-			vtop);
-
-		//Render Y axis cursors over everything, including the Y axis
-		ImGui::SetCursorScreenPos(startCursor);
-		RenderYAxisCursors(pos, csize, yAxisWidth);
+		ImGui::SetNextItemAllowOverlap();
 	}
 	else
 		m_mouseOverButton = false;
@@ -856,6 +836,17 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 	//Handle help messages
 	if(ImGui::IsItemHovered() && !m_mouseOverButton)
 		m_parent->AddStatusHelp("mouse_wheel", "Zoom horizontal axis");
+
+	//Draw the vertical scale on the right side of the plot
+	RenderYAxis(ImVec2(yAxisWidth, unspacedHeightPerArea), gridmap, vbot, vtop);
+
+	//Render the Y axis cursors (if we have any) over the top of everything else
+	{
+		auto csize = ImGui::GetContentRegionAvail();
+		auto pos = ImGui::GetWindowPos();
+		ImGui::SetCursorPos(cpos);
+		RenderYAxisCursors(pos, csize, yAxisWidth);
+	}
 
 	//Cursor should now be at end of window
 	ImGui::SetCursorPos(ImVec2(cpos.x, cpos.y + unspacedHeightPerArea));
@@ -890,81 +881,81 @@ void WaveformArea::RenderYAxisCursors(ImVec2 pos, ImVec2 size, float yAxisWidth)
 		return;
 	}
 
-	auto list = ImGui::GetWindowDrawList();
-
-	auto& prefs = m_parent->GetSession().GetPreferences();
-	auto cursor0_color = prefs.GetColor("Appearance.Cursors.cursor_1_color");
-	auto cursor1_color = prefs.GetColor("Appearance.Cursors.cursor_2_color");
-	auto fill_color = prefs.GetColor("Appearance.Cursors.cursor_fill_color");
-	auto font = m_parent->GetFontPref("Appearance.Cursors.label_font");
-	ImGui::PushFont(font.first, font.second);
-
-	float ypos0 = round(YAxisUnitsToYPosition(m_yAxisCursorPositions[0]));
-	float ypos1 = round(YAxisUnitsToYPosition(m_yAxisCursorPositions[1]));
-
-	//Fill between if dual cursor
-	if(m_yAxisCursorMode == Y_CURSOR_DUAL)
-		list->AddRectFilled(ImVec2(pos.x, ypos0), ImVec2(pos.x + size.x + yAxisWidth, ypos1), fill_color);
-
-	//First cursor
-	list->AddLine(ImVec2(pos.x, ypos0), ImVec2(pos.x + size.x + yAxisWidth, ypos0), cursor0_color, 1);
-
-	//Text
-	//Anchor bottom left at the cursor
-	auto str = string("Y1: ") + m_yAxisUnit.PrettyPrint(m_yAxisCursorPositions[0]);
-	auto tsize = ImGui::CalcTextSize(str.c_str());
-	float padding = 2;
-	float wrounding = 2;
-	float textTop = ypos0 - (3*padding + tsize.y);
-	float plotRight = pos.x + size.x;
-	float textLeft = plotRight - (2*padding + tsize.x);
-	list->AddRectFilled(
-		ImVec2(textLeft, textTop - padding ),
-		ImVec2(plotRight, ypos0 - padding),
-		ImGui::GetColorU32(ImGuiCol_PopupBg),
-		wrounding);
-	list->AddText(
-		ImVec2(textLeft + padding, textTop + padding),
-		cursor0_color,
-		str.c_str());
-
-	//Interaction processing for first cursor
-	DoCursor(0, DRAG_STATE_Y_CURSOR0);
-
-	//Second cursor
-	if(m_yAxisCursorMode == Y_CURSOR_DUAL)
+	//Create a child window for all of our drawing
+	//(this is needed so we're above the WaveformArea content in z order, but behind popup windows)
+	if(ImGui::BeginChild("ycursors", size, ImGuiChildFlags_None, ImGuiWindowFlags_NoInputs))
 	{
-		list->AddLine(ImVec2(pos.x, ypos1), ImVec2(pos.x + size.x + yAxisWidth, ypos1), cursor1_color, 1);
+		auto list = ImGui::GetWindowDrawList();
 
-		float delta = m_yAxisCursorPositions[0] - m_yAxisCursorPositions[1];
-		str = string("Y2: ") + m_yAxisUnit.PrettyPrint(m_yAxisCursorPositions[1]) + "\n" +
-			"ΔY = " + m_yAxisUnit.PrettyPrint(delta);
+		auto& prefs = m_parent->GetSession().GetPreferences();
+		auto cursor0_color = prefs.GetColor("Appearance.Cursors.cursor_1_color");
+		auto cursor1_color = prefs.GetColor("Appearance.Cursors.cursor_2_color");
+		auto fill_color = prefs.GetColor("Appearance.Cursors.cursor_fill_color");
+		auto font = m_parent->GetFontPref("Appearance.Cursors.label_font");
+		ImGui::PushFont(font.first, font.second);
+
+		float ypos0 = round(YAxisUnitsToYPosition(m_yAxisCursorPositions[0]));
+		float ypos1 = round(YAxisUnitsToYPosition(m_yAxisCursorPositions[1]));
+
+		//Fill between if dual cursor
+		if(m_yAxisCursorMode == Y_CURSOR_DUAL)
+			list->AddRectFilled(ImVec2(pos.x, ypos0), ImVec2(pos.x + size.x, ypos1), fill_color);
+
+		//First cursor
+		list->AddLine(ImVec2(pos.x, ypos0), ImVec2(pos.x + size.x, ypos0), cursor0_color, 1);
 
 		//Text
-		tsize = ImGui::CalcTextSize(str.c_str());
-		textTop = ypos1 - (3*padding + tsize.y);
-		textLeft = plotRight - (2*padding + tsize.x);
+		//Anchor bottom left at the cursor
+		auto str = string("Y1: ") + m_yAxisUnit.PrettyPrint(m_yAxisCursorPositions[0]);
+		auto tsize = ImGui::CalcTextSize(str.c_str());
+		float padding = 2;
+		float wrounding = 2;
+		float textTop = ypos0 - (3*padding + tsize.y);
+		float plotRight = pos.x + size.x - yAxisWidth;
+		float textLeft = plotRight - (2*padding + tsize.x);
 		list->AddRectFilled(
 			ImVec2(textLeft, textTop - padding ),
-			ImVec2(plotRight, ypos1 - padding),
+			ImVec2(plotRight, ypos0 - padding),
 			ImGui::GetColorU32(ImGuiCol_PopupBg),
 			wrounding);
 		list->AddText(
 			ImVec2(textLeft + padding, textTop + padding),
-			cursor1_color,
+			cursor0_color,
 			str.c_str());
 
-		//Interaction processing for second cursor
-		DoCursor(1, DRAG_STATE_Y_CURSOR1);
+		//Second cursor
+		if(m_yAxisCursorMode == Y_CURSOR_DUAL)
+		{
+			list->AddLine(ImVec2(pos.x, ypos1), ImVec2(pos.x + size.x, ypos1), cursor1_color, 1);
+
+			float delta = m_yAxisCursorPositions[0] - m_yAxisCursorPositions[1];
+			str = string("Y2: ") + m_yAxisUnit.PrettyPrint(m_yAxisCursorPositions[1]) + "\n" +
+				"ΔY = " + m_yAxisUnit.PrettyPrint(delta);
+
+			//Text
+			tsize = ImGui::CalcTextSize(str.c_str());
+			textTop = ypos1 - (3*padding + tsize.y);
+			textLeft = plotRight - (2*padding + tsize.x);
+			list->AddRectFilled(
+				ImVec2(textLeft, textTop - padding ),
+				ImVec2(plotRight, ypos1 - padding),
+				ImGui::GetColorU32(ImGuiCol_PopupBg),
+				wrounding);
+			list->AddText(
+				ImVec2(textLeft + padding, textTop + padding),
+				cursor1_color,
+				str.c_str());
+		}
+
+		//not dragging if we no longer have a second cursor
+		else if(m_dragState == DRAG_STATE_Y_CURSOR1)
+			m_dragState = DRAG_STATE_NONE;
+
+		//TODO: text for value readouts, in-band power, etc?
+
+		ImGui::PopFont();
 	}
-
-	//not dragging if we no longer have a second cursor
-	else if(m_dragState == DRAG_STATE_Y_CURSOR1)
-		m_dragState = DRAG_STATE_NONE;
-
-	//TODO: text for value readouts, in-band power, etc?
-
-	ImGui::PopFont();
+	ImGui::EndChild();
 
 	//Default help text related to cursors (may change if we're over a cursor)
 	if(ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
@@ -977,6 +968,12 @@ void WaveformArea::RenderYAxisCursors(ImVec2 pos, ImVec2 size, float yAxisWidth)
 	}
 	if( (m_dragState == DRAG_STATE_Y_CURSOR0) || (m_dragState == DRAG_STATE_Y_CURSOR1) )
 		m_parent->AddStatusHelp("mouse_lmb_drag", "Move cursor");
+
+	//Child window doesn't get mouse events (this flag is needed so we can pass mouse events to the WaveformArea's)
+	//So we have to do all of our interaction processing inside the top level window
+	DoCursor(0, DRAG_STATE_Y_CURSOR0);
+	if(m_yAxisCursorMode == Y_CURSOR_DUAL)
+		DoCursor(1, DRAG_STATE_Y_CURSOR1);
 
 	//If not currently dragging, a click places cursor 0 and starts dragging cursor 1 (if enabled)
 	//Don't process this if a popup is open
@@ -1076,7 +1073,7 @@ void WaveformArea::PlotContextMenu()
 		//If we right clicked on or very close to a marker, show "delete" menu instead
 		if(hitMarker)
 		{
-			if(ImGui::MenuItem("Delete"))
+			if(ImGui::MenuItem(Tr("Delete")))
 			{
 				markers.erase(markers.begin() + selectedMarker);
 				m_parent->GetSession().OnMarkerChanged();
@@ -1086,27 +1083,27 @@ void WaveformArea::PlotContextMenu()
 		//Otherwise, normal GUI context menu
 		else
 		{
-			if(ImGui::BeginMenu("Cursors"))
+			if(ImGui::BeginMenu(Tr("Cursors")))
 			{
-				if(ImGui::BeginMenu("X axis"))
+				if(ImGui::BeginMenu(Tr("X axis")))
 				{
-					if(ImGui::MenuItem("None", nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_NONE)))
+					if(ImGui::MenuItem(Tr("None"), nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_NONE)))
 						m_group->m_xAxisCursorMode = WaveformGroup::X_CURSOR_NONE;
-					if(ImGui::MenuItem("Single", nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_SINGLE)))
+					if(ImGui::MenuItem(Tr("Single"), nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_SINGLE)))
 						m_group->m_xAxisCursorMode = WaveformGroup::X_CURSOR_SINGLE;
-					if(ImGui::MenuItem("Dual", nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_DUAL)))
+					if(ImGui::MenuItem(Tr("Dual"), nullptr, (m_group->m_xAxisCursorMode == WaveformGroup::X_CURSOR_DUAL)))
 						m_group->m_xAxisCursorMode = WaveformGroup::X_CURSOR_DUAL;
 
 					ImGui::EndMenu();
 				}
 
-				if(ImGui::BeginMenu("Y axis"))
+				if(ImGui::BeginMenu(Tr("Y axis")))
 				{
-					if(ImGui::MenuItem("None", nullptr, (m_yAxisCursorMode == Y_CURSOR_NONE)))
+					if(ImGui::MenuItem(Tr("None"), nullptr, (m_yAxisCursorMode == Y_CURSOR_NONE)))
 						m_yAxisCursorMode = Y_CURSOR_NONE;
-					if(ImGui::MenuItem("Single", nullptr, (m_yAxisCursorMode == Y_CURSOR_SINGLE)))
+					if(ImGui::MenuItem(Tr("Single"), nullptr, (m_yAxisCursorMode == Y_CURSOR_SINGLE)))
 						m_yAxisCursorMode = Y_CURSOR_SINGLE;
-					if(ImGui::MenuItem("Dual", nullptr, (m_yAxisCursorMode == Y_CURSOR_DUAL)))
+					if(ImGui::MenuItem(Tr("Dual"), nullptr, (m_yAxisCursorMode == Y_CURSOR_DUAL)))
 						m_yAxisCursorMode = Y_CURSOR_DUAL;
 
 					ImGui::EndMenu();
@@ -1115,7 +1112,7 @@ void WaveformArea::PlotContextMenu()
 				ImGui::EndMenu();
 			}
 
-			if(ImGui::MenuItem("Add Marker"))
+			if(ImGui::MenuItem(Tr("Add Marker")))
 			{
 				auto& session = m_parent->GetSession();
 				session.AddMarker(Marker(GetWaveformTimestamp(), m_lastRightClickOffset, session.GetNextMarkerName()));
@@ -1284,10 +1281,6 @@ void WaveformArea::RenderEyeWaveform(shared_ptr<DisplayedChannel> channel, ImVec
 		return;
 
 	auto list = ImGui::GetWindowDrawList();
-
-	//If size is implausible, bail out
-	if( (size.x <= 0) || (size.y <= 0) )
-		return;
 
 	//Mark the waveform as resized
 	if(channel->UpdateSize(size, m_parent))
@@ -2783,11 +2776,12 @@ void WaveformArea::RenderGrid(ImVec2 start, ImVec2 size, map<float, float>& grid
  */
 void WaveformArea::RenderYAxis(ImVec2 size, map<float, float>& gridmap, float vbot, float vtop)
 {
+	ImGui::SameLine(0, 0);
 	ImGui::BeginChild("yaxis", size);
 
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-	auto origin = ImGui::GetWindowPos();
 
+	auto origin = ImGui::GetWindowPos();
 	float ytop = origin.y;
 	float ybot = origin.y + size.y;
 
@@ -2811,7 +2805,7 @@ void WaveformArea::RenderYAxis(ImVec2 size, map<float, float>& gridmap, float vb
 
 	if(ImGui::BeginPopupContextWindow())
 	{
-		if(ImGui::MenuItem("Autofit"))
+		if(ImGui::MenuItem(Tr("Autofit")))
 			AutofitVertical();
 		ImGui::EndPopup();
 	}
@@ -2957,7 +2951,7 @@ void WaveformArea::RenderBERSamplingPoint(ImVec2 /*start*/, ImVec2 /*size*/)
 			ImVec2(x-delta, y)
 		};
 
-		draw_list->AddPolyline(points, 5,  ColorFromString(stream.m_channel->m_displaycolor), 0, weight);
+		draw_list->AddPolyline(points, 5,  ColorFromString(stream.m_channel->m_displaycolor), weight, ImDrawFlags_None);
 
 		if(m_dragState != DRAG_STATE_BER_BOTH)
 		{
@@ -3048,10 +3042,10 @@ void WaveformArea::RenderEyePatternTooltip(ImVec2 start, ImVec2 size)
 		if(m_mouseOverBERTarget && bchan)
 		{
 			auto rtber = bchan->GetScalarValue(BERTInputChannel::STREAM_BER);
-			ImGui::Text("Realtime BER: %s\nEye BER: %s", rtunit.PrettyPrint(rtber).c_str(), unit.PrettyPrint(ber).c_str());
+			ImGui::Text(Tr("Realtime BER: %s\nEye BER: %s"), rtunit.PrettyPrint(rtber).c_str(), unit.PrettyPrint(ber).c_str());
 		}
 		else
-			ImGui::Text("BER: %s", unit.PrettyPrint(ber).c_str());
+			ImGui::Text(Tr("BER: %s"), unit.PrettyPrint(ber).c_str());
 
 		ImGui::PopTextWrapPos();
 		ImGui::EndTooltip();
@@ -4027,7 +4021,7 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
 		ImGui::SetDragDropPayload("Waveform", &desc, sizeof(desc));
 
 		//Preview of what we're dragging
-		ImGui::Text("Drag %s", fqname.c_str());
+		ImGui::Text(Tr("Drag %s"), fqname.c_str());
 
 		ImGui::EndDragDropSource();
 	}
@@ -4127,14 +4121,14 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
 	//Context menu
 	if(ImGui::BeginPopupContextItem())
 	{
-		if(ImGui::MenuItem("Delete"))
+		if(ImGui::MenuItem(Tr("Delete")))
 			RemoveStream(index);
 		ImGui::Separator();
 
 		//Color ramp if it's a density plot
 		if(ddata)
 		{
-			if(ImGui::BeginMenu("Color ramp"))
+			if(ImGui::BeginMenu(Tr("Color ramp")))
 			{
 				auto& gradients = m_parent->GetEyeGradients();
 
@@ -4172,7 +4166,7 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
 		}
 
 		bool persist = chan->IsPersistenceEnabled();
-		if(ImGui::MenuItem("Persistence", nullptr, persist))
+		if(ImGui::MenuItem(Tr("Persistence"), nullptr, persist))
 			chan->SetPersistenceEnabled(!persist);
 		ImGui::Separator();
 
@@ -4187,19 +4181,19 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
  */
 void WaveformArea::FilterMenu(shared_ptr<DisplayedChannel> chan)
 {
-	FilterSubmenu(chan, "Bus", Filter::CAT_BUS);
-	FilterSubmenu(chan, "Clocking", Filter::CAT_CLOCK);
-	FilterSubmenu(chan, "Export", Filter::CAT_EXPORT);
-	FilterSubmenu(chan, "Generation", Filter::CAT_GENERATION);
-	FilterSubmenu(chan, "Math", Filter::CAT_MATH);
-	FilterSubmenu(chan, "Measurement", Filter::CAT_MEASUREMENT);
-	FilterSubmenu(chan, "Memory", Filter::CAT_MEMORY);
-	FilterSubmenu(chan, "Miscellaneous", Filter::CAT_MISC);
-	FilterSubmenu(chan, "Optical", Filter::CAT_OPTICAL);
-	FilterSubmenu(chan, "Power", Filter::CAT_POWER);
-	FilterSubmenu(chan, "RF", Filter::CAT_RF);
-	FilterSubmenu(chan, "Serial", Filter::CAT_SERIAL);
-	FilterSubmenu(chan, "Signal integrity", Filter::CAT_ANALYSIS);
+	FilterSubmenu(chan, Tr("Bus"), Filter::CAT_BUS);
+	FilterSubmenu(chan, Tr("Clocking"), Filter::CAT_CLOCK);
+	FilterSubmenu(chan, Tr("Export"), Filter::CAT_EXPORT);
+	FilterSubmenu(chan, Tr("Generation"), Filter::CAT_GENERATION);
+	FilterSubmenu(chan, Tr("Math"), Filter::CAT_MATH);
+	FilterSubmenu(chan, Tr("Measurement"), Filter::CAT_MEASUREMENT);
+	FilterSubmenu(chan, Tr("Memory"), Filter::CAT_MEMORY);
+	FilterSubmenu(chan, Tr("Miscellaneous"), Filter::CAT_MISC);
+	FilterSubmenu(chan, Tr("Optical"), Filter::CAT_OPTICAL);
+	FilterSubmenu(chan, Tr("Power"), Filter::CAT_POWER);
+	FilterSubmenu(chan, Tr("RF"), Filter::CAT_RF);
+	FilterSubmenu(chan, Tr("Serial_p"), Filter::CAT_SERIAL);
+	FilterSubmenu(chan, Tr("Signal integrity"), Filter::CAT_ANALYSIS);
 }
 
 /**
@@ -4240,10 +4234,10 @@ void WaveformArea::FilterSubmenu(shared_ptr<DisplayedChannel> chan, const string
 			{
 				if(ImGui::BeginMenu(fname.c_str(), valid))
 				{
-					if(ImGui::MenuItem("Trend"))
+					if(ImGui::MenuItem(Tr("Trend")))
 						m_parent->CreateFilter(fname, this, stream, false);
 
-					if(ImGui::MenuItem("Summary"))
+					if(ImGui::MenuItem(Tr("Summary")))
 						m_parent->CreateFilter(fname, this, stream, false, false);
 
 					ImGui::EndMenu();

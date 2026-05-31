@@ -1,0 +1,1 @@
+//We want each variable defined only if CMake found it so we can #ifdef instead of #if

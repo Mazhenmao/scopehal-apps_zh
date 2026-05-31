@@ -313,7 +313,7 @@ string MainWindow::NameNewWaveformGroup()
 	{
 		//Avoid colliding, check if name is in use and skip if so
 		int id = (m_nextWaveformGroup ++);
-		auto nextid = string("Waveform Group ") + to_string(id);
+		auto nextid = string(Tr("Waveform Group ")) + to_string(id);
 		LogTrace("Candidate ID is %s\n", nextid.c_str());
 
 		//This is ugly but we dont currently have an index for this.
@@ -833,7 +833,7 @@ void MainWindow::Toolbar()
 	float y = ImGui::GetCursorPosY();
 	ImGui::SetCursorPosY(y + 5);
 	ImGui::SetNextItemWidth(6 * toolbarHeight);
-	if(ImGui::SliderFloat("Intensity", &m_traceAlpha, 0, 0.75, "", ImGuiSliderFlags_Logarithmic))
+	if(ImGui::SliderFloat(Tr("Intensity"), &m_traceAlpha, 0, 0.75, "", ImGuiSliderFlags_Logarithmic))
 		SetNeedRender();
 
 	ImGui::End();
@@ -893,9 +893,9 @@ void MainWindow::DoTriggerDropdown(const char* action, shared_ptr<TriggerGroup>&
 	if(ImGui::BeginTable("groups", 3, flags))
 	{
 		float width = ImGui::GetFontSize();
-		ImGui::TableSetupColumn("Default", ImGuiTableColumnFlags_WidthFixed, 4*width);
-		ImGui::TableSetupColumn("Group", ImGuiTableColumnFlags_WidthFixed, 12*width);
-		ImGui::TableSetupColumn("Actions", ImGuiTableColumnFlags_WidthFixed, 8*width);
+		ImGui::TableSetupColumn(Tr("Default"), ImGuiTableColumnFlags_WidthFixed, 4*width);
+		ImGui::TableSetupColumn(Tr("Group"), ImGuiTableColumnFlags_WidthFixed, 12*width);
+		ImGui::TableSetupColumn(Tr("Actions"), ImGuiTableColumnFlags_WidthFixed, 8*width);
 		ImGui::TableHeadersRow();
 
 		auto groups = m_session.GetTriggerGroups();
@@ -906,7 +906,7 @@ void MainWindow::DoTriggerDropdown(const char* action, shared_ptr<TriggerGroup>&
 
 			//Default checkbox
 			ImGui::TableSetColumnIndex(0);
-			ImGui::Checkbox("###default", &g->m_default);
+			ImGui::Checkbox(Tr("###default"), &g->m_default);
 
 			//Group name
 			ImGui::TableSetColumnIndex(1);
@@ -923,7 +923,7 @@ void MainWindow::DoTriggerDropdown(const char* action, shared_ptr<TriggerGroup>&
 		ImGui::PushID("all");
 		ImGui::TableNextRow(ImGuiTableRowFlags_None);
 		ImGui::TableSetColumnIndex(1);
-		ImGui::TextUnformatted("All");
+		ImGui::TextUnformatted(Tr("All"));
 
 		//Action buttons
 		ImGui::TableSetColumnIndex(2);
@@ -1037,7 +1037,7 @@ void MainWindow::ToolbarButtons()
 		if(m_tutorialDialog && (m_tutorialDialog->GetCurrentStep() == TutorialWizard::TUTORIAL_03_ACQUIRE) )
 			m_tutorialDialog->AdvanceToNextStep();
 	}
-	Dialog::Tooltip("Arm the trigger in normal mode");
+	Dialog::Tooltip(Tr("Arm the trigger in normal mode"));
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1057,7 +1057,7 @@ void MainWindow::ToolbarButtons()
 
 	if(ImGui::ImageButton("trigger-single", GetTexture("trigger-single"), buttonsize))
 		m_session.ArmTrigger(TriggerGroup::TRIGGER_TYPE_SINGLE);
-	Dialog::Tooltip("Arm the trigger in one-shot mode");
+	Dialog::Tooltip(Tr("Arm the trigger in one-shot mode"));
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1067,7 +1067,7 @@ void MainWindow::ToolbarButtons()
 	ImGui::SameLine(0.0, 0.0);
 	if(ImGui::ImageButton("trigger-force", GetTexture("trigger-force"), buttonsize))
 		m_session.ArmTrigger(TriggerGroup::TRIGGER_TYPE_FORCED);
-	Dialog::Tooltip("Acquire a waveform immediately, ignoring the trigger condition");
+	Dialog::Tooltip(Tr("Acquire a waveform immediately, ignoring the trigger condition"));
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1077,7 +1077,7 @@ void MainWindow::ToolbarButtons()
 	ImGui::SameLine(0.0, 0.0);
 	if(ImGui::ImageButton("trigger-stop", GetTexture("trigger-stop"), buttonsize))
 		m_session.StopTrigger();
-	Dialog::Tooltip("Stop acquiring waveforms");
+	Dialog::Tooltip(Tr("Stop acquiring waveforms"));
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1096,7 +1096,7 @@ void MainWindow::ToolbarButtons()
 	}
 	if(hasHist)
 		ImGui::EndDisabled();
-	Dialog::Tooltip("Show waveform history window");
+	Dialog::Tooltip(Tr("Show waveform history window"));
 
 	//Refresh scope settings
 	ImGui::SameLine();
@@ -1108,9 +1108,9 @@ void MainWindow::ToolbarButtons()
 		ClearPersistence();
 	}
 	Dialog::Tooltip(
-		"Flush PC-side cached instrument state and reload configuration from the instrument.\n\n"
+	 Tr("Flush PC-side cached instrument state and reload configuration from the instrument.\n\n"
 		"This will cause a brief slowdown of the application, but can be used to re-sync when\n"
-		"changes are made on the instrument front panel that ngscopeclient does not detect."
+		"changes are made on the instrument front panel that ngscopeclient does not detect.")
 		);
 
 	//View settings
@@ -1120,7 +1120,7 @@ void MainWindow::ToolbarButtons()
 		ClearPersistence();
 		m_session.ClearSweeps();
 	}
-	Dialog::Tooltip("Clear waveform persistence, eye patterns, and accumulated filter block state");
+	Dialog::Tooltip(Tr("Clear waveform persistence, eye patterns, and accumulated filter block state"));
 
 	//Fullscreen toggle
 	ImGui::SameLine(0.0, 0.0);
@@ -1128,13 +1128,13 @@ void MainWindow::ToolbarButtons()
 	{
 		if(ImGui::ImageButton("fullscreen-exit", GetTexture("fullscreen-exit"), buttonsize))
 			SetFullscreen(false);
-		Dialog::Tooltip("Leave fullscreen mode");
+		Dialog::Tooltip(Tr("Leave fullscreen mode"));
 	}
 	else
 	{
 		if(ImGui::ImageButton("fullscreen-enter", GetTexture("fullscreen-enter"), buttonsize))
 			SetFullscreen(true);
-		Dialog::Tooltip("Enter fullscreen mode");
+		Dialog::Tooltip(Tr("Enter fullscreen mode"));
 	}
 }
 
@@ -1389,8 +1389,7 @@ void MainWindow::DockingArea()
 	//Allocate space for the status bar before doing anything else
 	auto avail = ImGui::GetContentRegionAvail();
 	auto statusBarHeight = ImGui::GetFontSize()*1.75 + 2*ImGui::GetStyle().FramePadding.y;
-	auto dockSpaceHeight = avail.y - statusBarHeight -
-		(ImGui::GetStyle().FramePadding.y + ImGui::GetStyle().ItemSpacing.y);
+	auto dockSpaceHeight = avail.y - statusBarHeight - ImGui::GetStyle().FramePadding.y;
 
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, dockSpaceHeight), /*dockspace_flags*/0, /*window_class*/nullptr);
 
@@ -1811,10 +1810,10 @@ void MainWindow::RenderReconnectPopup()
 
 	if(ImGui::BeginPopupModal(title, nullptr, ImGuiWindowFlags_AlwaysAutoResize))
 	{
-		ImGui::TextUnformatted("Do you want to reconnect to the lab instruments or load session data for offline analysis?\n");
+		ImGui::TextUnformatted(Tr("Do you want to reconnect to the lab instruments or load session data for offline analysis?\n"));
 		ImGui::Separator();
 
-		if(ImGui::Button("Reconnect"))
+		if(ImGui::Button(Tr("Reconnect")))
 		{
 			DoOpenFile(m_startupSession, true);
 			m_startupSession = "";
@@ -1822,7 +1821,7 @@ void MainWindow::RenderReconnectPopup()
 		}
 
 		ImGui::SameLine();
-		if(ImGui::Button("Load Offline"))
+		if(ImGui::Button(Tr("Load Offline")))
 		{
 			DoOpenFile(m_startupSession, false);
 			m_startupSession = "";
@@ -1830,7 +1829,7 @@ void MainWindow::RenderReconnectPopup()
 		}
 
 		ImGui::SameLine();
-		if(ImGui::Button("Cancel"))
+		if(ImGui::Button(Tr("Cancel")))
 		{
 			m_startupSession = "";
 			ImGui::CloseCurrentPopup();
@@ -1852,7 +1851,7 @@ void MainWindow::RenderErrorPopup()
 	{
 		ImGui::TextUnformatted(m_errorPopupMessage.c_str());
 		ImGui::Separator();
-		if(ImGui::Button("OK"))
+		if(ImGui::Button(Tr("OK")))
 		{
 			m_errorPopupMessage = "";
 			m_errorPopupTitle = "";
@@ -1873,18 +1872,16 @@ ImGui::MarkdownConfig MainWindow::GetMarkdownConfig()
 
 	ImGui::MarkdownConfig mdConfig
 	{
-		nullptr,						//linkCallback
-		nullptr,						//tooltipCallback
-		nullptr,						//imageCallback
-		"",								//linkIcon (not used)
+		nullptr,	//linkCallback
+		nullptr,	//tooltipCallback
+		nullptr,	//imageCallback
+		"",			//linkIcon (not used)
 		{
-						{ headings[0].first, true, headings[0].second},
+						{ headings[0].first, true, headings[0].second },
 						{ headings[1].first, true, headings[1].second },
 						{ headings[2].first, false, headings[2].second }
 		},
-		nullptr,						//userData
-		nullptr,						//formatCallback
-		ImGuiMarkdownFormatFlags_None	//formatFlags
+		nullptr		//userData
 	};
 
 	return mdConfig;
@@ -1922,7 +1919,7 @@ void MainWindow::RenderLoadWarningPopup()
 		if(!m_session.m_setupNotes.empty())
 		{
 			ImGui::TextUnformatted(
-				"Please review your lab notes and confirm that the experimental setup matches your previous session."
+				Tr("Please review your lab notes and confirm that the experimental setup matches your previous session.")
 				);
 
 
@@ -1945,9 +1942,10 @@ void MainWindow::RenderLoadWarningPopup()
 				ImVec2(warningSize, warningSize));
 			ImGui::SameLine();
 			ImGui::TextUnformatted(
-				"Some of the instrument settings in the session you are loading do not match "
-				"the current hardware configuration, and if set incorrectly could potentially "
-				"damage the instrument and/or DUT."
+				Tr(
+					"Some of the instrument settings in the session you are loading do not match "
+					"the current hardware configuration, and if set incorrectly could potentially "
+					"damage the instrument and/or DUT.")
 				);
 
 			ImGui::PopTextWrapPos();
@@ -1958,11 +1956,11 @@ void MainWindow::RenderLoadWarningPopup()
 			{
 				//Header row
 				ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-				ImGui::TableSetupColumn("Instrument", ImGuiTableColumnFlags_WidthFixed, 5*width);
-				ImGui::TableSetupColumn("Object", ImGuiTableColumnFlags_WidthFixed, 12*width);
-				ImGui::TableSetupColumn("Hardware", ImGuiTableColumnFlags_WidthFixed, 5*width);
-				ImGui::TableSetupColumn("Session file", ImGuiTableColumnFlags_WidthFixed, 5*width);
-				ImGui::TableSetupColumn("Info", ImGuiTableColumnFlags_WidthFixed, 40*width);
+				ImGui::TableSetupColumn(Tr("Instrument"), ImGuiTableColumnFlags_WidthFixed, 5*width);
+				ImGui::TableSetupColumn(Tr("Object"), ImGuiTableColumnFlags_WidthFixed, 12*width);
+				ImGui::TableSetupColumn(Tr("Hardware"), ImGuiTableColumnFlags_WidthFixed, 5*width);
+				ImGui::TableSetupColumn(Tr("Session file"), ImGuiTableColumnFlags_WidthFixed, 5*width);
+				ImGui::TableSetupColumn(Tr("Info"), ImGuiTableColumnFlags_WidthFixed, 40*width);
 				ImGui::TableHeadersRow();
 
 				//Actual list of warnings
@@ -2000,10 +1998,10 @@ void MainWindow::RenderLoadWarningPopup()
 		ImGui::NewLine();
 		ImGui::Separator();
 
-		ImGui::Checkbox("I have reviewed the instrument configuration and confirmed it will not cause damage.",
+		ImGui::Checkbox(Tr("I have reviewed the instrument configuration and confirmed it will not cause damage."),
 			&m_loadConfirmationChecked);
 
-		if(ImGui::Button("Abort"))
+		if(ImGui::Button(Tr("Abort")))
 		{
 			CloseSession();
 			m_showingLoadWarnings = false;
@@ -2017,7 +2015,7 @@ void MainWindow::RenderLoadWarningPopup()
 		if(!m_loadConfirmationChecked)
 			ImGui::BeginDisabled();
 
-		if(ImGui::Button("Proceed"))
+		if(ImGui::Button(Tr("Proceed")))
 		{
 			//Continue with the load
 			//always loading online if we are warning, offline loads can't warn)

@@ -47,7 +47,7 @@ using namespace std;
 // Construction / destruction
 
 PreferenceDialog::PreferenceDialog(PreferenceManager& prefs)
-	: Dialog("Preferences", "Preferences", ImVec2(600, 400))
+	: Dialog(Tr("Preferences"), "Preferences", ImVec2(600, 400))
 	, m_prefs(prefs)
 {
 	m_fontPaths.push_back(FindDataFile("fonts/DejaVuSans.ttf"));
@@ -140,14 +140,14 @@ bool PreferenceDialog::RenderConfirmDialog(const std::string& identifier)
         ImGui::Separator();
 		float buttonWidth = ImGui::GetFontSize()*6;
         // OK button
-        if (ImGui::Button("OK", ImVec2(buttonWidth, 0)))
+        if (ImGui::Button(Tr("OK"), ImVec2(buttonWidth, 0)))
         {
             confirmed = true;
             ImGui::CloseCurrentPopup();
         }
         ImGui::SameLine();
         // Cancel button
-        if (ImGui::Button("Cancel", ImVec2(buttonWidth, 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
+        if (ImGui::Button(Tr("Cancel"), ImVec2(buttonWidth, 0)) || ImGui::IsKeyPressed(ImGuiKey_Escape))
         {
             ImGui::CloseCurrentPopup();
         }

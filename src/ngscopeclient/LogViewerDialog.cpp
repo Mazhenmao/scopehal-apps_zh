@@ -88,8 +88,8 @@ bool LogViewerDialog::DoRender()
 		if(ImGui::BeginTable("filters", 2, flags, ImVec2(0, 7*ImGui::GetFontSize())))
 		{
 			ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-			ImGui::TableSetupColumn("Class", ImGuiTableColumnFlags_WidthFixed, 10*width);
-			ImGui::TableSetupColumn("Function", ImGuiTableColumnFlags_WidthStretch, 0.0f);
+			ImGui::TableSetupColumn(Tr("Class"), ImGuiTableColumnFlags_WidthFixed, 10*width);
+			ImGui::TableSetupColumn(Tr("Function"), ImGuiTableColumnFlags_WidthStretch, 0.0f);
 			ImGui::TableHeadersRow();
 
 			for(auto& filter : g_trace_filters)
@@ -133,7 +133,7 @@ bool LogViewerDialog::DoRender()
 			ImGui::EndTable();
 		}
 
-		ImGui::InputText("Filter", &m_traceFilter);
+		ImGui::InputText(Tr("Filter"), &m_traceFilter);
 		ImGui::SameLine();
 		if(ImGui::Button("+"))
 		{
@@ -181,9 +181,9 @@ bool LogViewerDialog::DoRender()
 		//TODO: use ImGuiListClipper
 
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
-		ImGui::TableSetupColumn("Timestamp", ImGuiTableColumnFlags_WidthFixed, 10*width);
-		ImGui::TableSetupColumn("Severity", ImGuiTableColumnFlags_WidthFixed, 0.0f);
-		ImGui::TableSetupColumn("Message", ImGuiTableColumnFlags_WidthStretch, 0.0f);
+		ImGui::TableSetupColumn(Tr("Timestamp"), ImGuiTableColumnFlags_WidthFixed, 10*width);
+		ImGui::TableSetupColumn(Tr("Severity"), ImGuiTableColumnFlags_WidthFixed, 0.0f);
+		ImGui::TableSetupColumn(Tr("Message"), ImGuiTableColumnFlags_WidthStretch, 0.0f);
 		ImGui::TableHeadersRow();
 
 		for(size_t i=0; i<lines.size(); i++)
@@ -220,27 +220,27 @@ bool LogViewerDialog::DoRender()
 				//no need for fatal, we abort before we can see it
 
 				case Severity::ERROR:
-					ImGui::TextUnformatted("Error");
+					ImGui::TextUnformatted(Tr("Error"));
 					break;
 
 				case Severity::WARNING:
-					ImGui::TextUnformatted("Warning");
+					ImGui::TextUnformatted(Tr("Warning"));
 					break;
 
 				case Severity::NOTICE:
-					ImGui::TextUnformatted("Notice");
+					ImGui::TextUnformatted(Tr("Notice"));
 					break;
 
 				case Severity::VERBOSE:
-					ImGui::TextUnformatted("Verbose");
+					ImGui::TextUnformatted(Tr("Verbose"));
 					break;
 
 				case Severity::DEBUG:
-					ImGui::TextUnformatted("Debug");
+					ImGui::TextUnformatted(Tr("Debug"));
 					break;
 
 				case Severity::TRACE:
-					ImGui::TextUnformatted("Trace");
+					ImGui::TextUnformatted(Tr("Trace"));
 					break;
 				default:
 					break;

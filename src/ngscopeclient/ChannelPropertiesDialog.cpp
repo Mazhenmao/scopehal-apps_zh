@@ -271,7 +271,7 @@ bool ChannelPropertiesDialog::DoRender()
 		}
 
 		ImGui::SetNextItemWidth(width);
-		if(TextInputWithImplicitApply("Nickname", m_displayName, m_committedDisplayName))
+		if(TextInputWithImplicitApply(Tr("Nickname"), m_displayName, m_committedDisplayName))
 		{
 			//If it's a filter, we're not using a default name anymore (unless the provided name is blank)
 			if(f != nullptr)
@@ -329,7 +329,7 @@ bool ChannelPropertiesDialog::DoRender()
 				ptype = "(not detected)";
 			ImGui::BeginDisabled();
 				ImGui::SetNextItemWidth(width);
-				ImGui::InputText("Probe Type", &ptype);
+				ImGui::InputText(Tr("Probe Type"), &ptype);
 			ImGui::EndDisabled();
 			HelpMarker("Type of probe connected to the instrument input");
 
@@ -381,7 +381,7 @@ bool ChannelPropertiesDialog::DoRender()
 				auto bank = scope->GetDigitalBank(index);
 				if(bank.size() > 1)
 				{
-					ImGui::Text("Changing input buffer settings will also affect the following channels:");
+					ImGui::Text(Tr("Changing input buffer settings will also affect the following channels:"));
 					for(auto c : bank)
 					{
 						if(c == m_channel)
@@ -494,7 +494,7 @@ bool ChannelPropertiesDialog::DoRender()
 			//If the probe supports inversion, show a checkbox for it
 			if(scope->CanInvert(index))
 			{
-				if(ImGui::Checkbox("Invert", &m_inverted))
+				if(ImGui::Checkbox(Tr("Invert"), &m_inverted))
 				{
 					ochan->Invert(m_inverted);
 
@@ -512,7 +512,7 @@ bool ChannelPropertiesDialog::DoRender()
 			//If the channel supports averaging, show a spin button for it
 			if(!isDigital && scope->CanAverage(index))
 			{
-				if(ImGui::InputInt("Averaging", &m_navg))
+				if(ImGui::InputInt(Tr("Averaging"), &m_navg))
 					scope->SetNumAverages(index, m_navg);
 
 				HelpMarker(
@@ -523,7 +523,7 @@ bool ChannelPropertiesDialog::DoRender()
 			//If the probe supports auto zeroing, show a button for it
 			if(m_canAutoZero)
 			{
-				if(ImGui::Button("Auto Zero"))
+				if(ImGui::Button(Tr("Auto Zero")))
 					ochan->AutoZero();
 				HelpMarker(
 					"Click to automatically zero offset of active probe.\n\n"

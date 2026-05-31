@@ -105,19 +105,19 @@ bool DigitalInputChannelDialog::DoRender()
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText("Instrument", &nickname);
+			ImGui::InputText(Tr("Instrument"), &nickname);
 		ImGui::EndDisabled();
 		HelpMarker("The instrument this channel was measured by");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText("Hardware Channel", &index);
+			ImGui::InputText(Tr("Hardware Channel"), &index);
 		ImGui::EndDisabled();
 		HelpMarker("Physical channel number (starting from 1) on the instrument front panel");
 
 		ImGui::BeginDisabled();
 			ImGui::SetNextItemWidth(width);
-			ImGui::InputText("Hardware Name", &hwname);
+			ImGui::InputText(Tr("Hardware Name"), &hwname);
 		ImGui::EndDisabled();
 		HelpMarker("Hardware name for the channel (as used in the instrument API)");
 	}
@@ -126,7 +126,7 @@ bool DigitalInputChannelDialog::DoRender()
 	if(ImGui::CollapsingHeader("Display", defaultOpenFlags))
 	{
 		ImGui::SetNextItemWidth(width);
-		if(TextInputWithImplicitApply("Nickname", m_displayName, m_committedDisplayName))
+		if(TextInputWithImplicitApply(Tr("Nickname"), m_displayName, m_committedDisplayName))
 			m_channel->SetDisplayName(m_committedDisplayName);
 
 		HelpMarker("Display name for the channel");

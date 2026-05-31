@@ -63,9 +63,9 @@ HardwareFlagsDialog::~HardwareFlagsDialog()
  */
 bool HardwareFlagsDialog::DoRender()
 {
-	ImGui::Text("This dialog allows you to override hardware feature flag detection.");
+	ImGui::Text(Tr("This dialog allows you to override hardware feature flag detection."));
 	ImGui::TextWrapped(
-		"It is mostly intended for developers to test fallback versions of accelerated functionality by "
+	    "It is mostly intended for developers to test fallback versions of accelerated functionality by "
 		"disabling a feature that the hardware actually supports. There are no guardrails! "
 		"Enabling a feature your CPU or Vulkan device does not support will probably crash ngscopeclient");
 
@@ -82,16 +82,16 @@ bool HardwareFlagsDialog::DoRender()
 
 	if(ImGui::CollapsingHeader("GPU"))
 	{
-		ImGui::Checkbox("Legacy GPU filter enable", &g_gpuFilterEnabled);
-		ImGui::Checkbox("Shader float64", &g_hasShaderFloat64);
-		ImGui::Checkbox("Shader int64", &g_hasShaderInt64);
-		ImGui::Checkbox("Shader atomic int64", &g_hasShaderAtomicInt64);
-		ImGui::Checkbox("Shader int16", &g_hasShaderInt16);
-		ImGui::Checkbox("Shader int8", &g_hasShaderInt8);
-		ImGui::Checkbox("Shader atomic float", &g_hasShaderAtomicFloat);
-		ImGui::Checkbox("Debug utils", &g_hasDebugUtils);
-		ImGui::Checkbox("Memory budget", &g_hasMemoryBudget);
-		ImGui::Checkbox("Push descriptor", &g_hasPushDescriptor);
+		ImGui::Checkbox(Tr("Legacy GPU filter enable"), &g_gpuFilterEnabled);
+		ImGui::Checkbox(Tr("Shader float64"), &g_hasShaderFloat64);
+		ImGui::Checkbox(Tr("Shader int64"), &g_hasShaderInt64);
+		ImGui::Checkbox(Tr("Shader atomic int64"), &g_hasShaderAtomicInt64);
+		ImGui::Checkbox(Tr("Shader int16"), &g_hasShaderInt16);
+		ImGui::Checkbox(Tr("Shader int8"), &g_hasShaderInt8);
+		ImGui::Checkbox(Tr("Shader atomic float"), &g_hasShaderAtomicFloat);
+		ImGui::Checkbox(Tr("Debug utils"), &g_hasDebugUtils);
+		ImGui::Checkbox(Tr("Memory budget"), &g_hasMemoryBudget);
+		ImGui::Checkbox(Tr("Push descriptor"), &g_hasPushDescriptor);
 	}
 
 	return true;

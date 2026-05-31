@@ -11,9 +11,6 @@ configure_file(ngscopeclient-version.h.in ngscopeclient-version.h)
 # use custom config for imguifiledialog
 add_compile_definitions(CUSTOM_IMGUIFILEDIALOG_CONFIG="../ngscopeclient/IGFDConfig.h")
 
-# periodically uncomment this to lint for use of deprecated functions that we can remove before they're deleted
-# add_compile_definitions(IMGUI_DISABLE_OBSOLETE_FUNCTIONS=1)
-
 if(WIN32)
 	set(CMAKE_RC_COMPILER_INIT windres)
 	ENABLE_LANGUAGE(RC)
@@ -89,6 +86,7 @@ add_executable(ngscopeclient
 	IGFDFileBrowser.cpp
 	InstrumentThread.cpp
 	KDialogFileBrowser.cpp
+	Localization.cpp
 	LoadDialog.cpp
 	LogViewerDialog.cpp
 	MainWindow.cpp
@@ -353,4 +351,3 @@ if(WIXPATH AND WIN32)
 elseif(WIN32)
 	message("Skipping MSI package build; define WIXPATH to enable")
 endif()
-

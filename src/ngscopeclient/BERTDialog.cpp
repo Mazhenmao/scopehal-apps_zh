@@ -112,12 +112,12 @@ bool BERTDialog::DoRender()
 			auto tname = transport->GetName();
 			auto tstring = transport->GetConnectionString();
 
-			ImGui::InputText("Make", &vendor[0], vendor.size());
-			ImGui::InputText("Model", &name[0], name.size());
-			ImGui::InputText("Serial", &serial[0], serial.size());
-			ImGui::InputText("Driver", &driver[0], driver.size());
-			ImGui::InputText("Transport", &tname[0], tname.size());
-			ImGui::InputText("Path", &tstring[0], tstring.size());
+			ImGui::InputText(Tr("Make"), &vendor[0], vendor.size());
+			ImGui::InputText(Tr("Model"), &name[0], name.size());
+			ImGui::InputText(Tr("Serial"), &serial[0], serial.size());
+			ImGui::InputText(Tr("Driver"), &driver[0], driver.size());
+			ImGui::InputText(Tr("Transport"), &tname[0], tname.size());
+			ImGui::InputText(Tr("Path"), &tstring[0], tstring.size());
 
 		ImGui::EndDisabled();
 	}
@@ -128,7 +128,7 @@ bool BERTDialog::DoRender()
 		if(ImGui::CollapsingHeader("Pattern Generator"))
 		{
 			ImGui::SetNextItemWidth(width);
-			if(ImGui::InputText("Custom Pattern", &m_txPatternText))
+			if(ImGui::InputText(Tr("Custom Pattern"), &m_txPatternText))
 			{
 				sscanf(m_txPatternText.c_str(), "%" PRIx64, &m_txPattern);
 				m_bert->SetGlobalCustomPattern(m_txPattern);
@@ -167,7 +167,7 @@ bool BERTDialog::DoRender()
 			ImGui::SetNextItemWidth(width);
 			ImGui::BeginDisabled();
 			string srate = hz.PrettyPrint(m_refclkFrequency);
-			ImGui::InputText("Clock Out Frequency", &srate);
+			ImGui::InputText(Tr("Clock Out Frequency"), &srate);
 			ImGui::EndDisabled();
 			HelpMarker("Calculated frequency of the reference clock output");
 		}
@@ -177,7 +177,7 @@ bool BERTDialog::DoRender()
 			ImGui::SetNextItemWidth(width);
 			ImGui::BeginDisabled();
 			auto srate = hz.PrettyPrint(m_bert->GetRefclkInFrequency());
-			ImGui::InputText("Clock In Frequency", &srate);
+			ImGui::InputText(Tr("Clock In Frequency"), &srate);
 			ImGui::EndDisabled();
 			HelpMarker("Required frequency for external reference clock");
 
@@ -188,7 +188,7 @@ bool BERTDialog::DoRender()
 				"External"
 			};
 			int iext = m_bert->GetUseExternalRefclk() ? 1 : 0;
-			if(ImGui::Combo("Clock Source", &iext, items, 2))
+			if(ImGui::Combo(Tr("Clock Source"), &iext, items, 2))
 				m_bert->SetUseExternalRefclk(iext == 1);
 		}
 
