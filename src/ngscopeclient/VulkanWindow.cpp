@@ -77,6 +77,9 @@ VulkanWindow::VulkanWindow(const string& title, shared_ptr<QueueHandle> queue, b
 	, m_windowedY(0)
 	, m_windowedWidth(0)
 	, m_windowedHeight(0)
+	, m_windowedDecorated(true)
+	, m_windowedMaximized(false)
+	, m_windowedFloating(false)
 	, m_title(title)
 {
 	//Initialize ImGui
@@ -817,25 +820,38 @@ bool VulkanWindow::IsPositionValid(
 
 void VulkanWindow::SetFullscreen(bool fullscreen)
 {
+	if(m_fullscreen == fullscreen)
+		return;
+
 	m_fullscreen = fullscreen;
 
 	if(m_fullscreen)
 	{
-		LogTrace("Entering fullscreen mode\n");
+		LogTrace("Entering borderless fullscreen mode\n");
 		LogIndenter li;
 
-		m_windowedWidth = m_width;
-		m_windowedHeight = m_height;
+		m_windowedDecorated = (glfwGetWindowAttrib(m_window, GLFW_DECORATED) == GLFW_TRUE);
+		m_windowedMaximized = (glfwGetWindowAttrib(m_window, GLFW_MAXIMIZED) == GLFW_TRUE);
+		m_windowedFloating = (glfwGetWindowAttrib(m_window, GLFW_FLOATING) == GLFW_TRUE);
 		glfwGetWindowPos(m_window, &m_windowedX, &m_windowedY);
-		LogTrace("Our window is at (%d, %d)\n", m_windowedX, m_windowedY);
+		glfwGetWindowSize(m_window, &m_windowedWidth, &m_windowedHeight);
+		LogTrace("Our window is at (%d, %d), (%d x %d)\n",
+			m_windowedX,
+			m_windowedY,
+			m_windowedWidth,
+			m_windowedHeight);
 
 		//Find the centroid of our window
-		int centerX = m_windowedX + m_width/2;
-		int centerY = m_windowedY + m_height/2;
+		int centerX = m_windowedX + m_windowedWidth/2;
+		int centerY = m_windowedY + m_windowedHeight/2;
 
 		//Which monitor are we on?
 		int count;
 		auto monitors = glfwGetMonitors(&count);
+		GLFWmonitor* selectedMonitor = nullptr;
+		const GLFWvidmode* selectedMode = nullptr;
+		int selectedX = 0;
+		int selectedY = 0;
 		for(int i=0; i<count; i++)
 		{
 			int xpos, ypos;
@@ -848,23 +864,40 @@ void VulkanWindow::SetFullscreen(bool fullscreen)
 				(centerX < (xpos + mode->width)) && (centerY < (ypos + mode->height)) )
 			{
 				LogTrace("We are on this monitor\n");
-				glfwSetWindowMonitor(m_window, monitors[i], 0, 0, mode->width, mode->height, GLFW_DONT_CARE);
+				selectedMonitor = monitors[i];
+				selectedMode = mode;
+				selectedX = xpos;
+				selectedY = ypos;
 				break;
 			}
 		}
+
+		if(selectedMonitor == nullptr)
+		{
+			selectedMonitor = glfwGetPrimaryMonitor();
+			selectedMode = glfwGetVideoMode(selectedMonitor);
+			glfwGetMonitorPos(selectedMonitor, &selectedX, &selectedY);
+		}
+
+		if(m_windowedMaximized)
+			glfwRestoreWindow(m_window);
+
+		// Borderless fullscreen avoids the slow monitor mode switch caused by glfwSetWindowMonitor().
+		glfwSetWindowAttrib(m_window, GLFW_DECORATED, GLFW_FALSE);
+		glfwSetWindowAttrib(m_window, GLFW_FLOATING, GLFW_TRUE);
+		glfwSetWindowPos(m_window, selectedX, selectedY);
+		glfwSetWindowSize(m_window, selectedMode->width, selectedMode->height);
 	}
 
 	else
 	{
-		LogTrace("Leaving fullscreen mode\n");
-		glfwSetWindowMonitor(
-			m_window,
-			nullptr,
-			m_windowedX,
-			m_windowedY,
-			m_windowedWidth,
-			m_windowedHeight,
-			GLFW_DONT_CARE);
+		LogTrace("Leaving borderless fullscreen mode\n");
+		glfwSetWindowAttrib(m_window, GLFW_DECORATED, m_windowedDecorated ? GLFW_TRUE : GLFW_FALSE);
+		glfwSetWindowAttrib(m_window, GLFW_FLOATING, m_windowedFloating ? GLFW_TRUE : GLFW_FALSE);
+		glfwSetWindowPos(m_window, m_windowedX, m_windowedY);
+		glfwSetWindowSize(m_window, m_windowedWidth, m_windowedHeight);
+		if(m_windowedMaximized)
+			glfwMaximizeWindow(m_window);
 	}
 }
 

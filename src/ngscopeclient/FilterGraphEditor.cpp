@@ -1382,6 +1382,20 @@ void FilterGraphEditor::HandleOverlaps()
 		}
 	}
 
+	//Do not run collision resolution while nodes are actively being dragged.
+	//The live repulsion makes nearby nodes shift under the mouse, which feels like the graph is pushing tools around.
+	bool anyDragging = false;
+	for(auto b : dragging)
+	{
+		if(b)
+		{
+			anyDragging = true;
+			break;
+		}
+	}
+	if(anyDragging)
+		return;
+
 	//Calculate forces from interaction physics
 	CalculateNodeForces(nodes, isgroup, dragging, nocollide, positions, sizes, forces);
 

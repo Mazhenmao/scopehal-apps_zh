@@ -191,6 +191,15 @@ protected:
 	///@brief Saved size before we went fullscreen
 	int m_windowedHeight;
 
+	///@brief Saved window decoration state before entering fullscreen
+	bool m_windowedDecorated;
+
+	///@brief Saved maximized state before entering fullscreen
+	bool m_windowedMaximized;
+
+	///@brief Saved floating/topmost state before entering fullscreen
+	bool m_windowedFloating;
+
 	///@brief Textures used this frame
 	std::vector< std::set<std::shared_ptr<Texture> > > m_texturesUsedThisFrame;
 
