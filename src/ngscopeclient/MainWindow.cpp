@@ -1387,7 +1387,8 @@ void MainWindow::DockingArea()
 	//Allocate space for the status bar before doing anything else
 	auto avail = ImGui::GetContentRegionAvail();
 	auto statusBarHeight = ImGui::GetFontSize()*1.75 + 2*ImGui::GetStyle().FramePadding.y;
-	auto dockSpaceHeight = avail.y - statusBarHeight - ImGui::GetStyle().FramePadding.y;
+	auto dockSpaceHeight = avail.y - statusBarHeight -
+		(ImGui::GetStyle().FramePadding.y + ImGui::GetStyle().ItemSpacing.y);
 
 	ImGui::DockSpace(dockspace_id, ImVec2(0.0f, dockSpaceHeight), /*dockspace_flags*/0, /*window_class*/nullptr);
 
@@ -1870,16 +1871,18 @@ ImGui::MarkdownConfig MainWindow::GetMarkdownConfig()
 
 	ImGui::MarkdownConfig mdConfig
 	{
-		nullptr,	//linkCallback
-		nullptr,	//tooltipCallback
-		nullptr,	//imageCallback
-		"",			//linkIcon (not used)
+		nullptr,								//linkCallback
+		nullptr,								//tooltipCallback
+		nullptr,								//imageCallback
+		"",										//linkIcon (not used)
 		{
-						{ headings[0].first, true, headings[0].second },
+						{ headings[0].first, true, headings[0].second},
 						{ headings[1].first, true, headings[1].second },
 						{ headings[2].first, false, headings[2].second }
 		},
-		nullptr		//userData
+		nullptr,								//userData
+		&ImGui::defaultMarkdownFormatCallback,	//formatCallback
+		ImGuiMarkdownFormatFlags_None			//formatFlags
 	};
 
 	return mdConfig;
@@ -2099,13 +2102,12 @@ Filter* MainWindow::CreateFilter(
 
 	//Give it an initial name, may change later
 	f->SetDefaultName();
+	m_session.MarkChannelDirty(f);
 
 	//Find a home for each of its streams
 	if(addToArea)
 	{
-		m_session.MarkChannelDirty(f);
 		m_pendingChannelDisplayRequests.emplace(pair<OscilloscopeChannel*, WaveformArea*>(f, area));
-
 		f->AddRef();
 	}
 

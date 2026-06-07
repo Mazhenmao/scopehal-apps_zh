@@ -772,7 +772,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 
 	//Figure out how big the port text is
 	float oportmax = 1;
-	float iportmax = ImGui::CalcTextSize("�?").x;
+	float iportmax = ImGui::CalcTextSize("‣").x;
 	vector<string> onames;
 	for(auto it : group->m_hierInputMap)
 	{
@@ -787,7 +787,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 		else if(trig)
 			sinkname = trig->GetScope()->m_nickname;
 
-		auto name = sinkname + " �?";
+		auto name = sinkname + " ‣";
 		onames.push_back(name);
 		oportmax = max(oportmax,
 			ImGui::CalcTextSize(name.c_str()).x +
@@ -841,7 +841,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
-				ImGui::TextUnformatted("�?");
+				ImGui::TextUnformatted("‣");
 			ax::NodeEditor::EndPin();
 
 			//TODO refactor into function
@@ -857,7 +857,7 @@ void FilterGraphEditor::DoNodeForGroupInputs(shared_ptr<FilterGraphGroup> group)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(group->m_hierInputInternalMap[sink], ax::NodeEditor::PinKind::Output);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(1, 0.5));
-				RightJustifiedText(sinkname + "." + sink.first->GetInputName(sink.second) + " �?");
+				RightJustifiedText(sinkname + "." + sink.first->GetInputName(sink.second) + " ‣");
 			ax::NodeEditor::EndPin();
 		}
 		ImGui::EndTable();
@@ -879,13 +879,13 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 
 	//Figure out how big the port text is
 	float oportmax = 1;
-	float iportmax = ImGui::CalcTextSize("�?").x;
+	float iportmax = ImGui::CalcTextSize("‣").x;
 	vector<string> onames;
 	for(auto it : group->m_hierOutputMap)
 	{
 		auto stream = it.first;
 
-		auto name = stream.GetName() + " �?";
+		auto name = stream.GetName() + " ‣";
 		onames.push_back(name);
 		oportmax = max(oportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}
@@ -934,14 +934,14 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(group->m_hierOutputInternalMap[stream], ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
-				ImGui::TextUnformatted("�?");
+				ImGui::TextUnformatted("‣");
 			ax::NodeEditor::EndPin();
 
 			//Output side (path from hierarchical port to external node)
 			ImGui::TableNextColumn();
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Output);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(1, 0.5));
-				RightJustifiedText(stream.GetName() + " �?");
+				RightJustifiedText(stream.GetName() + " ‣");
 			ax::NodeEditor::EndPin();
 
 			if(sid == ax::NodeEditor::GetHoveredPin())
@@ -1815,7 +1815,7 @@ void FilterGraphEditor::FilterSubmenu(StreamDescriptor stream, const string& nam
 		{
 			auto it = refs.find(fname);
 			bool valid = false;
-			if(!stream || it->second->GetInputCount() == 0)		//No inputs or ne stream ? Always valid
+			if(!stream || it->second->GetInputCount() == 0)		//No inputs or new stream ? Always valid
 				valid = true;
 			else
 				valid = it->second->ValidateChannel(0, stream);
@@ -1981,7 +1981,7 @@ void FilterGraphEditor::DoNodeForTrigger(Trigger* trig)
 		{
 			auto sid = GetID(pair<FlowGraphNode*, size_t>(trig, i));
 
-			string portname("�? ");
+			string portname("‣ ");
 			portname += trig->GetInputName(i);
 			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
@@ -2111,13 +2111,13 @@ void FilterGraphEditor::DoNodeForChannel(
 	vector<string> onames;
 	for(size_t i=0; i<channel->GetInputCount(); i++)
 	{
-		auto name = string("�? ") + channel->GetInputName(i);
+		auto name = string("‣ ") + channel->GetInputName(i);
 		inames.push_back(name);
 		iportmax = max(iportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}
 	for(size_t i=0; i<channel->GetStreamCount(); i++)
 	{
-		auto name = channel->GetStreamName(i) + " �?";
+		auto name = channel->GetStreamName(i) + " ‣";
 		onames.push_back(name);
 		oportmax = max(oportmax, ImGui::CalcTextSize(name.c_str()).x);
 	}

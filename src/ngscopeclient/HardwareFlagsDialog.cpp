@@ -65,7 +65,7 @@ bool HardwareFlagsDialog::DoRender()
 {
 	ImGui::Text("此对话框允许覆盖硬件特性标志检测。");
 	ImGui::TextWrapped(
-	    "It is mostly intended for developers to test fallback versions of accelerated functionality by "
+		"It is mostly intended for developers to test fallback versions of accelerated functionality by "
 		"disabling a feature that the hardware actually supports. There are no guardrails! "
 		"Enabling a feature your CPU or Vulkan device does not support will probably crash ngscopeclient");
 
@@ -82,7 +82,6 @@ bool HardwareFlagsDialog::DoRender()
 
 	if(ImGui::CollapsingHeader("GPU"))
 	{
-		ImGui::Checkbox("启用旧版 GPU 滤波器", &g_gpuFilterEnabled);
 		ImGui::Checkbox("着色器 float64", &g_hasShaderFloat64);
 		ImGui::Checkbox("着色器 int64", &g_hasShaderInt64);
 		ImGui::Checkbox("着色器原子 int64", &g_hasShaderAtomicInt64);

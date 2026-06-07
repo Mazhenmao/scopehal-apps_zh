@@ -65,19 +65,23 @@ if(Git_FOUND OR NGSCOPECLIENT_PACKAGE_VERSION)
 
 	# Ugly string parsing to make windows build happy
 	# First path: release candidate tags for primary releases
-	if(NGSCOPECLIENT_VERSION_LONG MATCHES "v([0-9]*).([0-9]*)-rc([0-9])-([0-9]*)")
+	if(NGSCOPECLIENT_VERSION_LONG MATCHES "^v([0-9]+)\\.([0-9]+)-rc([0-9]+)-([0-9]+)")
 		set(MSI_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}.${CMAKE_MATCH_4}")
 
 	# Release candidates for point releases
-	elseif(NGSCOPECLIENT_VERSION_LONG MATCHES "v([0-9]*).([0-9]*).([0-9]*)-rc([0-9])-([0-9]*)")
+	elseif(NGSCOPECLIENT_VERSION_LONG MATCHES "^v([0-9]+)\\.([0-9]+)\\.([0-9]+)-rc([0-9]+)-([0-9]+)")
 		set(MSI_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}${CMAKE_MATCH_4}.${CMAKE_MATCH_5}")
 
 	# Release tags
-	elseif(NGSCOPECLIENT_VERSION_LONG MATCHES "v([0-9]*).([0-9]*)-([0-9]*)")
+	elseif(NGSCOPECLIENT_VERSION_LONG MATCHES "^v([0-9]+)\\.([0-9]+)-([0-9]+)")
 		set(MSI_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.9.${CMAKE_MATCH_3}")
 
 	# Release tags for point releases
-	elseif(NGSCOPECLIENT_VERSION_LONG MATCHES "v([0-9]*).([0-9]*).([0-9]*)-([0-9]*)")
+	elseif(NGSCOPECLIENT_VERSION_LONG MATCHES "^v([0-9]+)\\.([0-9]+)\\.([0-9]+)-([0-9]+)")
+		set(MSI_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}9.${CMAKE_MATCH_4}")
+
+	# Development builds from locally suffixed tags, for example v0.1.1-zh-2-g1234567.
+	elseif(NGSCOPECLIENT_VERSION_LONG MATCHES "^v([0-9]+)\\.([0-9]+)\\.([0-9]+)-[^-]+-([0-9]+)-g[0-9a-fA-F]+")
 		set(MSI_VERSION "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}9.${CMAKE_MATCH_4}")
 
 	# No release matched
@@ -343,7 +347,8 @@ set_property(TARGET scopeprotocols PROPERTY POSITION_INDEPENDENT_CODE ON)
 # CPack package generation
 set(CPACK_PACKAGE_NAME "ngscopeclient")
 set(CPACK_PACKAGE_VENDOR "ngscopeclient.org project")
-set(CPACK_PACKAGE_VERSION_PATCH "+${NGSCOPECLIENT_VERSION}")
+string(REGEX MATCH "v([^ ]*)" "\\1" VERSION_OUT "${NGSCOPECLIENT_VERSION}")
+set(CPACK_PACKAGE_VERSION "${CMAKE_MATCH_1}")
 set(CPACK_PACKAGE_DESCRIPTION "Cross platform T&M remote control and signal analysis suite")
 set(CPACK_PACKAGE_HOMEPAGE_URL "https://www.ngscopeclient.org/")
 set(CPACK_THREADS 0)

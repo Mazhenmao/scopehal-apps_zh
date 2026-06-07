@@ -71,6 +71,7 @@
 
 #include "OwonXDMMultimeter.h"
 #include "RohdeSchwarzHMC8012Multimeter.h"
+#include "AgilentMultimeter.h"
 
 #include "OwonXDGFunctionGenerator.h"
 #include "SiglentFunctionGenerator.h"
@@ -201,13 +202,6 @@ atomic<int64_t> AcceleratorBufferPerformanceCounters::m_deviceDeviceCopiesSkippe
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-/**
-	@brief True if filters can use GPU acceleration
-
-	Will be deprecated soon since Vulkan is now a mandatory core part of the application
- */
-bool g_gpuFilterEnabled = false;
-
 vector<string> g_searchPaths;
 
 void VulkanCleanup();
@@ -336,6 +330,7 @@ void DriverStaticInit()
 
 	AddMiscInstrumentDriverClass(CSVStreamInstrument);
 
+	AddMultimeterDriverClass(AgilentMultimeter);
 	AddMultimeterDriverClass(OwonXDMMultimeter);
 	AddMultimeterDriverClass(RohdeSchwarzHMC8012Multimeter);
 
@@ -745,8 +740,16 @@ string ReadFile(const string& path)
 		return "";
 	}
 
+	//Overflow check
+	size_t sizeWithNull = fsize + 1;
+	if(sizeWithNull == 0)
+	{
+		fclose(fp);
+		return "";
+	}
+
 	//Read the file contents
-	char* buf = new char[fsize + 1];
+	char* buf = new char[sizeWithNull];
 	if(fsize != fread(buf, 1, fsize, fp))
 	{
 		LogWarning("ReadFile: Could not read file \"%s\"\n", path.c_str());
@@ -865,7 +868,18 @@ string ReadDataFile(const string& relpath)
 	}
 	fseek(fp, 0, SEEK_END);
 	size_t fsize = ftell(fp);
+
 	fseek(fp, 0, SEEK_SET);
+
+	//Overflow / empty file check
+	size_t sizeWithNull = fsize + 1;
+	if( (sizeWithNull == 0) || (fsize == 0) )
+	{
+		LogWarning("ReadDataFile: File \"%s\" is empty or has invalid size\n", relpath.c_str());
+		fclose(fp);
+		return "";
+	}
+
 	char* buf = new char[fsize + 1];
 	if(fsize != fread(buf, 1, fsize, fp))
 	{

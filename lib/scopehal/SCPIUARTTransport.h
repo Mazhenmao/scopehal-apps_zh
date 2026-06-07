@@ -59,6 +59,8 @@ public:
 	virtual bool IsCommandBatchingSupported() override;
 	virtual bool IsConnected() override;
 
+	virtual bool SetTimeouts(unsigned int txUs, unsigned int rxUs) override;
+
 	//This is intentionally not virtual since it's a static method used by enumeration
 	//cppcheck-suppress duplInheritedMember
 	static std::string GetTransportName();

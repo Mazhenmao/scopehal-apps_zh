@@ -94,7 +94,6 @@ extern bool g_hasAvx2;
 #endif
 
 //Enable flags for various Vulkan features
-extern bool g_gpuFilterEnabled;
 extern bool g_hasShaderFloat64;
 extern bool g_hasShaderInt64;
 extern bool g_hasShaderAtomicInt64;
@@ -289,7 +288,7 @@ extern bool g_vulkanDeviceIsApplePV;
 extern uint32_t g_vkPinnedMemoryHeap;
 extern uint32_t g_vkLocalMemoryHeap;
 extern bool g_vulkanDeviceHasUnifiedMemory;
-extern std::shared_mutex g_vulkanActivityMutex;;
+extern std::shared_mutex g_vulkanActivityMutex;
 
 //Validation helper for templates
 //Throws compile-time error if specialized for false since there's no implementation

@@ -2,7 +2,7 @@
 *                                                                                                                      *
 * libscopehal                                                                                                          *
 *                                                                                                                      *
-* Copyright (c) 2012-2024 Andrew D. Zonenberg and contributors                                                         *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
 *                                                                                                                      *
 * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
@@ -76,13 +76,16 @@ public:
 	/**
 		@brief Sets timeouts for the connection
 
+		@return true if RX and TX timeouts successfully set
+
 		@param txUs		Send timeout, in microseconds
 		@param rxUs		Receive timeout, in microseconds
 	 */
-	void SetTimeouts(unsigned int txUs, unsigned int rxUs)
+	bool SetTimeouts(unsigned int txUs, unsigned int rxUs) override
 	{
-		m_socket.SetTxTimeout(txUs);
-		m_socket.SetRxTimeout(rxUs);
+		bool success = m_socket.SetTxTimeout(txUs);
+		success = success & m_socket.SetRxTimeout(rxUs);
+		return success;
 	}
 
 protected:

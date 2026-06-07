@@ -45,7 +45,7 @@ using namespace std;
 ReferencePlaneExtensionFilter::ReferencePlaneExtensionFilter(const string& color)
 	: SParameterFilter(color, CAT_RF)
 {
-	m_parameters[m_portCountName].signal_changed().connect(sigc::mem_fun(*this, &ReferencePlaneExtensionFilter::OnPortCountChanged));
+	m_portCount.signal_changed().connect(sigc::mem_fun(*this, &ReferencePlaneExtensionFilter::OnPortCountChanged));
 	OnPortCountChanged();
 }
 
@@ -69,7 +69,7 @@ string ReferencePlaneExtensionFilter::GetProtocolName()
  */
 void ReferencePlaneExtensionFilter::OnPortCountChanged()
 {
-	size_t nports_cur = m_parameters[m_portCountName].GetIntVal();
+	size_t nports_cur = m_portCount.GetIntVal();
 	size_t nports_old = m_portParamNames.size();
 
 	//Delete old parameters
@@ -93,16 +93,24 @@ void ReferencePlaneExtensionFilter::OnPortCountChanged()
 	m_parametersChangedSignal.emit();
 }
 
-void ReferencePlaneExtensionFilter::Refresh()
+void ReferencePlaneExtensionFilter::Refresh(
+	[[maybe_unused]] vk::raii::CommandBuffer& cmdBuf,
+	[[maybe_unused]] shared_ptr<QueueHandle> queue
+	)
 {
-	//Make sure we've got valid inputs
+	#ifdef HAVE_NVTX
+		nvtx3::scoped_range nrange("ReferencePlaneExtensionFilter::Refresh");
+	#endif
+	ClearErrors();
+
 	if(!VerifyAllInputsOK())
 	{
+		AddErrorMessage("Missing input", "One or more inputs are unconnected");
 		SetData(nullptr, 0);
 		return;
 	}
 
-	size_t nports = m_parameters[m_portCountName].GetIntVal();
+	size_t nports = m_portCount.GetIntVal();
 	for(size_t to=0; to<nports; to++)
 	{
 		for(size_t from=0; from<nports; from++)
@@ -125,6 +133,7 @@ void ReferencePlaneExtensionFilter::Refresh()
 			}
 			else
 			{
+				AddErrorMessage("Invalid input", "Expected sparse or uniform analog");
 				SetData(nullptr, 0);
 				return;
 			}

@@ -313,3 +313,12 @@ vector<TransportEndpoint> SCPITransport::EnumTransportEndpoints()
 {
 	return vector<TransportEndpoint>();
 }
+
+
+/**
+	@brief Base implementation does nothing
+*/
+bool SCPITransport::SetTimeouts([[maybe_unused]] unsigned int txUs, [[maybe_unused]]unsigned int rxUs){
+	LogWarning("SetTimeouts() not implemented for this transport\n");
+	return false;
+}

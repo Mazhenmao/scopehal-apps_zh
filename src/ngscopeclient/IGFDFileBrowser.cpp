@@ -88,24 +88,27 @@ IGFDFileBrowser::IGFDFileBrowser(
 	else
 		mask = filterName + "{" + filterMask.substr(1) + "}";
 
-	auto places = m_dialog.GetPlacesGroupPtr("Bookmarks");
-	if(places)
-	{
-		for(auto jt : m_bookmarks)
-			places->AddPlace(jt.second, jt.first, false);
-	}
-
-	IGFD::FileDialogConfig config;
-	config.path = ".";
-	if(initialPath != ".")
-		config.filePathName = initialPath;
+	for(auto jt : m_bookmarks)
+		m_dialog.AddBookmark(jt.second, jt.first);
 	if(saveDialog)
 	{
-		config.flags = ImGuiFileDialogFlags_ConfirmOverwrite;
-		m_dialog.OpenDialog(m_id, title, mask.c_str(), config);
+		m_dialog.OpenDialog(
+			m_id,
+			title,
+			mask.c_str(),
+			".",
+			initialPath,
+			ImGuiFileDialogFlags_ConfirmOverwrite);
 	}
 	else
-		m_dialog.OpenDialog(m_id, title, mask.c_str(), config);
+	{
+		m_dialog.OpenDialog(
+			m_id,
+			title,
+			mask.c_str(),
+			".",
+			initialPath);
+	}
 }
 
 IGFDFileBrowser::~IGFDFileBrowser()

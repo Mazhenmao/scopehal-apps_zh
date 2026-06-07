@@ -53,10 +53,10 @@ VICPDecoder::~VICPDecoder()
 
 bool VICPDecoder::ValidateChannel(size_t i, StreamDescriptor stream)
 {
-	if(stream.m_channel == NULL)
+	if(stream.m_channel == nullptr)
 		return false;
 
-	if( (i < 2) && (dynamic_cast<TCPWaveform*>(stream.m_channel->GetData(0)) != NULL) )
+	if( (i < 2) && (dynamic_cast<TCPWaveform*>(stream.m_channel->GetData(0)) != nullptr) )
 		return true;
 
 	return false;
@@ -89,14 +89,22 @@ bool VICPDecoder::GetShowDataColumn()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Actual decoder logic
 
-void VICPDecoder::Refresh()
+void VICPDecoder::Refresh(
+	[[maybe_unused]] vk::raii::CommandBuffer& cmdBuf,
+	[[maybe_unused]] shared_ptr<QueueHandle> queue
+	)
 {
+	#ifdef HAVE_NVTX
+		nvtx3::scoped_range nrange("VICPDecoder::Refresh");
+	#endif
+	ClearErrors();
 	ClearPackets();
 
 	auto tx = dynamic_cast<TCPWaveform*>(GetInputWaveform(0));
 	auto rx = dynamic_cast<TCPWaveform*>(GetInputWaveform(1));
 	if( (tx == nullptr) || (rx == nullptr) )
 	{
+		AddErrorMessage("Missing input", "One or more inputs are unconnected");
 		SetData(nullptr, 0);
 		return;
 	}
@@ -104,13 +112,10 @@ void VICPDecoder::Refresh()
 	rx->PrepareForCpuAccess();
 
 	//Create the waveform. Call SetData() early on so we can use GetText() in the packet decode
-	auto cap = new VICPWaveform;
+	auto cap = SetupEmptyWaveform<VICPWaveform>(tx, 0);
 	cap->m_timescale = 1;
-	cap->m_startTimestamp = tx->m_startTimestamp;
-	cap->m_startFemtoseconds = tx->m_startFemtoseconds;
 	cap->m_triggerPhase = 0;
 	cap->PrepareForCpuAccess();
-	SetData(cap, 0);
 
 	size_t txlen = tx->m_samples.size();
 	size_t rxlen = rx->m_samples.size();
@@ -478,7 +483,7 @@ void VICPDecoder::Refresh()
 	cap->MarkModifiedFromCpu();
 }
 
-std::string VICPWaveform::GetColor(size_t i)
+string VICPWaveform::GetColor(size_t i)
 {
 	const VICPSymbol& s = m_samples[i];
 
@@ -579,5 +584,5 @@ bool VICPDecoder::CanMerge(Packet* /*first*/, Packet* /*cur*/, Packet* /*next*/)
 
 Packet* VICPDecoder::CreateMergedHeader(Packet* /*pack*/, size_t /*i*/)
 {
-	return NULL;
+	return nullptr;
 }

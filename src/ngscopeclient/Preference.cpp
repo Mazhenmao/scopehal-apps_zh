@@ -477,3 +477,4 @@ impl::PreferenceBuilder Preference::Font(std::string identifier, FontDescription
 
 	return impl::PreferenceBuilder{ std::move(pref) };
 }
+

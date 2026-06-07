@@ -54,11 +54,14 @@ TutorialWizard::TutorialWizard(Session* session, MainWindow* parent)
 	m_markdownText.push_back(ReadDataFile("md/tutorial_02_connect.md"));
 	m_markdownText.push_back(ReadDataFile("md/tutorial_03_acquire.md"));
 	m_markdownText.push_back(ReadDataFile("md/tutorial_04_scrollzoom.md"));
+	m_markdownText.push_back(ReadDataFile("md/tutorial_05_yaxis.md"));
+	m_markdownText.push_back(ReadDataFile("md/tutorial_06_filter_graph.md"));
 
 	m_markdownText.push_back(ReadDataFile("md/tutorial_99_final.md"));
 
-	//DEBUG: autiomatically jump ahead a bit
-	m_step = TUTORIAL_03_ACQUIRE;
+	//DEBUG: automatically jump ahead a bit
+	m_step = TUTORIAL_05_YAXIS;
+	m_continueEnabled = false;
 }
 
 TutorialWizard::~TutorialWizard()
@@ -141,7 +144,11 @@ bool TutorialWizard::DoRender()
 				break;
 
 			case TUTORIAL_04_SCROLLZOOM:
-				DrawSpeechBubble(anchorPos, ImGuiDir_Up, "Continue when you are comfortable zooming the plot");
+				DrawSpeechBubble(anchorPos, ImGuiDir_Up, "Continue when you are\ncomfortable zooming the plot");
+				break;
+
+			case TUTORIAL_05_YAXIS:
+				DrawSpeechBubble(anchorPos, ImGuiDir_Up, "Continue when you are\ncomfortable adjusting the Y axis");
 				break;
 
 			//show nothing otherwise
@@ -204,7 +211,7 @@ void TutorialWizard::DrawSpeechBubble(
 
 	//Outline
 	MakePathSpeechBubble(list, dirTip, anchorPos, textsize, tailLength, radius, leftOverhang);
-	list->PathStroke(outlineColor, 0.25 * size, ImDrawFlags_None);
+	list->PathStroke(outlineColor, 0, 0.25 * size);
 
 	//Text
 	auto textColor = ImGui::GetColorU32(ImGuiCol_Text);

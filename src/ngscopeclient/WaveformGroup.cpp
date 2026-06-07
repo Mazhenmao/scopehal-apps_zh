@@ -143,7 +143,7 @@ size_t WaveformGroup::GetAreaPosition(WaveformArea& area)
 				position = i;
 				break;
 			}
-		}		
+		}
 		return position;
 	}
 }

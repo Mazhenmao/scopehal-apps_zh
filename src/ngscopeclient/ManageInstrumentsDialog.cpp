@@ -44,7 +44,7 @@ using namespace std;
 // Construction / destruction
 
 ManageInstrumentsDialog::ManageInstrumentsDialog(Session& session, MainWindow* parent)
-	: Dialog("管理仪器", "管理仪器", ImVec2(1024, 300), &session, parent)
+	: Dialog("管理仪器", "Manage Instruments", ImVec2(1024, 300), &session, parent)
 	//, m_selection(nullptr)
 {
 }

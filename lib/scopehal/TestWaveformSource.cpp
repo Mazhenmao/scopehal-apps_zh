@@ -149,17 +149,19 @@ void TestWaveformSource::GenerateNoisySinewave(
 	wfm->Resize(depth);
 	wfm->Rename("TestWaveformSource.NoisySine");
 
+	double cycles_per_sample = static_cast<double>(sampleperiod) / static_cast<double>(period);
+	uint32_t fpfreq = round(0xffffffff * cycles_per_sample);
+
 	//Calculate a bunch of constants
 	const int numThreads = 32768;
 	NoisySinePushConstants push;
-	float samples_per_cycle = period * 1.0 / sampleperiod;
+	push.fpfreq = fpfreq;
 	push.numSamples = depth;
 	push.samplesPerThread = (depth + numThreads) / numThreads;
 	push.rngSeed = m_rng();
 	push.startPhase = startphase;
 	push.scale = amplitude / 2;	//sin is +/- 1, so need to divide amplitude by 2 to get scaling factor
 	push.sigma = noise_stdev;
-	push.radiansPerSample = 2 * M_PI / samples_per_cycle;
 
 	//Do the actual waveform generation
 	cmdBuf.begin({});
@@ -203,11 +205,16 @@ void TestWaveformSource::GenerateNoisySinewaveSum(
 	wfm->Resize(depth);
 	wfm->Rename("TestWaveformSource.NoisySineSum");
 
+	double cycles_per_sample1 = static_cast<double>(sampleperiod) / static_cast<double>(period1);
+	double cycles_per_sample2 = static_cast<double>(sampleperiod) / static_cast<double>(period2);
+	uint32_t fpfreq1 = round(0xffffffff * cycles_per_sample1);
+	uint32_t fpfreq2 = round(0xffffffff * cycles_per_sample2);
+
 	//Calculate a bunch of constants
 	const int numThreads = 32768;
 	NoisySineSumPushConstants push;
-	float samples_per_cycle1 = period1 * 1.0 / sampleperiod;
-	float samples_per_cycle2 = period2 * 1.0 / sampleperiod;
+	push.fpfreq1 = fpfreq1;
+	push.fpfreq2 = fpfreq2;
 	push.numSamples = depth;
 	push.samplesPerThread = (depth + numThreads) / numThreads;
 	push.rngSeed = m_rng();
@@ -215,8 +222,6 @@ void TestWaveformSource::GenerateNoisySinewaveSum(
 	push.startPhase2 = startphase2;
 	push.scale = amplitude / 4;	//sin is +/- 1, so need to divide amplitude by 4 to get scaling factor for sum
 	push.sigma = noise_stdev;
-	push.radiansPerSample1 = 2 * M_PI / samples_per_cycle1;
-	push.radiansPerSample2 = 2 * M_PI / samples_per_cycle2;
 
 	//Do the actual waveform generation
 	cmdBuf.begin({});

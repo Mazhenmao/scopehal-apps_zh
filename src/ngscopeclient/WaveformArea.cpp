@@ -163,6 +163,11 @@ DisplayedChannel::~DisplayedChannel()
  */
 bool DisplayedChannel::UpdateSize(ImVec2 newSize, MainWindow* top)
 {
+	//Sanity check and bail if size is negative
+	//(can happen during the first frame after loading older scopesessions when imgui padding has changed)
+	if( (newSize.x < 0) || (newSize.y < 0) )
+		return false;
+
 	size_t x = newSize.x;
 	size_t y = newSize.y;
 
@@ -743,7 +748,7 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 	float heightPerArea = totalHeightAvailable / numAreas;
 	float totalSpacing = (numAreas-1)*spacing;
 	float unspacedHeightPerArea = floor( (totalHeightAvailable - totalSpacing) / numAreas);
-	unspacedHeightPerArea -= ImGui::GetStyle().FramePadding.y;
+	unspacedHeightPerArea -= (ImGui::GetStyle().FramePadding.y + ImGui::GetStyle().ItemSpacing.y);
 	if(numAreas == 1)
 		unspacedHeightPerArea = heightPerArea;
 
@@ -770,10 +775,14 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 	float vtop = 0.0f;
 
 	auto cpos = ImGui::GetCursorPos();
-	if(ImGui::BeginChild(ImGui::GetID(this), ImVec2(clientArea.x - yAxisWidthSpaced, unspacedHeightPerArea)))
+	if(ImGui::BeginChild(ImGui::GetID(this), ImVec2(clientArea.x/* - yAxisWidthSpaced*/, unspacedHeightPerArea)))
 	{
-		auto csize = ImGui::GetContentRegionAvail();
+		auto startCursor = ImGui::GetCursorScreenPos();
 		auto pos = ImGui::GetWindowPos();
+
+		//Allocate room for the Y axis ourselves since it's no longer a child window of its own in imgui
+		auto csize = ImGui::GetContentRegionAvail();
+		csize.x -= yAxisWidthSpaced;
 
 		m_width = csize.x;
 
@@ -820,14 +829,25 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 
 		//Draw control widgets
 		m_mouseOverButton = false;
-		ImGui::SetCursorPos(ImGui::GetWindowContentRegionMin());
+		ImGui::SetCursorScreenPos(startCursor);
 		ImGui::BeginGroup();
 
 			for(size_t i=0; i<m_displayedChannels.size(); i++)
 				ChannelButton(m_displayedChannels[i], i);
 
 		ImGui::EndGroup();
-		ImGui::SetNextItemAllowOverlap();
+
+		//Draw the vertical scale on the right side of the plot
+		ImGui::SetCursorScreenPos(ImVec2(startCursor.x + csize.x, startCursor.y));
+		RenderYAxis(
+			ImVec2(yAxisWidth, unspacedHeightPerArea),
+			gridmap,
+			vbot,
+			vtop);
+
+		//Render Y axis cursors over everything, including the Y axis
+		ImGui::SetCursorScreenPos(startCursor);
+		RenderYAxisCursors(pos, csize, yAxisWidth);
 	}
 	else
 		m_mouseOverButton = false;
@@ -836,17 +856,6 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 	//Handle help messages
 	if(ImGui::IsItemHovered() && !m_mouseOverButton)
 		m_parent->AddStatusHelp("mouse_wheel", "Zoom horizontal axis");
-
-	//Draw the vertical scale on the right side of the plot
-	RenderYAxis(ImVec2(yAxisWidth, unspacedHeightPerArea), gridmap, vbot, vtop);
-
-	//Render the Y axis cursors (if we have any) over the top of everything else
-	{
-		auto csize = ImGui::GetContentRegionAvail();
-		auto pos = ImGui::GetWindowPos();
-		ImGui::SetCursorPos(cpos);
-		RenderYAxisCursors(pos, csize, yAxisWidth);
-	}
 
 	//Cursor should now be at end of window
 	ImGui::SetCursorPos(ImVec2(cpos.x, cpos.y + unspacedHeightPerArea));
@@ -881,81 +890,81 @@ void WaveformArea::RenderYAxisCursors(ImVec2 pos, ImVec2 size, float yAxisWidth)
 		return;
 	}
 
-	//Create a child window for all of our drawing
-	//(this is needed so we're above the WaveformArea content in z order, but behind popup windows)
-	if(ImGui::BeginChild("ycursors", size, ImGuiChildFlags_None, ImGuiWindowFlags_NoInputs))
+	auto list = ImGui::GetWindowDrawList();
+
+	auto& prefs = m_parent->GetSession().GetPreferences();
+	auto cursor0_color = prefs.GetColor("Appearance.Cursors.cursor_1_color");
+	auto cursor1_color = prefs.GetColor("Appearance.Cursors.cursor_2_color");
+	auto fill_color = prefs.GetColor("Appearance.Cursors.cursor_fill_color");
+	auto font = m_parent->GetFontPref("Appearance.Cursors.label_font");
+	ImGui::PushFont(font.first, font.second);
+
+	float ypos0 = round(YAxisUnitsToYPosition(m_yAxisCursorPositions[0]));
+	float ypos1 = round(YAxisUnitsToYPosition(m_yAxisCursorPositions[1]));
+
+	//Fill between if dual cursor
+	if(m_yAxisCursorMode == Y_CURSOR_DUAL)
+		list->AddRectFilled(ImVec2(pos.x, ypos0), ImVec2(pos.x + size.x + yAxisWidth, ypos1), fill_color);
+
+	//First cursor
+	list->AddLine(ImVec2(pos.x, ypos0), ImVec2(pos.x + size.x + yAxisWidth, ypos0), cursor0_color, 1);
+
+	//Text
+	//Anchor bottom left at the cursor
+	auto str = string("Y1: ") + m_yAxisUnit.PrettyPrint(m_yAxisCursorPositions[0]);
+	auto tsize = ImGui::CalcTextSize(str.c_str());
+	float padding = 2;
+	float wrounding = 2;
+	float textTop = ypos0 - (3*padding + tsize.y);
+	float plotRight = pos.x + size.x;
+	float textLeft = plotRight - (2*padding + tsize.x);
+	list->AddRectFilled(
+		ImVec2(textLeft, textTop - padding ),
+		ImVec2(plotRight, ypos0 - padding),
+		ImGui::GetColorU32(ImGuiCol_PopupBg),
+		wrounding);
+	list->AddText(
+		ImVec2(textLeft + padding, textTop + padding),
+		cursor0_color,
+		str.c_str());
+
+	//Interaction processing for first cursor
+	DoCursor(0, DRAG_STATE_Y_CURSOR0);
+
+	//Second cursor
+	if(m_yAxisCursorMode == Y_CURSOR_DUAL)
 	{
-		auto list = ImGui::GetWindowDrawList();
+		list->AddLine(ImVec2(pos.x, ypos1), ImVec2(pos.x + size.x + yAxisWidth, ypos1), cursor1_color, 1);
 
-		auto& prefs = m_parent->GetSession().GetPreferences();
-		auto cursor0_color = prefs.GetColor("Appearance.Cursors.cursor_1_color");
-		auto cursor1_color = prefs.GetColor("Appearance.Cursors.cursor_2_color");
-		auto fill_color = prefs.GetColor("Appearance.Cursors.cursor_fill_color");
-		auto font = m_parent->GetFontPref("Appearance.Cursors.label_font");
-		ImGui::PushFont(font.first, font.second);
-
-		float ypos0 = round(YAxisUnitsToYPosition(m_yAxisCursorPositions[0]));
-		float ypos1 = round(YAxisUnitsToYPosition(m_yAxisCursorPositions[1]));
-
-		//Fill between if dual cursor
-		if(m_yAxisCursorMode == Y_CURSOR_DUAL)
-			list->AddRectFilled(ImVec2(pos.x, ypos0), ImVec2(pos.x + size.x, ypos1), fill_color);
-
-		//First cursor
-		list->AddLine(ImVec2(pos.x, ypos0), ImVec2(pos.x + size.x, ypos0), cursor0_color, 1);
+		float delta = m_yAxisCursorPositions[0] - m_yAxisCursorPositions[1];
+		str = string("Y2: ") + m_yAxisUnit.PrettyPrint(m_yAxisCursorPositions[1]) + "\n" +
+			"ΔY = " + m_yAxisUnit.PrettyPrint(delta);
 
 		//Text
-		//Anchor bottom left at the cursor
-		auto str = string("Y1: ") + m_yAxisUnit.PrettyPrint(m_yAxisCursorPositions[0]);
-		auto tsize = ImGui::CalcTextSize(str.c_str());
-		float padding = 2;
-		float wrounding = 2;
-		float textTop = ypos0 - (3*padding + tsize.y);
-		float plotRight = pos.x + size.x - yAxisWidth;
-		float textLeft = plotRight - (2*padding + tsize.x);
+		tsize = ImGui::CalcTextSize(str.c_str());
+		textTop = ypos1 - (3*padding + tsize.y);
+		textLeft = plotRight - (2*padding + tsize.x);
 		list->AddRectFilled(
 			ImVec2(textLeft, textTop - padding ),
-			ImVec2(plotRight, ypos0 - padding),
+			ImVec2(plotRight, ypos1 - padding),
 			ImGui::GetColorU32(ImGuiCol_PopupBg),
 			wrounding);
 		list->AddText(
 			ImVec2(textLeft + padding, textTop + padding),
-			cursor0_color,
+			cursor1_color,
 			str.c_str());
 
-		//Second cursor
-		if(m_yAxisCursorMode == Y_CURSOR_DUAL)
-		{
-			list->AddLine(ImVec2(pos.x, ypos1), ImVec2(pos.x + size.x, ypos1), cursor1_color, 1);
-
-			float delta = m_yAxisCursorPositions[0] - m_yAxisCursorPositions[1];
-			str = string("Y2: ") + m_yAxisUnit.PrettyPrint(m_yAxisCursorPositions[1]) + "\n" +
-				"ΔY = " + m_yAxisUnit.PrettyPrint(delta);
-
-			//Text
-			tsize = ImGui::CalcTextSize(str.c_str());
-			textTop = ypos1 - (3*padding + tsize.y);
-			textLeft = plotRight - (2*padding + tsize.x);
-			list->AddRectFilled(
-				ImVec2(textLeft, textTop - padding ),
-				ImVec2(plotRight, ypos1 - padding),
-				ImGui::GetColorU32(ImGuiCol_PopupBg),
-				wrounding);
-			list->AddText(
-				ImVec2(textLeft + padding, textTop + padding),
-				cursor1_color,
-				str.c_str());
-		}
-
-		//not dragging if we no longer have a second cursor
-		else if(m_dragState == DRAG_STATE_Y_CURSOR1)
-			m_dragState = DRAG_STATE_NONE;
-
-		//TODO: text for value readouts, in-band power, etc?
-
-		ImGui::PopFont();
+		//Interaction processing for second cursor
+		DoCursor(1, DRAG_STATE_Y_CURSOR1);
 	}
-	ImGui::EndChild();
+
+	//not dragging if we no longer have a second cursor
+	else if(m_dragState == DRAG_STATE_Y_CURSOR1)
+		m_dragState = DRAG_STATE_NONE;
+
+	//TODO: text for value readouts, in-band power, etc?
+
+	ImGui::PopFont();
 
 	//Default help text related to cursors (may change if we're over a cursor)
 	if(ImGui::IsWindowHovered(ImGuiHoveredFlags_ChildWindows) &&
@@ -968,12 +977,6 @@ void WaveformArea::RenderYAxisCursors(ImVec2 pos, ImVec2 size, float yAxisWidth)
 	}
 	if( (m_dragState == DRAG_STATE_Y_CURSOR0) || (m_dragState == DRAG_STATE_Y_CURSOR1) )
 		m_parent->AddStatusHelp("mouse_lmb_drag", "Move cursor");
-
-	//Child window doesn't get mouse events (this flag is needed so we can pass mouse events to the WaveformArea's)
-	//So we have to do all of our interaction processing inside the top level window
-	DoCursor(0, DRAG_STATE_Y_CURSOR0);
-	if(m_yAxisCursorMode == Y_CURSOR_DUAL)
-		DoCursor(1, DRAG_STATE_Y_CURSOR1);
 
 	//If not currently dragging, a click places cursor 0 and starts dragging cursor 1 (if enabled)
 	//Don't process this if a popup is open
@@ -1281,6 +1284,10 @@ void WaveformArea::RenderEyeWaveform(shared_ptr<DisplayedChannel> channel, ImVec
 		return;
 
 	auto list = ImGui::GetWindowDrawList();
+
+	//If size is implausible, bail out
+	if( (size.x <= 0) || (size.y <= 0) )
+		return;
 
 	//Mark the waveform as resized
 	if(channel->UpdateSize(size, m_parent))
@@ -2776,12 +2783,11 @@ void WaveformArea::RenderGrid(ImVec2 start, ImVec2 size, map<float, float>& grid
  */
 void WaveformArea::RenderYAxis(ImVec2 size, map<float, float>& gridmap, float vbot, float vtop)
 {
-	ImGui::SameLine(0, 0);
 	ImGui::BeginChild("yaxis", size);
 
 	ImDrawList* draw_list = ImGui::GetWindowDrawList();
-
 	auto origin = ImGui::GetWindowPos();
+
 	float ytop = origin.y;
 	float ybot = origin.y + size.y;
 
@@ -2867,10 +2873,43 @@ void WaveformArea::RenderYAxis(ImVec2 size, map<float, float>& gridmap, float vb
 		{
 			LogTrace("Start dragging Y axis\n");
 			m_dragState = DRAG_STATE_Y_AXIS;
+
+			//If in the tutorial, ungate the wizard
+			auto tutorial = m_parent->GetTutorialWizard();
+			if(tutorial && (tutorial->GetCurrentStep() == TutorialWizard::TUTORIAL_05_YAXIS) )
+				tutorial->EnableNextStep();
 		}
 
 		if(ImGui::IsMouseClicked(ImGuiMouseButton_Middle))
 			AutofitVertical();
+	}
+
+	//If dragging the axis, immediately push changes if the channel is capable of high-rate offset changes
+	//(filter or scope that has opted into it)
+	if(m_dragState == DRAG_STATE_Y_AXIS)
+	{
+		bool updated = false;
+
+		for(auto c : m_displayedChannels)
+		{
+			auto s = c->GetStream();
+			if(s.IsHighRateOffsetCapable())
+			{
+				//Check if the offset has actually changed by a nontrivial amount
+				auto epsilon = 0.001 * s.GetVoltageRange();
+				if(fabs(s.GetOffset() - m_yAxisOffset) > epsilon)
+				{
+					updated = true;
+					s.SetOffset(m_yAxisOffset);
+				}
+			}
+		}
+
+		if(updated)
+		{
+			ClearPersistence();
+			m_parent->SetNeedRender();
+		}
 	}
 }
 
@@ -2951,7 +2990,7 @@ void WaveformArea::RenderBERSamplingPoint(ImVec2 /*start*/, ImVec2 /*size*/)
 			ImVec2(x-delta, y)
 		};
 
-		draw_list->AddPolyline(points, 5,  ColorFromString(stream.m_channel->m_displaycolor), weight, ImDrawFlags_None);
+		draw_list->AddPolyline(points, 5,  ColorFromString(stream.m_channel->m_displaycolor), 0, weight);
 
 		if(m_dragState != DRAG_STATE_BER_BOTH)
 		{
@@ -4497,6 +4536,11 @@ void WaveformArea::OnMouseWheelPlotArea(float delta, float delta_h)
  */
 void WaveformArea::OnMouseWheelYAxis(float delta)
 {
+	//If in the tutorial, ungate the wizard
+	auto tutorial = m_parent->GetTutorialWizard();
+	if(tutorial && (tutorial->GetCurrentStep() == TutorialWizard::TUTORIAL_05_YAXIS) )
+		tutorial->EnableNextStep();
+
 	//Cannot zoom eye patterns
 	auto stream = GetFirstEyeStream();
 	if(stream)
@@ -4628,6 +4672,7 @@ void WaveformArea::AutofitVertical()
 {
 	//Find the min and max of all currently displayed analog channels
 	//TODO: do we want to not allow autoscale on instrument inputs?
+	//TODO: GPU accelerate
 	float vmax = FLT_MIN;
 	float vmin = FLT_MAX;
 	bool found = false;

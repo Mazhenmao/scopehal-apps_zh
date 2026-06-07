@@ -88,7 +88,7 @@ public:
 	VICPDecoder(const std::string& color);
 	virtual ~VICPDecoder();
 
-	virtual void Refresh() override;
+	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
 
 	std::vector<std::string> GetHeaders() override;
 

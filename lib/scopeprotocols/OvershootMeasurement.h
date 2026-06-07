@@ -41,13 +41,23 @@ public:
 	OvershootMeasurement(const std::string& color);
 
 	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
-	virtual DataLocation GetInputLocation() override;
 
 	static std::string GetProtocolName();
 
 	virtual bool ValidateChannel(size_t i, StreamDescriptor stream) override;
 
 	PROTOCOL_DECODER_INITPROC(OvershootMeasurement)
+
+protected:
+
+	//Minmax calculation
+	ComputePipeline m_minmaxPipeline;
+	AcceleratorBuffer<float> m_minbuf;
+	AcceleratorBuffer<float> m_maxbuf;
+
+	//Histogram calculation
+	std::shared_ptr<ComputePipeline> m_histogramPipeline;
+	AcceleratorBuffer<uint64_t> m_histogramBuf;
 };
 
 #endif

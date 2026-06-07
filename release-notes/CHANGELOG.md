@@ -4,11 +4,14 @@ This is a running list of significant bug fixes and new features since the last 
 
 ## New features since v0.1.1
 
+* Core: added official support and binary release for Debian aarch64
 * Core: Changed rate limiting sleep in InstrumentThread loop from 10ms to 1ms to avoid bogging down high performance instruments like the ThunderScope
 * Core: Scopesession loading now uses multithreaded IO for significant performance gains especially when many channels and deep history are involved
 * Core: Significant rewrite of Vulkan queue allocation logic to reduce unnecessary locking and mutex contention on GPUs without a lot of Vulkan queues (most non-NVIDIA platforms)
 * Core: Restructured int8 to float32 conversion to enable GPU acceleration on all Vulkan-capable GPUs without needing CPU fallback, as well as significantly improve performance on already-supported platforms. Not yet deployed to all drivers (https://github.com/ngscopeclient/scopehal/issues/1083)
+* Core: Allow instruments (currently only demo scope and ThunderScope implemented) to declare that they support high-rate updates to channel DC offset, allowing for more responsive updates while dragging the axis
 * Drivers: Added support for many more PicoScope models
+* Drivers: Added Agilent 34401A 6.5 digit DMM driver (https://github.com/ngscopeclient/scopehal/pull/1076/)
 * Drivers: Added R&S RTB2000 driver (https://github.com/ngscopeclient/scopehal/pull/1048/)
 * Drivers: Added Rigol MHO900/98 series (https://github.com/ngscopeclient/scopehal/pull/1085)
 * Drivers: Added Teledyne LeCroy SDA6000A support (https://github.com/ngscopeclient/scopehal/issues/1065)
@@ -50,10 +53,12 @@ This is a running list of significant bug fixes and new features since the last 
   * Vector Frequency (1040x speedup)
   * Vector Magnitude (73x speedup)
   * Vector Phase (243x speedup)
+* Filters: Invert now works on digital signals as well as analog (https://github.com/ngscopeclient/scopehal/issues/1088)
 * Filters: 100baseT1 now has configurable decision thresholds for better decoding of weak signals
 * Filters: CDR PLL now outputs the input signal sampled by the recovered clock in a second data stream (https://github.com/ngscopeclient/scopehal/issues/991)
 * Filters: CDR PLL now has an "edges" input allowing you to replace the default thresholding edge detector with an external block, e.g. for locking to a PAM signal. This was possible in the past by passing the PAM edge detector block to the input, but this would result in the sampled data output just being a copy of the edge detector. By splitting these, the CDR can now output sampled data from PAM signals as well.
 * Filters: FFT now works with arbitrary length input rather than truncating to next lowest power of two
+* Filters: Improved floating point numerical stability in many blocks when working with deep memory
 * Filters: Peak detector for FFT etc now does quadratic interpolation for sub-sample peak fitting
 * Filters: Horizontal bathtub curve now works properly with MLT-3 / PAM-3 eyes as well as NRZ. No PAM-4 or higher support yet.
 * Filters: PcapNG export now has an additional mode selector for use with named pipes, allowing live streaming of PcapNG formatted data to WireShark
@@ -106,6 +111,7 @@ NOTE: This section only list changes which are potentially breaking to an *end u
 * GUI: History dialog allowed zero or negative values for history depth (https://github.com/ngscopeclient/scopehal-apps/issues/940)
 * GUI: Eye patterns and constellations would forget the selected color ramp when moved to a new location (https://github.com/ngscopeclient/scopehal-apps/issues/556)
 * GUI: crash when autoscaling an empty waveform (https://github.com/ngscopeclient/scopehal-apps/issues/978)
+* GUI: newly added measurement filters would not refresh until the next trigger (https://github.com/ngscopeclient/scopehal-apps/issues/997)
 * Session files: Windows build could not load session files containing sample rates or memory depths in excess of 2^32
 
 ## Other changes since v0.1.1

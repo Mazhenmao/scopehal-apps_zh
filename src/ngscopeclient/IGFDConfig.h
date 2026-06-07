@@ -48,14 +48,12 @@
 #define fileSizeMegaBytes "MB"
 #define fileSizeGigaBytes "GB"
 
-#define USE_PLACES_FEATURE
-#define USE_PLACES_BOOKMARKS
-#define PLACES_PANE_DEFAULT_SHOWN true
-#define placesPaneWith 150.0f
+#define USE_BOOKMARK
+#define bookmarkPaneWith 150.0f
 //#define IMGUI_TOGGLE_BUTTON ToggleButton
-//#define placesButtonString "Bookmark"
-//#define placesButtonHelpString "Bookmark"
-//#define addPlaceButtonString "+"
-//#define removePlaceButtonString "-"
+//#define bookmarksButtonString "Bookmark"
+//#define bookmarksButtonHelpString "Bookmark"
+//#define addBookmarkButtonString "+"
+//#define removeBookmarkButtonString "-"
 
 #endif
