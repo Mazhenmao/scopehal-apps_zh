@@ -442,15 +442,6 @@ void PreferenceManager::InitializeDefaults()
 				.Label("X 轴字体")
 				.Description("X 轴文本使用的字体"));
 
-		auto& toolbar = appearance.AddCategory("Toolbar", "工具栏");
-			toolbar.AddPreference(
-				Preference::Enum("icon_size", 24)
-					.Label("图标大小")
-					.Description("工具栏图标大小，单位为像素")
-					.EnumValue("24x24", 24)
-					.EnumValue("48x48", 48)
-				);
-
 		/*auto& waveforms = appearance.AddCategory("Waveforms", "波形");
 			waveforms.AddPreference(
 				Preference::Real("persist_decay_rate", 0.9)

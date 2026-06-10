@@ -807,7 +807,8 @@ void MainWindow::LoadMiscIcons()
  */
 void MainWindow::LoadToolbarIcons()
 {
-	int iconSize = m_session.GetPreferences().GetEnumRaw("Appearance.Toolbar.icon_size");
+	// 工具栏图标固定使用默认 24x24 资源，避免外观设置或字体设置改变图标尺寸。
+	int iconSize = 24;
 
 	if(m_toolbarIconSize == iconSize)
 		return;

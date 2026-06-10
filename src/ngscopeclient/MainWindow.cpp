@@ -1022,7 +1022,8 @@ void MainWindow::TriggerStopDropdown(float buttonsize)
 
 void MainWindow::ToolbarButtons()
 {
-	float sz = 2 * ImGui::GetFontSize();
+	// 工具栏图标显示尺寸固定为默认 24 像素，避免跟随字体大小变化。
+	float sz = 24.0f;
 	ImVec2 buttonsize(sz, sz);
 
 	bool multigroup = (m_session.GetTriggerGroups().size() > 1);
