@@ -819,7 +819,7 @@ bool VulkanWindow::IsPositionValid(
 
 
 void VulkanWindow::SetFullscreen(bool fullscreen)
-{
+{//@brief lmst
 	if(m_fullscreen == fullscreen)
 		return;
 
@@ -827,7 +827,7 @@ void VulkanWindow::SetFullscreen(bool fullscreen)
 
 	if(m_fullscreen)
 	{
-		LogTrace("Entering borderless fullscreen mode\n");
+		LogTrace("Entering fullscreen mode\n");
 		LogIndenter li;
 
 		m_windowedDecorated = (glfwGetWindowAttrib(m_window, GLFW_DECORATED) == GLFW_TRUE);

@@ -2,7 +2,7 @@
 *                                                                                                                      *
 * libscopehal                                                                                                          *
 *                                                                                                                      *
-* Copyright (c) 2012-2025 Andrew D. Zonenberg and contributors                                                         *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
 *                                                                                                                      *
 * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
@@ -46,6 +46,15 @@ class SinkNode : public FlowGraphNode
 public:
 	SinkNode();
 	virtual ~SinkNode();
+
+	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
+
+protected:
+	void RefreshInputNames();
+	virtual void RemoveStream(size_t i);
+	void ClearEmptyInputs();
+	size_t GetStreamPosition(StreamDescriptor desc);
+	void MoveStream(StreamDescriptor desc, size_t newPosition);
 };
 
 #endif

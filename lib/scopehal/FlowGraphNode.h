@@ -39,6 +39,7 @@
 class OscilloscopeChannel;
 class WaveformBase;
 class StreamDescriptor;
+class InputDescriptor;
 
 #include "FilterParameter.h"
 #include "Waveform.h"
@@ -120,7 +121,6 @@ public:
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	// Filter evaluation
 
-	//Filter evaluation (GPU accelerated)
 	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) =0;
 
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -169,21 +169,32 @@ protected:
 	SparseDigitalBusWaveform* GetSparseDigitalBusInputWaveform(size_t i)
 	{ return dynamic_cast<SparseDigitalBusWaveform*>(GetInputWaveform(i)); }
 
-	void CreateInput(const std::string& name);
+	virtual void CreateInput(const std::string& name);
 
 	std::string GetInputDisplayName(size_t i);
 
-protected:
-	///Names of signals we take as input
-	std::vector<std::string> m_signalNames;
+public:
+	//Sink management (used for special stuff that doesn't call SetInput directly)
+	void AddSink(size_t stream, FlowGraphNode* node)
+	{ m_sinks[stream].emplace(node); }
 
-	///@brief The channel (if any) connected to each of our inputs
-	std::vector<StreamDescriptor> m_inputs;
+	void RemoveSink(size_t stream, FlowGraphNode* node)
+	{ m_sinks[stream].erase(node); }
+
+	const std::set<FlowGraphNode*>& GetSinks(size_t stream)
+	{ return m_sinks[stream]; }
+
+protected:
+
+	/**
+		@brief Input ports
+	 */
+	std::vector< std::shared_ptr<InputDescriptor> > m_inputs;
 
 	/**
 		@brief The nodes (if any) that each of our streams drives
 
-		m_sinks[i] is the set of sinks for stream i
+		m_sinks[i] is the set of sinks for output stream i
 	 */
 	std::vector< std::set<FlowGraphNode*> > m_sinks;
 

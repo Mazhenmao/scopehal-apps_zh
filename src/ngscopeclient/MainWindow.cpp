@@ -584,7 +584,7 @@ void MainWindow::ToneMapAllWaveforms(vk::raii::CommandBuffer& cmdbuf)
 
 void MainWindow::RenderWaveformTextures(
 	vk::raii::CommandBuffer& cmdbuf,
-	vector<shared_ptr<DisplayedChannel> >& channels)
+	vector<shared_ptr<InputDescriptor> >& channels)
 {
 	bool clear = m_clearPersistence.exchange(false);
 	vector<shared_ptr<WaveformGroup>> groups;
@@ -3383,13 +3383,15 @@ YAML::Node MainWindow::SerializeUIConfiguration()
 	}
 
 	//Serialize measurements
+	//TODO: switch this over to FlowGraphNode native serialization
 	if(m_measurementsDialog)
 	{
-		auto measurements = m_measurementsDialog->GetStreams();
-
 		YAML::Node mnode;
-		for(auto stream : measurements)
+		for(size_t i=0; i<m_measurementsDialog->GetInputCount(); i++)
+		{
+			auto stream = m_measurementsDialog->GetInput(i);
 			mnode.push_back(to_string(m_session.m_idtable.emplace(stream.m_channel)) + "/" + to_string(stream.m_stream));
+		}
 
 		node["measurements"] = mnode;
 	}

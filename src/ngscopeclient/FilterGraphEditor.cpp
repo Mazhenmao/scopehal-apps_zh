@@ -430,6 +430,11 @@ ax::NodeEditor::PinId FilterGraphEditor::GetSinkPinForLink(StreamDescriptor sour
  */
 bool FilterGraphEditor::DoRender()
 {
+	//Detect the filter graph being opened
+	auto tutorial = m_parent->GetTutorialWizard();
+	if(tutorial && (tutorial->GetCurrentStep() == TutorialWizard::TUTORIAL_06_FILTER_GRAPH) )
+		tutorial->EnableNextStep();
+
 	bool windowHovered = ImGui::IsWindowHovered();
 
 	ax::NodeEditor::SetCurrentEditor(m_context);
@@ -618,7 +623,7 @@ bool FilterGraphEditor::DoRender()
 	//Handle other user input
 	Filter* fReconfigure = nullptr;
 	HandleLinkCreationRequests(fReconfigure);
-	HandleLinkDeletionRequests(fReconfigure);
+	HandleDeletionRequests(fReconfigure);
 	HandleDoubleClicks();
 	bool triggerChanged = HandleNodeProperties();
 	HandleBackgroundContextMenu();
@@ -1382,8 +1387,8 @@ void FilterGraphEditor::HandleOverlaps()
 		}
 	}
 
-	//Do not run collision resolution while nodes are actively being dragged.
-	//The live repulsion makes nearby nodes shift under the mouse, which feels like the graph is pushing tools around.
+	//节点拖拽过程中，不执行碰撞避让逻辑
+	//实时排斥效果会让鼠标附近的节点发生偏移，导致操作时感觉视图在“推挤”控件
 	bool anyDragging = false;
 	for(auto b : dragging)
 	{
@@ -1859,9 +1864,9 @@ void FilterGraphEditor::FilterSubmenu(StreamDescriptor stream, const string& nam
 }
 
 /**
-	@brief Handle requests to delete a link
+	@brief Handle requests to delete a link or node
  */
-void FilterGraphEditor::HandleLinkDeletionRequests(Filter*& fReconfigure)
+void FilterGraphEditor::HandleDeletionRequests(Filter*& fReconfigure)
 {
 	if(ax::NodeEditor::BeginDelete())
 	{
@@ -1919,6 +1924,9 @@ void FilterGraphEditor::HandleLinkDeletionRequests(Filter*& fReconfigure)
 		ax::NodeEditor::NodeId nid;
 		while(ax::NodeEditor::QueryDeletedNode(&nid))
 		{
+			LogTrace("Node deletion requested\n");
+			LogIndenter li;
+
 			//See if it's a group
 			if(m_groups.HasEntry(nid))
 			{
@@ -1940,15 +1948,102 @@ void FilterGraphEditor::HandleLinkDeletionRequests(Filter*& fReconfigure)
 				}
 			}
 
+			//Nope, it's a node. See what it is
 			else
 			{
-				//TODO: allow deletion of filters/channels
-				ax::NodeEditor::RejectDeletedItem();
+				//See if it's a valid graph node
+				auto node = m_session->m_idtable.Lookup<FlowGraphNode>(static_cast<uintptr_t>(nid));
+				if(node && OnNodeDeleted(node))
+				{}
+
+				//Not something we know how to delete, or deletion failed
+				else
+					ax::NodeEditor::RejectDeletedItem();
 			}
 		}
 	}
 	ax::NodeEditor::EndDelete();
 
+}
+
+/**
+	@brief Handle node deletion requests
+
+	@return True if successfully deleted, false if not
+ */
+bool FilterGraphEditor::OnNodeDeleted(FlowGraphNode* node)
+{
+	LogTrace("Trying to delete graph node\n");
+
+	auto trig = dynamic_cast<Trigger*>(node);
+	if(trig)
+	{
+		LogTrace("Can't delete a trigger\n");
+		return false;
+	}
+
+	auto f = dynamic_cast<Filter*>(node);
+	if(f)
+		return OnFilterDeleted(f);
+
+	//If we get here we don't know what to do
+	LogTrace("Unrecognized node type, can't delete\n");
+	return false;
+}
+
+/**
+	@brief Handle deletion requests for filters in particular
+
+	@return True if successfully deleted, false if not
+ */
+bool FilterGraphEditor::OnFilterDeleted(Filter* node)
+{
+	LogTrace("Deleting filter %s (rc=%zu)\n", node->GetDisplayName().c_str(), node->GetRefCount());
+	LogIndenter li;
+
+	//Ref the node so it doesn't self-delete too soon
+	node->AddRef();
+	LogTrace("Added temporary ref, rc=%zu\n", node->GetRefCount());
+
+	//Find sinks from each source stream, and break the links
+	auto nstreams = node->GetStreamCount();
+	for(size_t i=0; i<nstreams; i++)
+	{
+		//important to pass by value here and NOT grab the reference that GetSinks() returns natively
+		//because we need to keep iterators valid after a deletion
+		auto sinks = node->GetSinks(i);
+
+		//Iterate over sinks and break the connections
+		//Note that we may have >1 connection to a given sink node
+		for(auto dest : sinks)
+		{
+			//Walk over its inputs and remove us
+			//Do not stop if we find a hit:
+			size_t nin = dest->GetInputCount();
+			for(size_t j=0; j<nin; j++)
+			{
+				if(dest->GetInput(j).m_channel == node)
+				{
+					LogTrace("We are input %zu of %p, breaking link\n", j, (void*)dest);
+					dest->SetInput(j, StreamDescriptor(nullptr, 0), true);
+
+					LogTrace("Link broken, rc=%zu\n", node->GetRefCount());
+				}
+			}
+		}
+	}
+
+	//Delete it. If we did our job right it should be gone now
+	auto finalRefCount = node->GetRefCount();
+	LogTrace("Preparing to remove temporary ref, rc=%zu\n", finalRefCount);
+	node->Release();
+
+	if(finalRefCount > 1)
+		LogWarning("Unable to fully delete filter due to %zu unresolved dangling reference(s)\n", finalRefCount - 1);
+
+	//If the final ref count was 1, we just deleted the last ref and it's now gone.
+	//If it's not, we have either leaky references or a sink that wasn't in the filter graph preventing full deletion
+	return (finalRefCount <= 1);
 }
 
 /**

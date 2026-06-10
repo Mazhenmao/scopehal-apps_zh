@@ -91,12 +91,12 @@ namespace internal
 	}
 
 	const string& PreferenceTreeNodeBase::GetDisplayName() const
-	{
+	{//@brief lmst
 		return this->m_displayName;
 	}
 
 	void PreferenceTreeNodeBase::SetDisplayName(string name)
-	{
+	{//@brief lmst
 		this->m_displayName = std::move(name);
 	}
 
@@ -377,7 +377,7 @@ PreferenceCategory& PreferenceCategory::AddCategory(const string& identifier)
 }
 
 PreferenceCategory& PreferenceCategory::AddCategory(const string& identifier, const string& displayName)
-{
+{//@brief lmst
 	auto& category = AddCategory(identifier);
 	category.SetDisplayName(displayName);
 	return category;

@@ -141,4 +141,21 @@ inline float StreamDescriptor::GetScalarValue()
 		return m_channel->GetScalarValue(m_stream);
 }
 
+inline void StreamDescriptor::AddSink(FlowGraphNode* node)
+{
+	if(m_channel)
+		m_channel->AddSink(m_stream, node);
+}
+
+inline void StreamDescriptor::RemoveSink(FlowGraphNode* node)
+{
+	if(m_channel)
+		m_channel->RemoveSink(m_stream, node);
+}
+
+inline const std::set<FlowGraphNode*>& StreamDescriptor::GetSinks()
+{
+	return m_channel->GetSinks(m_stream);
+}
+
 #endif

@@ -39,7 +39,7 @@ using namespace std;
 // Helpers
 
 static string FindChineseFont()
-{
+{//@brief lmst
 	vector<string> candidates =
 	{
 #ifdef _WIN32

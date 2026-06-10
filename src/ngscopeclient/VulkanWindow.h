@@ -191,13 +191,13 @@ protected:
 	///@brief Saved size before we went fullscreen
 	int m_windowedHeight;
 
-	///@brief Saved window decoration state before entering fullscreen
+	///@brief 进入全屏前已保存窗口装饰状态
 	bool m_windowedDecorated;
 
-	///@brief Saved maximized state before entering fullscreen
+	///@brief 进入全屏前已保存窗口最大化状态
 	bool m_windowedMaximized;
 
-	///@brief Saved floating/topmost state before entering fullscreen
+	///@brief 进入全屏前已保存窗口置顶 / 悬浮状态
 	bool m_windowedFloating;
 
 	///@brief Textures used this frame

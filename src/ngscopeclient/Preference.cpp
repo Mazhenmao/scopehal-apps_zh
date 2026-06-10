@@ -79,12 +79,12 @@ namespace impl
 }
 
 void EnumMapping::AddEnumMember(const std::string& name, base_type value)
-{
+{//@brief lmst
 	AddEnumMember(name, name, value);
 }
 
 void EnumMapping::AddEnumMember(const std::string& name, const std::string& displayName, base_type value)
-{
+{//@brief lmst
 	if(this->m_forwardMap.count(name) != 0)
 		throw std::runtime_error("Enum mapping already contains given enum value");
 
@@ -130,7 +130,7 @@ const std::vector<std::string>& EnumMapping::GetNames() const
 }
 
 const std::vector<std::string>& EnumMapping::GetDisplayNames() const
-{
+{//@brief lmst
 	return this->m_displayNames;
 }
 

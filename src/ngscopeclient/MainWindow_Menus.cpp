@@ -215,7 +215,7 @@ void MainWindow::FileRecentMenu()
 	@brief Run the View menu
  */
 void MainWindow::ViewMenu()
-{
+{//@brief lmst
 	if(ImGui::BeginMenu("视图"))
 	{
 		if(m_fullscreen == false)

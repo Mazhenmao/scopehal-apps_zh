@@ -62,6 +62,10 @@ public:
 	operator bool() const
 	{ return (m_channel != NULL); }
 
+	void AddSink(FlowGraphNode* node);
+	void RemoveSink(FlowGraphNode* node);
+	const std::set<FlowGraphNode*>& GetSinks();
+
 	std::string GetName() const;
 
 	InstrumentChannel* m_channel;
@@ -84,6 +88,53 @@ public:
 	Stream::StreamType GetType();
 	float GetScalarValue();
 	bool IsInverted();
+};
+
+/**
+	@brief Base class for filter graph inputs
+	@ingroup core
+
+	An individual node may override CreateInput() to create derived-class objects with additional metadata.
+ */
+class InputDescriptor
+{
+public:
+	InputDescriptor(const std::string& name = "", const StreamDescriptor source = nullptr)
+		: m_name(name)
+		, m_sourceStream(source)
+	{}
+
+	virtual ~InputDescriptor()
+	{}
+
+	//not copyable or assignable
+	InputDescriptor(const InputDescriptor& rhs) =delete;
+	InputDescriptor& operator=(const InputDescriptor& rhs) =delete;
+
+	//Porting helpers and trivial accessors
+	Unit GetYAxisUnits()
+	{ return m_sourceStream.GetYAxisUnits(); }
+
+	Unit GetXAxisUnits()
+	{ return m_sourceStream.GetXAxisUnits(); }
+
+	WaveformBase* GetData() const
+	{ return m_sourceStream.GetData(); }
+
+	float GetVoltageRange()
+	{ return m_sourceStream.GetVoltageRange(); }
+
+	/**
+		@brief Name of the input port displayed in the graph editor
+
+		Must be unique within a given node
+	 */
+	std::string m_name;
+
+	/**
+		@brief The stream, if any, connected to this input port
+	 */
+	StreamDescriptor m_sourceStream;
 };
 
 
