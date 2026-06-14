@@ -2152,6 +2152,99 @@ Filter* MainWindow::CreateFilter(
 }
 
 /**
+	@brief Remove queued waveform display requests for a channel that is being deleted
+ */
+void MainWindow::RemovePendingChannelDisplayRequests(OscilloscopeChannel* channel)
+{
+	for(auto it = m_pendingChannelDisplayRequests.begin(); it != m_pendingChannelDisplayRequests.end(); )
+	{
+		if(it->first == channel)
+		{
+			// 删除新建滤波器时，它可能还在待显示队列里。
+			// 这里释放 CreateFilter() 为队列持有的引用，避免后续处理队列时访问已删除对象。
+			it->first->Release();
+			it = m_pendingChannelDisplayRequests.erase(it);
+		}
+		else
+			++it;
+	}
+}
+
+/**
+	@brief Remove all visible waveform streams that belong to a channel being deleted
+ */
+void MainWindow::RemoveChannelFromWaveformAreas(OscilloscopeChannel* channel)
+{
+	lock_guard<recursive_mutex> lock(m_waveformGroupsMutex);
+
+	for(auto group : m_waveformGroups)
+	{
+		auto areas = group->GetWaveformAreas();
+		for(auto area : areas)
+		{
+			// 删除滤波器前必须先从波形区移除对应显示项。
+			// 否则 ToneMapAllWaveforms() 下一帧会继续访问已删除滤波器导致段错误。
+			for(ssize_t i = static_cast<ssize_t>(area->GetStreamCount()) - 1; i >= 0; i--)
+			{
+				auto stream = area->GetStream(i);
+				if(stream.m_channel == channel)
+					area->RemoveStreamForChannelDeletion(i);
+			}
+		}
+	}
+}
+
+/**
+	@brief Remove all measurement rows that belong to a channel being deleted
+ */
+void MainWindow::RemoveChannelFromMeasurements(OscilloscopeChannel* channel)
+{
+	if(m_measurementsDialog)
+		m_measurementsDialog->RemoveStreamsForChannel(channel);
+}
+
+/**
+	@brief Check if a stream is visible in any waveform area other than the specified area
+ */
+bool MainWindow::IsStreamDisplayedInOtherWaveformArea(StreamDescriptor stream, WaveformArea* area)
+{
+	if(!stream)
+		return false;
+
+	lock_guard<recursive_mutex> lock(m_waveformGroupsMutex);
+
+	for(auto group : m_waveformGroups)
+	{
+		auto areas = group->GetWaveformAreas();
+		for(auto otherArea : areas)
+		{
+			if(otherArea.get() == area)
+				continue;
+
+			// 拖动滤波器输出时，不直接遍历 StreamDescriptor 的 sink 列表。
+			// sink 列表可能包含上一帧刚删除的 UI 对象；只检查当前仍存在的波形区更安全。
+			if(otherArea->IsStreamBeingDisplayed(stream))
+				return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+	@brief Delete a filter from any UI path using the filter graph's cleanup rules
+ */
+bool MainWindow::DeleteFilter(Filter* filter)
+{
+	if(!filter)
+		return false;
+
+	// 波形组菜单删除滤波器时，也要同步清理滤波器图里的节点、连线和 ID 缓存。
+	// 复用 FilterGraphEditor 的删除流程，避免两套 UI 的生命周期处理不一致。
+	return m_graphEditor->DeleteFilter(filter);
+}
+
+/**
 	@brief Given a stream and optionally a WaveformArea, adds the stream to some area.
 
 	The provided area is considered first; if it's not a good fit then another area is selected. If no compatible

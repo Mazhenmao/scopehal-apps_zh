@@ -225,7 +225,39 @@ bool Preference::HasUnit()
 
 void Preference::ResetToDefault()
 {
-	m_value = std::move(m_defaultValue);
+	// 默认值保存在 placement-new 的原始存储里，不能直接对 m_value 做字节级 move/赋值。
+	// FontDescription 内含 std::string，直接移动会破坏默认值和当前值的 string 状态，后续 SetFont() 会在 free() 崩溃。
+	CleanUp();
+	switch(m_type)
+	{
+		case PreferenceType::Boolean:
+			Construct<bool>(*reinterpret_cast<const bool*>(&m_defaultValue));
+			break;
+
+		case PreferenceType::Real:
+			Construct<double>(*reinterpret_cast<const double*>(&m_defaultValue));
+			break;
+
+		case PreferenceType::String:
+			Construct<string>(*reinterpret_cast<const string*>(&m_defaultValue));
+			break;
+
+		case PreferenceType::Font:
+			Construct<FontDescription>(*reinterpret_cast<const FontDescription*>(&m_defaultValue));
+			break;
+
+		case PreferenceType::Color:
+			Construct<impl::Color>(*reinterpret_cast<const impl::Color*>(&m_defaultValue));
+			break;
+
+		case PreferenceType::Enum:
+		case PreferenceType::Int:
+			Construct<std::int64_t>(*reinterpret_cast<const std::int64_t*>(&m_defaultValue));
+			break;
+
+		default:
+			break;
+	}
 }
 
 Unit& Preference::GetUnit()
@@ -243,8 +275,12 @@ const std::string& Preference::GetString() const
 
 void Preference::CleanUp()
 {
-	if(m_hasValue && (m_type == PreferenceType::String || m_type == PreferenceType::Font))
+	if(m_hasValue && (m_type == PreferenceType::String))
 		(reinterpret_cast<string*>(&m_value))->~basic_string();
+	else if(m_hasValue && (m_type == PreferenceType::Font))
+		(reinterpret_cast<FontDescription*>(&m_value))->~FontDescription();
+
+	m_hasValue = false;
 }
 
 string Preference::ToString() const
@@ -318,8 +354,37 @@ void Preference::MoveFrom(Preference& other)
 				break;
 		}
 	}
-	// Copy default value
-	m_defaultValue = std::move(other.m_defaultValue);
+	// Copy default value. It may contain std::string, so use placement-new with the real type.
+	switch(other.m_type)
+	{
+		case PreferenceType::Boolean:
+			new (&m_defaultValue) bool(*reinterpret_cast<const bool*>(&other.m_defaultValue));
+			break;
+
+		case PreferenceType::Real:
+			new (&m_defaultValue) double(*reinterpret_cast<const double*>(&other.m_defaultValue));
+			break;
+
+		case PreferenceType::String:
+			new (&m_defaultValue) string(*reinterpret_cast<const string*>(&other.m_defaultValue));
+			break;
+
+		case PreferenceType::Font:
+			new (&m_defaultValue) FontDescription(*reinterpret_cast<const FontDescription*>(&other.m_defaultValue));
+			break;
+
+		case PreferenceType::Color:
+			new (&m_defaultValue) impl::Color(*reinterpret_cast<const impl::Color*>(&other.m_defaultValue));
+			break;
+
+		case PreferenceType::Enum:
+		case PreferenceType::Int:
+			new (&m_defaultValue) std::int64_t(*reinterpret_cast<const std::int64_t*>(&other.m_defaultValue));
+			break;
+
+		default:
+			break;
+	}
 
 	other.m_type = PreferenceType::None;
 }

@@ -227,6 +227,8 @@ void TutorialWizard::MakePathSpeechBubble(
 	float radius,
 	float leftOverhang)
 {
+	(void)dirTip;
+
 	auto size = ImGui::GetFontSize();
 	auto tailWidth = size;
 	auto rightOverhang = textsize.x - leftOverhang;

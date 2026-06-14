@@ -49,6 +49,10 @@ public:
 protected:
 	std::set<InstrumentChannel*> m_nodesWithErrors;
 	bool m_firstRun;
+
+	// 刷新线程会先清空错误再重新写入错误。
+	// UI 如果刚好读到这个短暂空档，不应立即关闭错误窗口，否则 dock 布局会闪烁。
+	int m_emptyErrorFrames;
 };
 
 #endif

@@ -292,11 +292,11 @@ void PreferenceManager::InitializeDefaults()
 					.EnumValue("Classic", "经典", THEME_CLASSIC)
 				);
 			general.AddPreference(
-				Preference::Font("default_font", FontDescription(FindDataFile("fonts/DejaVuSans.ttf"), 13))
+				Preference::Font("default_font", FontDescription(FindDataFile("fonts/DejaVuSans.ttf"), 14))
 				.Label("默认字体")
 				.Description("大多数 GUI 元素使用的字体"));
 			general.AddPreference(
-				Preference::Font("title_font", FontDescription(FindDataFile("fonts/DejaVuSans-Bold.ttf"), 16))
+				Preference::Font("title_font", FontDescription(FindDataFile("fonts/DejaVuSans-Bold.ttf"), 13))
 				.Label("标题字体")
 				.Description("报告或向导标题使用的字体"));
 			general.AddPreference(

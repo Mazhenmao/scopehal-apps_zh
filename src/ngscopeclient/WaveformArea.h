@@ -496,6 +496,7 @@ public:
 	bool IsShowing(StreamDescriptor desc);
 
 	virtual void RemoveStream(size_t i) override;
+	void RemoveStreamForChannelDeletion(size_t i);
 
 	void ClearPersistence();
 	void ClearPersistenceOfChannel(OscilloscopeChannel* chan);

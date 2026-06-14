@@ -401,7 +401,7 @@ bool ChannelPropertiesDialog::DoRender()
 				ImGui::SetNextItemWidth(width);
 				if(m_probe != "")	//cannot change attenuation on active probes
 					ImGui::BeginDisabled();
-				if(UnitInputWithImplicitApply("Attenuation", m_attenuation, m_committedAttenuation, counts))
+				if(UnitInputWithImplicitApply("衰减", m_attenuation, m_committedAttenuation, counts))
 				{
 					scope->SetChannelAttenuation(index, m_committedAttenuation);
 
@@ -555,7 +555,7 @@ bool ChannelPropertiesDialog::DoRender()
 	//Vertical settings are per stream
 	for(size_t i = 0; i<nstreams; i++)
 	{
-		string streamname = "Vertical";
+		string streamname = "垂直";
 		if(nstreams > 1)
 			streamname = chan->GetStreamName(i);
 
@@ -577,7 +577,7 @@ bool ChannelPropertiesDialog::DoRender()
 					m_committedOffset[i] = off;
 				}
 				ImGui::SetNextItemWidth(width);
-				if(UnitInputWithExplicitApply("Offset", m_offset[i], m_committedOffset[i], unit))
+				if(UnitInputWithExplicitApply("偏移", m_offset[i], m_committedOffset[i], unit))
 				{
 					ochan->SetOffset(m_committedOffset[i], i);
 
@@ -594,7 +594,7 @@ bool ChannelPropertiesDialog::DoRender()
 					m_committedRange[i] = range;
 				}
 				ImGui::SetNextItemWidth(width);
-				if(UnitInputWithExplicitApply("Range", m_range[i], m_committedRange[i], unit))
+				if(UnitInputWithExplicitApply("量程", m_range[i], m_committedRange[i], unit))
 				{
 					ochan->SetVoltageRange(m_committedRange[i], i);
 

@@ -168,6 +168,8 @@ public:
 	FilterGraphErrorWindow& GetErrorWindow()
 	{ return m_errorWindow; }
 
+	bool DeleteFilter(Filter* node);
+
 protected:
 	friend class FilterGraphGroup;
 
@@ -192,9 +194,9 @@ protected:
 	bool HandleNodeProperties();
 	void HandleDoubleClicks();
 	void HandleLinkCreationRequests(Filter*& fReconfigure);
-	void HandleDeletionRequests(Filter*& fReconfigure);
+	bool HandleDeletionRequests(Filter*& fReconfigure);
 	bool OnNodeDeleted(FlowGraphNode* node);
-	bool OnFilterDeleted(Filter* node);
+	bool OnFilterDeleted(Filter* node, bool hasRenderRef);
 	void HandleBackgroundContextMenu();
 	void DoAddMenu();
 

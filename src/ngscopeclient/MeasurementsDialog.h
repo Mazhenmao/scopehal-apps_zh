@@ -49,6 +49,7 @@ public:
 	virtual bool DoRender() override;
 
 	void AddStream(StreamDescriptor stream);
+	void RemoveStreamsForChannel(OscilloscopeChannel* channel);
 
 	bool HasStream(StreamDescriptor stream);
 };

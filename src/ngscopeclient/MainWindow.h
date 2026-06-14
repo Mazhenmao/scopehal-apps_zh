@@ -264,6 +264,11 @@ public:
 		bool showProperties = true,
 		bool addToArea = true);
 	void FindAreaForStream(WaveformArea* area, StreamDescriptor stream);
+	void RemovePendingChannelDisplayRequests(OscilloscopeChannel* channel);
+	void RemoveChannelFromWaveformAreas(OscilloscopeChannel* channel);
+	void RemoveChannelFromMeasurements(OscilloscopeChannel* channel);
+	bool IsStreamDisplayedInOtherWaveformArea(StreamDescriptor stream, WaveformArea* area);
+	bool DeleteFilter(Filter* filter);
 
 	void OnFilterReconfigured(Filter* f);
 

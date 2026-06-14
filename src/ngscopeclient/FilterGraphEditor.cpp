@@ -623,10 +623,17 @@ bool FilterGraphEditor::DoRender()
 	//Handle other user input
 	Filter* fReconfigure = nullptr;
 	HandleLinkCreationRequests(fReconfigure);
-	HandleDeletionRequests(fReconfigure);
-	HandleDoubleClicks();
-	bool triggerChanged = HandleNodeProperties();
-	HandleBackgroundContextMenu();
+	bool nodeDeleted = HandleDeletionRequests(fReconfigure);
+	bool triggerChanged = false;
+
+	// 删除节点后，NodeEditor 和后端对象表会在本帧内完成状态切换。
+	// 本帧不再继续处理双击、属性弹窗和背景菜单，避免它们继续访问刚删除的节点。
+	if(!nodeDeleted)
+	{
+		HandleDoubleClicks();
+		triggerChanged = HandleNodeProperties();
+		HandleBackgroundContextMenu();
+	}
 
 	//Done with canvas stuff
 	SetImGuiManagedDPI();
@@ -641,7 +648,8 @@ bool FilterGraphEditor::DoRender()
 	//If we don't do that, node content and frames can get one frame out of sync
 	//If we changed the type of a trigger, don't do this as we have stale metadata
 	//TODO: can we dynamically refresh m_nodeGroupMap and anything else impacted?
-	if(!triggerChanged)
+	// 删除节点的同一帧也跳过自动避让，等下一帧节点列表稳定后再重新计算布局。
+	if(!triggerChanged && !nodeDeleted)
 		HandleOverlaps();
 
 	//Add top level help text if there's nothing else
@@ -1866,8 +1874,10 @@ void FilterGraphEditor::FilterSubmenu(StreamDescriptor stream, const string& nam
 /**
 	@brief Handle requests to delete a link or node
  */
-void FilterGraphEditor::HandleDeletionRequests(Filter*& fReconfigure)
+bool FilterGraphEditor::HandleDeletionRequests(Filter*& fReconfigure)
 {
+	bool nodeDeleted = false;
+
 	if(ax::NodeEditor::BeginDelete())
 	{
 		ax::NodeEditor::LinkId lid;
@@ -1945,6 +1955,7 @@ void FilterGraphEditor::HandleDeletionRequests(Filter*& fReconfigure)
 						m_nodeGroupMap.erase(n);
 
 					m_groups.erase(nid);
+					nodeDeleted = true;
 				}
 			}
 
@@ -1954,7 +1965,10 @@ void FilterGraphEditor::HandleDeletionRequests(Filter*& fReconfigure)
 				//See if it's a valid graph node
 				auto node = m_session->m_idtable.Lookup<FlowGraphNode>(static_cast<uintptr_t>(nid));
 				if(node && OnNodeDeleted(node))
-				{}
+				{
+					ax::NodeEditor::AcceptDeletedItem();
+					nodeDeleted = true;
+				}
 
 				//Not something we know how to delete, or deletion failed
 				else
@@ -1964,6 +1978,7 @@ void FilterGraphEditor::HandleDeletionRequests(Filter*& fReconfigure)
 	}
 	ax::NodeEditor::EndDelete();
 
+	return nodeDeleted;
 }
 
 /**
@@ -1984,7 +1999,7 @@ bool FilterGraphEditor::OnNodeDeleted(FlowGraphNode* node)
 
 	auto f = dynamic_cast<Filter*>(node);
 	if(f)
-		return OnFilterDeleted(f);
+		return OnFilterDeleted(f, true);
 
 	//If we get here we don't know what to do
 	LogTrace("Unrecognized node type, can't delete\n");
@@ -1992,11 +2007,19 @@ bool FilterGraphEditor::OnNodeDeleted(FlowGraphNode* node)
 }
 
 /**
+	@brief Delete a filter using the same cleanup path as the filter graph delete command
+ */
+bool FilterGraphEditor::DeleteFilter(Filter* node)
+{
+	return OnFilterDeleted(node, false);
+}
+
+/**
 	@brief Handle deletion requests for filters in particular
 
 	@return True if successfully deleted, false if not
  */
-bool FilterGraphEditor::OnFilterDeleted(Filter* node)
+bool FilterGraphEditor::OnFilterDeleted(Filter* node, bool hasRenderRef)
 {
 	LogTrace("Deleting filter %s (rc=%zu)\n", node->GetDisplayName().c_str(), node->GetRefCount());
 	LogIndenter li;
@@ -2005,45 +2028,125 @@ bool FilterGraphEditor::OnFilterDeleted(Filter* node)
 	node->AddRef();
 	LogTrace("Added temporary ref, rc=%zu\n", node->GetRefCount());
 
-	//Find sinks from each source stream, and break the links
+	// 新建滤波器在同一帧内可能还没有加入波形区，只是挂在 MainWindow 的待显示队列里。
+	// 删除前必须先取消这个队列引用，否则队列稍后会拿着已释放的指针继续创建显示区域。
+	m_parent->RemovePendingChannelDisplayRequests(node);
+
+	// 波形区会在每帧开始执行 ToneMapAllWaveforms()。
+	// 先移除该滤波器的所有显示项，避免波形区下一帧继续渲染已删除的滤波器。
+	m_parent->RemoveChannelFromWaveformAreas(node);
+	m_parent->RemoveChannelFromMeasurements(node);
+
 	auto nstreams = node->GetStreamCount();
+	auto ninputs = node->GetInputCount();
+
+	// 先收集待删除节点相关的 pin/link 信息。
+	// 不依赖 Filter::GetSinks()，因为部分 UI 删除路径可能留下已失效的 sink 指针。
+	set<ax::NodeEditor::PinId, lessID<ax::NodeEditor::PinId> > pinsToRemove;
 	for(size_t i=0; i<nstreams; i++)
 	{
-		//important to pass by value here and NOT grab the reference that GetSinks() returns natively
-		//because we need to keep iterators valid after a deletion
-		auto sinks = node->GetSinks(i);
-
-		//Iterate over sinks and break the connections
-		//Note that we may have >1 connection to a given sink node
-		for(auto dest : sinks)
+		StreamDescriptor stream(node, i);
+		if(m_streamIDMap.HasEntry(stream))
 		{
-			//Walk over its inputs and remove us
-			//Do not stop if we find a hit:
-			size_t nin = dest->GetInputCount();
-			for(size_t j=0; j<nin; j++)
-			{
-				if(dest->GetInput(j).m_channel == node)
-				{
-					LogTrace("We are input %zu of %p, breaking link\n", j, (void*)dest);
-					dest->SetInput(j, StreamDescriptor(nullptr, 0), true);
+			pinsToRemove.emplace(m_streamIDMap[stream]);
+		}
+	}
 
-					LogTrace("Link broken, rc=%zu\n", node->GetRefCount());
-				}
+	for(size_t i=0; i<ninputs; i++)
+	{
+		pair<FlowGraphNode*, int> input(node, static_cast<int>(i));
+		if(m_inputIDMap.HasEntry(input))
+			pinsToRemove.emplace(m_inputIDMap[input]);
+	}
+
+	set<pair<FlowGraphNode*, int> > downstreamInputsToClear;
+	set<ax::NodeEditor::LinkId, lessID<ax::NodeEditor::LinkId> > linksToRemove;
+	for(auto it : m_linkMap)
+	{
+		auto srcPin = it.first.first;
+		auto dstPin = it.first.second;
+		bool touchesDeletedNode =
+			(pinsToRemove.find(srcPin) != pinsToRemove.end()) ||
+			(pinsToRemove.find(dstPin) != pinsToRemove.end());
+
+		if(!touchesDeletedNode)
+			continue;
+
+		linksToRemove.emplace(it.second);
+
+		// 如果这是从待删滤波器输出到其它节点输入的连线，记录目标输入稍后断开。
+		if(pinsToRemove.find(srcPin) != pinsToRemove.end())
+		{
+			auto canonicalDst = CanonicalizePin(dstPin);
+			if(m_inputIDMap.HasEntry(canonicalDst))
+			{
+				auto inputPort = m_inputIDMap[canonicalDst];
+				if(inputPort.first != node)
+					downstreamInputsToClear.emplace(inputPort);
 			}
 		}
 	}
 
-	//Delete it. If we did our job right it should be gone now
+	// 先断开待删滤波器自己的输入，释放输入通道引用并从源通道 sink 列表中移除本节点。
+	for(size_t i=0; i<ninputs; i++)
+		node->SetInput(i, StreamDescriptor(nullptr, 0), true);
+
+	// 再断开该滤波器输出驱动的下游输入。
+	for(auto inputPort : downstreamInputsToClear)
+	{
+		if(m_session->m_idtable.HasID(inputPort.first))
+			inputPort.first->SetInput(inputPort.second, StreamDescriptor(nullptr, 0), true);
+	}
+
+	//Delete it. If we did our job right, only this function should still hold a ref.
+	// 从滤波器图内部删除时，本帧渲染还会额外持有一个临时引用；从波形组删除时没有这个引用。
 	auto finalRefCount = node->GetRefCount();
+	size_t expectedRefs = hasRenderRef ? 2 : 1;
 	LogTrace("Preparing to remove temporary ref, rc=%zu\n", finalRefCount);
+	if(finalRefCount > expectedRefs)
+	{
+		LogWarning("Unable to fully delete filter due to %zu unresolved dangling reference(s)\n", finalRefCount - expectedRefs);
+		node->Release();
+		return false;
+	}
+
+	// 删除对象前清掉图编辑器和会话里的缓存 ID，避免下一帧通过旧 ID 找到悬挂指针。
+	if(m_session->m_idtable.HasID(node))
+	{
+		ax::NodeEditor::NodeId nid(m_session->m_idtable[node]);
+		m_propertiesDialogs.erase(nid);
+		m_session->m_idtable.erase(node);
+	}
+
+	if(m_nodeGroupMap.HasEntry(node))
+		m_nodeGroupMap.erase(node);
+
+	for(size_t i=0; i<nstreams; i++)
+	{
+		StreamDescriptor stream(node, i);
+		if(m_streamIDMap.HasEntry(stream))
+		{
+			pinsToRemove.emplace(m_streamIDMap[stream]);
+			m_streamIDMap.erase(stream);
+		}
+	}
+
+	for(size_t i=0; i<ninputs; i++)
+	{
+		pair<FlowGraphNode*, int> input(node, static_cast<int>(i));
+		if(m_inputIDMap.HasEntry(input))
+		{
+			pinsToRemove.emplace(m_inputIDMap[input]);
+			m_inputIDMap.erase(input);
+		}
+	}
+
+	for(auto lid : linksToRemove)
+		m_linkMap.erase(lid);
+
+	// 这里释放的是删除流程的临时引用；渲染流程的临时引用会在 DoRender() 末尾释放并真正销毁滤波器。
 	node->Release();
-
-	if(finalRefCount > 1)
-		LogWarning("Unable to fully delete filter due to %zu unresolved dangling reference(s)\n", finalRefCount - 1);
-
-	//If the final ref count was 1, we just deleted the last ref and it's now gone.
-	//If it's not, we have either leaky references or a sink that wasn't in the filter graph preventing full deletion
-	return (finalRefCount <= 1);
+	return true;
 }
 
 /**

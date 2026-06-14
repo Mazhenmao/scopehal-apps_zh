@@ -1477,10 +1477,9 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 			ImGui::EndDisabled();
 
 		HelpMarker(
-			"Operating mode for the analog-to-digital converter.\n\n"
-			"Some instruments allow the ADC to operate in several modes, typically trading bit depth "
-			"against sample rate. Available modes may vary depending on the current sample rate and "
-			"which channels are in use."
+			"模数转换器(ADC)工作模式\n\n"
+			"部分仪器支持多种 ADC 工作模式。这类模式通常需要在采样位深和采样率之间进行权衡。"
+			"可用的模式会随当前采样速率、已启用的通道数量发生变化。"
 			);
 	}
 
@@ -1783,11 +1782,11 @@ void StreamBrowserDialog::renderChannelProperties(
 	Unit counts(Unit::UNIT_COUNTS);
 	if(renderEditableProperty(
 		width,
-		"Attenuation",
+		"衰减",
 		scopeState->m_strAttenuation[channelIndex],
 		scopeState->m_committedAttenuation[channelIndex],
 		counts,
-		"Attenuation setting for the probe (for example, 10 for a 10:1 probe)"))
+		"探头衰减设置(例如 10 代表 10:1 探头)"))
 	{
 		// Update offset
 		scopechan->SetAttenuation(scopeState->m_committedAttenuation[channelIndex]);
@@ -1872,10 +1871,9 @@ void StreamBrowserDialog::renderChannelProperties(
 			ImGui::EndDisabled();
 
 		HelpMarker(
-			"Operating mode for the analog-to-digital converter.\n\n"
-			"Some instruments allow the ADC to operate in several modes, typically trading bit depth "
-			"against sample rate. Available modes may vary depending on the current sample rate and "
-			"which channels are in use."
+			"模数转换器(ADC)工作模式\n\n"
+			"部分仪器支持多种 ADC 工作模式。这类模式通常需要在采样位深和采样率之间进行权衡。"
+			"可用的模式会随当前采样速率、已启用的通道数量发生变化。"
 			);
 	}
 
@@ -1961,12 +1959,12 @@ void StreamBrowserDialog::renderStreamNode(shared_ptr<Instrument> instrument, In
 							{	// No streams => display channel properties here
 								renderChannelProperties(scope,scopechan,channelIndex,scopeState);
 							}
-							if(renderEditablePropertyWithExplicitApply(0,"Offset",scopeState->m_strOffset[channelIndex][streamIndex],scopeState->m_committedOffset[channelIndex][streamIndex],unit))
+							if(renderEditablePropertyWithExplicitApply(0,"垂直偏移",scopeState->m_strOffset[channelIndex][streamIndex],scopeState->m_committedOffset[channelIndex][streamIndex],unit))
 							{	// Update offset
 								scopechan->SetOffset(scopeState->m_committedOffset[channelIndex][streamIndex],streamIndex);
 								scopeState->m_needsUpdate[channelIndex] = true;
 							}
-							if(renderEditablePropertyWithExplicitApply(0,"Vertical range",scopeState->m_strRange[channelIndex][streamIndex],scopeState->m_committedRange[channelIndex][streamIndex],unit))
+							if(renderEditablePropertyWithExplicitApply(0,"垂直量程",scopeState->m_strRange[channelIndex][streamIndex],scopeState->m_committedRange[channelIndex][streamIndex],unit))
 							{	// Update offset
 								scopechan->SetVoltageRange(scopeState->m_committedRange[channelIndex][streamIndex],streamIndex);
 								scopeState->m_needsUpdate[channelIndex] = true;

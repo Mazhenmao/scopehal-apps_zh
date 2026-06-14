@@ -45,6 +45,7 @@ using namespace std;
 FilterGraphErrorWindow::FilterGraphErrorWindow(Session* session)
 	: Dialog("Errors", "FilterGraphErrors", ImVec2(300, 400), session)
 	, m_firstRun(true)
+	, m_emptyErrorFrames(0)
 {
 }
 
@@ -68,14 +69,24 @@ bool FilterGraphErrorWindow::Render()
 
 	//Show error window on first run, or if we have errors
 	if(!m_nodesWithErrors.empty())
+	{
 		m_open = true;
+		m_emptyErrorFrames = 0;
+	}
 	else if(m_firstRun)
 	{
 		m_open = true;
 		m_firstRun = false;
 	}
 	else
-		m_open = false;
+	{
+		// 滤波器刷新时会短暂 ClearErrors()，下一步才重新 AddErrorMessage()。
+		// 连续几帧都没有错误后再自动关闭，避免未接输入滤波器导致错误窗口反复开关闪烁。
+		if(m_open && (m_emptyErrorFrames < 3))
+			m_emptyErrorFrames ++;
+		else
+			m_open = false;
+	}
 
 	return Dialog::Render();
 }
@@ -88,6 +99,11 @@ bool FilterGraphErrorWindow::Render()
  */
 bool FilterGraphErrorWindow::DoRender()
 {
+	// 防抖期间窗口可能仍保持打开，但当前错误列表已经为空。
+	// 直接返回，避免删除滤波器后继续访问上一帧保存的节点指针。
+	if(m_nodesWithErrors.empty())
+		return true;
+
 	const ImGuiTableFlags flags =
 		ImGuiTableFlags_Resizable |
 		ImGuiTableFlags_BordersOuter |

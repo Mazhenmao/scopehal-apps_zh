@@ -509,6 +509,9 @@ void WaveformArea::AddStream(StreamDescriptor desc, size_t position, bool persis
  */
 void WaveformArea::OnStreamAdded(StreamDescriptor desc)
 {
+	if(!desc)
+		return;
+
 	LogTrace("Stream %s added to waveform area\n", desc.GetName().c_str());
 	LogIndenter li;
 
@@ -521,24 +524,10 @@ void WaveformArea::OnStreamAdded(StreamDescriptor desc)
 
 	//If we get here it's a filter or otherwise not part of an instrument
 	//Check which waveform areas it drives
-	bool drivesWaveformAreasOtherThanUs = false;
-	auto& sinks = desc.GetSinks();
-	LogTrace("Sinks\n");
-	for(auto sink : sinks)
-	{
-		LogIndenter li2;
-
-		auto w = dynamic_cast<WaveformArea*>(sink);
-		if(w == this)
-			LogTrace("This waveform area\n");
-		else if(w)
-		{
-			LogTrace("Another waveform area\n");
-			drivesWaveformAreasOtherThanUs = true;
-		}
-		else
-			LogTrace("Not a waveform area\n");
-	}
+	// 拖动滤波器输出时，旧的 sink 列表可能还残留刚删除/移动的波形区指针。
+	// 这里改为从 MainWindow 当前有效的波形区列表查询，避免 OnStreamAdded() 动态转型失效指针导致闪退。
+	bool drivesWaveformAreasOtherThanUs =
+		m_parent->IsStreamDisplayedInOtherWaveformArea(desc, this);
 
 	//We are the first waveform area this stream is being added to, and it's a filter
 	//Rescale it to match
@@ -573,6 +562,28 @@ void WaveformArea::RemoveStream(size_t i)
 
 	//Make names consistent again
 	RefreshInputNames();
+}
+
+/**
+	@brief Immediately removes a stream because its source channel is being deleted
+ */
+void WaveformArea::RemoveStreamForChannelDeletion(size_t i)
+{
+	auto stream = m_inputs[i]->m_sourceStream;
+	auto removed = m_inputs[i];
+
+	// 删除滤波器时不能像普通 UI 删除那样延迟释放 DisplayedChannel。
+	// 否则滤波器引用计数不会立刻下降，后端会拒绝删除，节点下一帧又重新出现。
+	if( (m_dragState == DRAG_STATE_CHANNEL) && (stream == m_dragStream) )
+		m_dragState = DRAG_STATE_NONE;
+
+	m_inputs.erase(m_inputs.begin() + i);
+	stream.RemoveSink(this);
+	RefreshInputNames();
+
+	// DisplayedChannel 析构会释放源通道引用；释放前等 GPU 空闲，避免销毁仍被使用的纹理资源。
+	g_vkComputeDevice->waitIdle();
+	removed = nullptr;
 }
 
 /**
@@ -4212,7 +4223,21 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
 	if(ImGui::BeginPopupContextItem())
 	{
 		if(ImGui::MenuItem("删除"))
+		{
+			auto filter = dynamic_cast<Filter*>(stream.m_channel);
+			if(filter)
+			{
+				// 在波形组中删除滤波器显示项时，同步删除滤波器图中的节点。
+				// 普通通道仍然只从当前波形区移除，避免误删仪器通道。
+				m_parent->DeleteFilter(filter);
+				ImGui::EndPopup();
+				return;
+			}
+
 			RemoveStream(index);
+			ImGui::EndPopup();
+			return;
+		}
 		ImGui::Separator();
 
 		//Color ramp if it's a density plot
