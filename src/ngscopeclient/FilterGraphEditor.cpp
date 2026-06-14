@@ -438,6 +438,10 @@ bool FilterGraphEditor::DoRender()
 	bool windowHovered = ImGui::IsWindowHovered();
 
 	ax::NodeEditor::SetCurrentEditor(m_context);
+	// 记录节点编辑器实际占用的画布区域，后面把悬浮工具栏画回这块区域内。
+	auto editorMin = ImGui::GetCursorScreenPos();
+	auto editorAvail = ImGui::GetContentRegionAvail();
+	auto editorMax = ImVec2(editorMin.x + editorAvail.x, editorMin.y + editorAvail.y);
 	ax::NodeEditor::Begin("Filter Graph", ImVec2(0, 0));
 
 	// NodeEditor seems to handle DPI scaling on its own
@@ -639,6 +643,9 @@ bool FilterGraphEditor::DoRender()
 	SetImGuiManagedDPI();
 	ax::NodeEditor::End();
 
+	// 使用独立悬浮窗口承载工具栏，避免 NodeEditor 画布覆盖按钮或抢占点击。
+	RenderAlignmentToolbar(editorMin, editorMax);
+
 	//Refresh all of our groups to have up-to-date child contents
 	for(auto it : m_groups)
 		it.first->RefreshChildren();
@@ -679,6 +686,663 @@ bool FilterGraphEditor::DoRender()
 		f->Release();
 
 	return true;
+}
+
+/**
+	@brief Render alignment buttons for the currently selected nodes
+ */
+void FilterGraphEditor::RenderAlignmentToolbar(ImVec2 editorMin, ImVec2 editorMax)
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	bool canAlign = (selectedNodes.size() >= 2);
+	bool canDistribute = (selectedNodes.size() >= 3);
+
+	const char* labels[] =
+	{
+		"↶",
+		"↷",
+		"左对齐",
+		"右对齐",
+		"顶对齐",
+		"底对齐",
+		"水平分布",
+		"水平-",
+		"水平+",
+		"垂直分布",
+		"垂直-",
+		"垂直+"
+	};
+
+	auto style = ImGui::GetStyle();
+	auto framePadding = style.FramePadding;
+	framePadding.y = ceil(framePadding.y);
+	auto itemSpacing = style.ItemSpacing;
+	itemSpacing.x = 2.0f;
+	// 固定工具栏按钮的垂直内边距，并只在小工具栏内使用圆角按钮和更紧凑的按钮间距。
+	ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, framePadding);
+	ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 4.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, itemSpacing);
+
+	float spacing = ImGui::GetStyle().ItemSpacing.x;
+	float totalWidth = 0;
+	for(size_t i=0; i<sizeof(labels) / sizeof(labels[0]); i++)
+	{
+		totalWidth += ImGui::CalcTextSize(labels[i]).x + 2*ImGui::GetStyle().FramePadding.x;
+		if(i + 1 < sizeof(labels) / sizeof(labels[0]))
+			totalWidth += spacing;
+	}
+
+	auto contentWidth = editorMax.x - editorMin.x;
+	float toolbarPad = ImGui::GetStyle().FramePadding.y + ImGui::GetStyle().ItemSpacing.y;
+	float buttonHeight = ImGui::GetFrameHeight();
+	auto toolbarX = editorMin.x + max((contentWidth - totalWidth) * 0.5f, 0.0f);
+	// 工具栏绘制在节点编辑器画布内部，位置基于内容区域计算，避开顶部黑色边框。
+	auto toolbarY = editorMin.y + toolbarPad;
+
+	// 给原生按钮组增加悬浮外框，不改变按钮本身的 ImGui 主题绘制。
+	ImVec2 borderPadding(framePadding.x + 5, 4.0f);
+	ImVec2 toolbarMin(toolbarX - borderPadding.x, toolbarY - borderPadding.y);
+	ImVec2 toolbarSize(totalWidth + 2*borderPadding.x, buttonHeight + 2*borderPadding.y);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, borderPadding);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 4.0f);
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+	// 浮动工具栏不使用 ImGui 默认窗口最小尺寸，避免外壳高度被额外撑大。
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowMinSize, ImVec2(0, 0));
+	ImGui::SetNextWindowPos(toolbarMin);
+	ImGui::SetNextWindowSize(toolbarSize);
+	auto flags =
+		ImGuiWindowFlags_NoDecoration |
+		ImGuiWindowFlags_NoSavedSettings |
+		ImGuiWindowFlags_NoScrollbar |
+		ImGuiWindowFlags_NoScrollWithMouse |
+		ImGuiWindowFlags_NoNav |
+		ImGuiWindowFlags_NoBackground;
+
+	if(ImGui::Begin("##FilterGraphAlignmentToolbar", nullptr, flags))
+	{
+		auto windowMin = ImGui::GetWindowPos();
+		auto windowMax = windowMin + ImGui::GetWindowSize();
+		auto drawList = ImGui::GetWindowDrawList();
+		drawList->AddRectFilled(
+			windowMin + ImVec2(2, 3),
+			windowMax + ImVec2(2, 3),
+			IM_COL32(0, 0, 0, 90),
+			4.0f);
+		drawList->AddRectFilled(windowMin, windowMax, IM_COL32(20, 25, 32, 235), 4.0f);
+		drawList->AddRect(windowMin, windowMax, IM_COL32(120, 170, 220, 255), 4.0f);
+
+		auto toolbarButton = [buttonHeight](const char* label, bool enabled, const char* tooltip = nullptr)
+		{
+			// 使用 ImGui 自带按钮绘制，保持和工程主题/禁用状态一致。
+			ImGui::BeginDisabled(!enabled);
+			bool clicked = ImGui::Button(label, ImVec2(0, buttonHeight));
+			ImGui::EndDisabled();
+			if(tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled))
+				ImGui::SetTooltip("%s", tooltip);
+			return enabled && clicked;
+		};
+
+		// 工具栏绘制在节点编辑器画布内部，不占用额外布局高度。
+		if(toolbarButton("↶", !m_nodePositionUndoHistory.empty(), "撤销"))
+			UndoNodePositionChange();
+		ImGui::SameLine();
+		if(toolbarButton("↷", !m_nodePositionRedoHistory.empty(), "重做"))
+			RedoNodePositionChange();
+		ImGui::SameLine();
+		if(toolbarButton("左对齐", canAlign))
+			AlignSelectedNodesLeft();
+		ImGui::SameLine();
+		if(toolbarButton("右对齐", canAlign))
+			AlignSelectedNodesRight();
+		ImGui::SameLine();
+		if(toolbarButton("顶对齐", canAlign))
+			AlignSelectedNodesTop();
+		ImGui::SameLine();
+		if(toolbarButton("底对齐", canAlign))
+			AlignSelectedNodesBottom();
+
+		ImGui::SameLine();
+		if(toolbarButton("水平分布", canDistribute))
+			DistributeSelectedNodesHorizontally();
+		ImGui::SameLine();
+		if(toolbarButton("水平-", canAlign, "减小水平间距"))
+			DecreaseSelectedNodesHorizontalSpacing();
+		ImGui::SameLine();
+		if(toolbarButton("水平+", canAlign, "增大水平间距"))
+			IncreaseSelectedNodesHorizontalSpacing();
+		ImGui::SameLine();
+		if(toolbarButton("垂直分布", canDistribute))
+			DistributeSelectedNodesVertically();
+		ImGui::SameLine();
+		if(toolbarButton("垂直-", canAlign, "减小垂直间距"))
+			DecreaseSelectedNodesVerticalSpacing();
+		ImGui::SameLine();
+		if(toolbarButton("垂直+", canAlign, "增大垂直间距"))
+			IncreaseSelectedNodesVerticalSpacing();
+	}
+
+	ImGui::End();
+	ImGui::PopStyleVar(7);
+}
+
+/**
+	@brief Get all currently selected node IDs
+ */
+vector<ax::NodeEditor::NodeId> FilterGraphEditor::GetSelectedNodeIDs()
+{
+	auto count = ax::NodeEditor::GetSelectedObjectCount();
+	if(count <= 0)
+		return {};
+
+	vector<ax::NodeEditor::NodeId> selected(count);
+	int actualCount = ax::NodeEditor::GetSelectedNodes(selected.data(), count);
+	selected.resize(max(actualCount, 0));
+	return selected;
+}
+
+bool FilterGraphEditor::IsGraphNodeActive(ax::NodeEditor::NodeId id)
+{
+	for(auto node : GetAllNodes())
+	{
+		if(GetID(node) == id)
+			return true;
+	}
+
+	for(auto it : m_groups)
+	{
+		auto group = it.first;
+		if( (group->m_id == id) || (group->m_inputId == id) || (group->m_outputId == id) )
+			return true;
+	}
+
+	return false;
+}
+
+vector<pair<ax::NodeEditor::NodeId, ImVec2> > FilterGraphEditor::CaptureCurrentNodePositions(
+	const vector<pair<ax::NodeEditor::NodeId, ImVec2> >& positions)
+{
+	vector<pair<ax::NodeEditor::NodeId, ImVec2> > ret;
+	for(auto& it : positions)
+	{
+		if(IsGraphNodeActive(it.first))
+			ret.emplace_back(it.first, ax::NodeEditor::GetNodePosition(it.first));
+	}
+
+	return ret;
+}
+
+void FilterGraphEditor::TrimNodePositionHistory(
+	vector<vector<pair<ax::NodeEditor::NodeId, ImVec2> > >& history)
+{
+	while(history.size() > 50)
+		history.erase(history.begin());
+}
+
+void FilterGraphEditor::TrackManualNodePositionChange(
+	const vector<ax::NodeEditor::NodeId>& nodes,
+	const vector<bool>& dragging,
+	const vector<ImVec2>& positions)
+{
+	vector<pair<ax::NodeEditor::NodeId, ImVec2> > draggedNodes;
+	for(size_t i=0; i<nodes.size(); i++)
+	{
+		if(dragging[i] && IsGraphNodeActive(nodes[i]))
+			draggedNodes.emplace_back(nodes[i], positions[i]);
+	}
+
+	if(!draggedNodes.empty())
+	{
+		if(!m_nodePositionDragActive)
+		{
+			// 手动拖拽开始时记录初始位置，松开后再统一写入历史。
+			m_nodePositionDragActive = true;
+			m_nodePositionDragStart = draggedNodes;
+		}
+		return;
+	}
+
+	if(!m_nodePositionDragActive)
+		return;
+
+	bool changed = false;
+	for(auto& it : m_nodePositionDragStart)
+	{
+		if(!IsGraphNodeActive(it.first))
+			continue;
+
+		auto pos = ax::NodeEditor::GetNodePosition(it.first);
+		if( (fabs(pos.x - it.second.x) > 1e-3) || (fabs(pos.y - it.second.y) > 1e-3) )
+		{
+			changed = true;
+			break;
+		}
+	}
+
+	if(changed)
+	{
+		// 手动拖拽形成新的历史分支，清空已经撤销出来的前进记录。
+		m_nodePositionRedoHistory.clear();
+		m_nodePositionUndoHistory.push_back(m_nodePositionDragStart);
+		TrimNodePositionHistory(m_nodePositionUndoHistory);
+	}
+
+	m_nodePositionDragActive = false;
+	m_nodePositionDragStart.clear();
+}
+
+void FilterGraphEditor::SaveSelectedNodePositionsForUndo(const vector<ax::NodeEditor::NodeId>& selectedNodes)
+{
+	vector<pair<ax::NodeEditor::NodeId, ImVec2> > oldPositions;
+	for(auto nid : selectedNodes)
+	{
+		if(IsGraphNodeActive(nid))
+			oldPositions.emplace_back(nid, ax::NodeEditor::GetNodePosition(nid));
+	}
+
+	if(oldPositions.empty())
+		return;
+
+	// 新的位置修改会形成新的历史分支，清空已经撤销出来的前进记录。
+	m_nodePositionRedoHistory.clear();
+
+	// 只保存最近 50 次由小工具产生的位置修改，避免历史无限增长。
+	m_nodePositionUndoHistory.push_back(oldPositions);
+	TrimNodePositionHistory(m_nodePositionUndoHistory);
+}
+
+void FilterGraphEditor::UndoNodePositionChange()
+{
+	if(m_nodePositionUndoHistory.empty())
+		return;
+
+	auto oldPositions = m_nodePositionUndoHistory.back();
+	m_nodePositionUndoHistory.pop_back();
+
+	auto redoPositions = CaptureCurrentNodePositions(oldPositions);
+	if(!redoPositions.empty())
+	{
+		// 撤销前保存当前状态，用户可以再通过重做回到撤销前的位置。
+		m_nodePositionRedoHistory.push_back(redoPositions);
+		TrimNodePositionHistory(m_nodePositionRedoHistory);
+	}
+
+	// 恢复时跳过已经删除的节点，避免旧位置记录重新写入无效节点状态。
+	for(auto& it : oldPositions)
+	{
+		if(IsGraphNodeActive(it.first))
+			ax::NodeEditor::SetNodePosition(it.first, it.second);
+	}
+}
+
+void FilterGraphEditor::RedoNodePositionChange()
+{
+	if(m_nodePositionRedoHistory.empty())
+		return;
+
+	auto redoPositions = m_nodePositionRedoHistory.back();
+	m_nodePositionRedoHistory.pop_back();
+
+	auto undoPositions = CaptureCurrentNodePositions(redoPositions);
+	if(!undoPositions.empty())
+	{
+		// 重做前保存当前状态，让用户还能再次撤销这次重做。
+		m_nodePositionUndoHistory.push_back(undoPositions);
+		TrimNodePositionHistory(m_nodePositionUndoHistory);
+	}
+
+	// 重做时同样跳过已经删除的节点，避免恢复无效节点位置。
+	for(auto& it : redoPositions)
+	{
+		if(IsGraphNodeActive(it.first))
+			ax::NodeEditor::SetNodePosition(it.first, it.second);
+	}
+}
+
+void FilterGraphEditor::AlignSelectedNodesLeft()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 2)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	float left = FLT_MAX;
+	for(auto nid : selectedNodes)
+		left = min(left, ax::NodeEditor::GetNodePosition(nid).x);
+
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		pos.x = left;
+		ax::NodeEditor::SetNodePosition(nid, pos);
+	}
+}
+
+void FilterGraphEditor::AlignSelectedNodesRight()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 2)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	float right = -FLT_MAX;
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		right = max(right, pos.x + size.x);
+	}
+
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		pos.x = right - size.x;
+		ax::NodeEditor::SetNodePosition(nid, pos);
+	}
+}
+
+void FilterGraphEditor::AlignSelectedNodesTop()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 2)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	float top = FLT_MAX;
+	for(auto nid : selectedNodes)
+		top = min(top, ax::NodeEditor::GetNodePosition(nid).y);
+
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		pos.y = top;
+		ax::NodeEditor::SetNodePosition(nid, pos);
+	}
+}
+
+void FilterGraphEditor::AlignSelectedNodesBottom()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 2)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	float bottom = -FLT_MAX;
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		bottom = max(bottom, pos.y + size.y);
+	}
+
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		pos.y = bottom - size.y;
+		ax::NodeEditor::SetNodePosition(nid, pos);
+	}
+}
+
+void FilterGraphEditor::DistributeSelectedNodesHorizontally()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 3)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	vector<pair<float, ax::NodeEditor::NodeId> > orderedNodes;
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		orderedNodes.emplace_back(pos.x + size.x * 0.5f, nid);
+	}
+	sort(
+		orderedNodes.begin(),
+		orderedNodes.end(),
+		[](const auto& a, const auto& b) { return a.first < b.first; });
+
+	float left = orderedNodes.front().first;
+	float right = orderedNodes.back().first;
+	float step = (right - left) / (orderedNodes.size() - 1);
+
+	// 按节点中心点均匀分布，保留最左和最右节点的位置作为边界。
+	for(size_t i=1; i+1<orderedNodes.size(); i++)
+	{
+		auto nid = orderedNodes[i].second;
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		pos.x = left + step*i - size.x*0.5f;
+		ax::NodeEditor::SetNodePosition(nid, pos);
+	}
+}
+
+void FilterGraphEditor::DistributeSelectedNodesVertically()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 3)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	vector<pair<float, ax::NodeEditor::NodeId> > orderedNodes;
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		orderedNodes.emplace_back(pos.y + size.y * 0.5f, nid);
+	}
+	sort(
+		orderedNodes.begin(),
+		orderedNodes.end(),
+		[](const auto& a, const auto& b) { return a.first < b.first; });
+
+	float top = orderedNodes.front().first;
+	float bottom = orderedNodes.back().first;
+	float step = (bottom - top) / (orderedNodes.size() - 1);
+
+	// 按节点中心点均匀分布，保留最上和最下节点的位置作为边界。
+	for(size_t i=1; i+1<orderedNodes.size(); i++)
+	{
+		auto nid = orderedNodes[i].second;
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		pos.y = top + step*i - size.y*0.5f;
+		ax::NodeEditor::SetNodePosition(nid, pos);
+	}
+}
+
+void FilterGraphEditor::DecreaseSelectedNodesHorizontalSpacing()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 2)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	struct NodeSpacingInfo
+	{
+		ax::NodeEditor::NodeId id;
+		float center;
+		float halfSize;
+	};
+
+	float center = 0;
+	vector<NodeSpacingInfo> nodes;
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		auto nodeCenter = pos.x + size.x*0.5f;
+		nodes.push_back({nid, nodeCenter, size.x*0.5f});
+		center += nodeCenter;
+	}
+	center /= nodes.size();
+	sort(
+		nodes.begin(),
+		nodes.end(),
+		[](const auto& a, const auto& b) { return a.center < b.center; });
+
+	// 以选中节点的水平中心为锚点压缩间距，同时保留最小边缘间隔，避免触发碰撞避让造成推挤。
+	const float scale = 0.9f;
+	const float minGap = 12.0f;
+	for(auto& it : nodes)
+		it.center = center + (it.center - center)*scale;
+	for(size_t i=1; i<nodes.size(); i++)
+	{
+		auto minCenter = nodes[i-1].center + nodes[i-1].halfSize + nodes[i].halfSize + minGap;
+		nodes[i].center = max(nodes[i].center, minCenter);
+	}
+
+	float newCenter = 0;
+	for(auto& it : nodes)
+		newCenter += it.center;
+	newCenter /= nodes.size();
+	auto shift = center - newCenter;
+
+	for(auto& it : nodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(it.id);
+		pos.x = it.center + shift - it.halfSize;
+		ax::NodeEditor::SetNodePosition(it.id, pos);
+	}
+}
+
+void FilterGraphEditor::DecreaseSelectedNodesVerticalSpacing()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 2)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	struct NodeSpacingInfo
+	{
+		ax::NodeEditor::NodeId id;
+		float center;
+		float halfSize;
+	};
+
+	float center = 0;
+	vector<NodeSpacingInfo> nodes;
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		auto nodeCenter = pos.y + size.y*0.5f;
+		nodes.push_back({nid, nodeCenter, size.y*0.5f});
+		center += nodeCenter;
+	}
+	center /= nodes.size();
+	sort(
+		nodes.begin(),
+		nodes.end(),
+		[](const auto& a, const auto& b) { return a.center < b.center; });
+
+	// 以选中节点的垂直中心为锚点压缩间距，同时保留最小边缘间隔，避免触发碰撞避让造成推挤。
+	const float scale = 0.9f;
+	const float minGap = 12.0f;
+	for(auto& it : nodes)
+		it.center = center + (it.center - center)*scale;
+	for(size_t i=1; i<nodes.size(); i++)
+	{
+		auto minCenter = nodes[i-1].center + nodes[i-1].halfSize + nodes[i].halfSize + minGap;
+		nodes[i].center = max(nodes[i].center, minCenter);
+	}
+
+	float newCenter = 0;
+	for(auto& it : nodes)
+		newCenter += it.center;
+	newCenter /= nodes.size();
+	auto shift = center - newCenter;
+
+	for(auto& it : nodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(it.id);
+		pos.y = it.center + shift - it.halfSize;
+		ax::NodeEditor::SetNodePosition(it.id, pos);
+	}
+}
+
+void FilterGraphEditor::IncreaseSelectedNodesHorizontalSpacing()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 2)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	struct NodeSpacingInfo
+	{
+		ax::NodeEditor::NodeId id;
+		float center;
+		float halfSize;
+	};
+
+	float center = 0;
+	vector<NodeSpacingInfo> nodes;
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		auto nodeCenter = pos.x + size.x*0.5f;
+		nodes.push_back({nid, nodeCenter, size.x*0.5f});
+		center += nodeCenter;
+	}
+	center /= nodes.size();
+
+	// 以选中节点的水平中心为锚点，将各节点中心距离放大到 110%，实现增大水平间距。
+	const float scale = 1.1f;
+	for(auto& it : nodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(it.id);
+		pos.x = center + (it.center - center)*scale - it.halfSize;
+		ax::NodeEditor::SetNodePosition(it.id, pos);
+	}
+}
+
+void FilterGraphEditor::IncreaseSelectedNodesVerticalSpacing()
+{
+	auto selectedNodes = GetSelectedNodeIDs();
+	if(selectedNodes.size() < 2)
+		return;
+
+	SaveSelectedNodePositionsForUndo(selectedNodes);
+
+	struct NodeSpacingInfo
+	{
+		ax::NodeEditor::NodeId id;
+		float center;
+		float halfSize;
+	};
+
+	float center = 0;
+	vector<NodeSpacingInfo> nodes;
+	for(auto nid : selectedNodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(nid);
+		auto size = ax::NodeEditor::GetNodeSize(nid);
+		auto nodeCenter = pos.y + size.y*0.5f;
+		nodes.push_back({nid, nodeCenter, size.y*0.5f});
+		center += nodeCenter;
+	}
+	center /= nodes.size();
+
+	// 以选中节点的垂直中心为锚点，将各节点中心距离放大到 110%，实现增大垂直间距。
+	const float scale = 1.1f;
+	for(auto& it : nodes)
+	{
+		auto pos = ax::NodeEditor::GetNodePosition(it.id);
+		pos.y = center + (it.center - center)*scale - it.halfSize;
+		ax::NodeEditor::SetNodePosition(it.id, pos);
+	}
 }
 
 /**
@@ -1394,6 +2058,7 @@ void FilterGraphEditor::HandleOverlaps()
 			}
 		}
 	}
+	TrackManualNodePositionChange(nodes, dragging, positions);
 
 	//节点拖拽过程中，不执行碰撞避让逻辑
 	//实时排斥效果会让鼠标附近的节点发生偏移，导致操作时感觉视图在“推挤”控件

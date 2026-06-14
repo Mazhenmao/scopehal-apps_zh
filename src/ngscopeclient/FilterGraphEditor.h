@@ -185,6 +185,7 @@ protected:
 	void DoInternalLinksForGroup(std::shared_ptr<FilterGraphGroup> group);
 	void DoNodeForGroupOutputs(std::shared_ptr<FilterGraphGroup> group);
 	void DoNodeForGroupInputs(std::shared_ptr<FilterGraphGroup> group);
+	void RenderAlignmentToolbar(ImVec2 editorMin, ImVec2 editorMax);
 	void DoNodeForChannel(
 		InstrumentChannel* channel,
 		std::shared_ptr<Instrument> inst,
@@ -199,6 +200,28 @@ protected:
 	bool OnFilterDeleted(Filter* node, bool hasRenderRef);
 	void HandleBackgroundContextMenu();
 	void DoAddMenu();
+	std::vector<ax::NodeEditor::NodeId> GetSelectedNodeIDs();
+	bool IsGraphNodeActive(ax::NodeEditor::NodeId id);
+	std::vector<std::pair<ax::NodeEditor::NodeId, ImVec2> > CaptureCurrentNodePositions(
+		const std::vector<std::pair<ax::NodeEditor::NodeId, ImVec2> >& positions);
+	void TrimNodePositionHistory(std::vector<std::vector<std::pair<ax::NodeEditor::NodeId, ImVec2> > >& history);
+	void TrackManualNodePositionChange(
+		const std::vector<ax::NodeEditor::NodeId>& nodes,
+		const std::vector<bool>& dragging,
+		const std::vector<ImVec2>& positions);
+	void SaveSelectedNodePositionsForUndo(const std::vector<ax::NodeEditor::NodeId>& selectedNodes);
+	void UndoNodePositionChange();
+	void RedoNodePositionChange();
+	void AlignSelectedNodesLeft();
+	void AlignSelectedNodesRight();
+	void AlignSelectedNodesTop();
+	void AlignSelectedNodesBottom();
+	void DistributeSelectedNodesHorizontally();
+	void DistributeSelectedNodesVertically();
+	void DecreaseSelectedNodesHorizontalSpacing();
+	void DecreaseSelectedNodesVerticalSpacing();
+	void IncreaseSelectedNodesHorizontalSpacing();
+	void IncreaseSelectedNodesVerticalSpacing();
 
 	void HandleOverlaps();
 	void CalculateNodeForces(
@@ -310,6 +333,24 @@ protected:
 		ImVec2,
 		lessID<ax::NodeEditor::NodeId>
 		> m_nodeForces;
+
+	///@brief 最近 50 次节点位置修改前的状态，用于撤销对齐/分布和手动拖拽操作
+	std::vector<
+		std::vector<
+			std::pair<ax::NodeEditor::NodeId, ImVec2>
+			>
+		> m_nodePositionUndoHistory;
+
+	///@brief 小工具撤销后的前进历史，用于重做位置修改
+	std::vector<
+		std::vector<
+			std::pair<ax::NodeEditor::NodeId, ImVec2>
+			>
+		> m_nodePositionRedoHistory;
+
+	///@brief 手动拖拽节点时记录拖拽开始前的位置，松开鼠标后写入撤销历史
+	bool m_nodePositionDragActive = false;
+	std::vector<std::pair<ax::NodeEditor::NodeId, ImVec2> > m_nodePositionDragStart;
 
 	//DEBUG: render vector for force
 	void RenderForceVector(ImDrawList* list, ImVec2 pos, ImVec2 size, ImVec2 vec);
