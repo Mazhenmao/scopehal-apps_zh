@@ -2,7 +2,7 @@
 *                                                                                                                      *
 * ngscopeclient                                                                                                        *
 *                                                                                                                      *
-* Copyright (c) 2012-2025 Andrew D. Zonenberg and contributors                                                         *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
 *                                                                                                                      *
 * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
@@ -104,6 +104,9 @@ protected:
 
 	///@brief True if we have multiple scopes and are in normal trigger mode
 	bool m_multiScopeFreeRun;
+
+	///@brief True if the group is in auto-trigger mode
+	bool m_autoTriggerArmed;
 };
 
 #endif
