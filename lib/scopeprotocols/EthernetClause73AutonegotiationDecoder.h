@@ -27,59 +27,67 @@
 *                                                                                                                      *
 ***********************************************************************************************************************/
 
-#include "../scopehal/scopehal.h"
-#include "SParameterSourceFilter.h"
+/**
+	@file
+	@author Marcin Dawidowicz
+	@brief Declaration of Ethernet Clause 73 Autonegotiation Decoder
+*/
 
-using namespace std;
+#ifndef EthernetClause73AutonegotiationDecoder_h
+#define EthernetClause73AutonegotiationDecoder_h
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Construction / destruction
-
-SParameterSourceFilter::SParameterSourceFilter(const string& color, Category cat)
-	: Filter(color, cat, Unit(Unit::UNIT_HZ))
+/**
+	@brief A single Ethernet Clause 73 autonegotiation code page (49 bits)
+ */
+struct Clause73CodePage
 {
-	SetupStreams();
-}
+	uint8_t selector_field;            // D[4:0]
+	uint8_t echoed_nonce;              // D[9:5]
+	bool c0_pause;                     // D[10]
+	bool c1_pause;                     // D[11]
+	bool c2_reserved;                  // D[12]
+	bool rf;                           // D[13]
+	bool ack;                          // D[14]
+	bool np;                           // D[15]
+	uint8_t transmitted_nonce;         // D[20:16]
+	uint32_t technology_ability;       // D[43:21]
+	uint8_t fec;                       // D[47:44]
+	bool code;                         // D[48]
+};
 
-SParameterSourceFilter::~SParameterSourceFilter()
+class Clause73Waveform : public SparseWaveform<Clause73CodePage>
 {
-}
+public:
+	Clause73Waveform(FilterParameter& displayformat) : SparseWaveform<Clause73CodePage>(), m_displayformat(displayformat) {}
+	virtual std::string GetText(size_t) override;
+	virtual std::string GetColor(size_t) override;
 
-bool SParameterSourceFilter::NeedsConfig()
+	FilterParameter& m_displayformat;
+};
+
+class EthernetClause73AutonegotiationDecoder : public Filter
 {
-	return true;
-}
+public:
+	EthernetClause73AutonegotiationDecoder(const std::string& color);
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Actual decoder logic
+	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
 
-void SParameterSourceFilter::SetupStreams()
-{
-	size_t nports = m_params.GetNumPorts();
+	static std::string GetProtocolName();
 
-	auto nstreams = nports * nports * 2;
-	m_streams.resize(nstreams);
-	m_sinks.resize(nstreams);
-	m_ranges.resize(0);
-	m_offsets.resize(0);
+	virtual bool ValidateChannel(size_t i, StreamDescriptor stream) override;
 
-	for(size_t to=0; to < nports; to++)
+	static FilterParameter MakeDisplayFormatParameter();
+
+	enum DisplayFormat
 	{
-		for(size_t from=0; from < nports; from++)
-		{
-			string param = string("S") + to_string(to+1) + to_string(from+1);
+		FORMAT_COMPACT,
+		FORMAT_DETAILED
+	};
 
-			size_t base = (to*nports + from) * 2;
+	PROTOCOL_DECODER_INITPROC(EthernetClause73AutonegotiationDecoder)
 
-			m_streams[base + 0].m_name = param + "_mag";
-			m_streams[base + 0].m_stype = Stream::STREAM_TYPE_ANALOG;
-			m_streams[base + 0].m_yAxisUnit = Unit(Unit::UNIT_DB);
+protected:
+	FilterParameter& m_displayformat;
+};
 
-			m_streams[base + 1].m_name = param + "_ang";
-			m_streams[base + 1].m_stype = Stream::STREAM_TYPE_ANALOG;
-			m_streams[base + 1].m_yAxisUnit = Unit(Unit::UNIT_DEGREES);
-		}
-	}
-
-	m_outputsChangedSignal.emit();
-}
+#endif
