@@ -39,27 +39,13 @@ using namespace std;
 VICPDecoder::VICPDecoder(const string& color)
 	: PacketDecoder(color, CAT_SERIAL)
 {
-	CreateInput("TX");
-	CreateInput("RX");
+	CreateInput<InputConstraintWaveformType<TCPWaveform> >("TX");
+	CreateInput<InputConstraintWaveformType<TCPWaveform> >("RX");
 }
 
 VICPDecoder::~VICPDecoder()
 {
 
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool VICPDecoder::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i < 2) && (dynamic_cast<TCPWaveform*>(stream.m_channel->GetData(0)) != nullptr) )
-		return true;
-
-	return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

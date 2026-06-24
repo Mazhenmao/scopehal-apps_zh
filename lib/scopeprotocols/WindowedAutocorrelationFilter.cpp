@@ -42,28 +42,14 @@ WindowedAutocorrelationFilter::WindowedAutocorrelationFilter(const string& color
 	, m_period(m_parameters["Period"])
 {
 	AddStream(Unit(Unit::UNIT_VOLTS), "data", Stream::STREAM_TYPE_ANALOG);
-	CreateInput("I");
-	CreateInput("Q");
+	CreateInput<InputConstraintStreamType>("I", Stream::STREAM_TYPE_ANALOG);
+	CreateInput<InputConstraintStreamType>("Q", Stream::STREAM_TYPE_ANALOG);
 
 	m_window = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_FS));
 	m_window.SetFloatVal(400e6);
 
 	m_period = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_FS));
 	m_period.SetFloatVal(3.6e9);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool WindowedAutocorrelationFilter::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i < 2) && (stream.GetType() == Stream::STREAM_TYPE_ANALOG) )
-		return true;
-
-	return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

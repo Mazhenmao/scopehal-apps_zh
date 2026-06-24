@@ -69,7 +69,7 @@ UpsampleFilter::UpsampleFilter(const string& color)
 	, m_computePipeline("shaders/UpsampleFilter.spv", 3, sizeof(UpsampleFilterArgs))
 {
 	AddStream(Unit(Unit::UNIT_VOLTS), "data", Stream::STREAM_TYPE_ANALOG);
-	CreateInput("din");
+	CreateInput<InputConstraintStreamType>("din", Stream::STREAM_TYPE_ANALOG);
 
 	m_factor = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_SAMPLEDEPTH));
 	m_factor.SetIntVal(10);
@@ -77,20 +77,6 @@ UpsampleFilter::UpsampleFilter(const string& color)
 	//Use pinned memory for filter kernel
 	m_filter.SetCpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
 	m_filter.SetGpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool UpsampleFilter::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i == 0) && (stream.GetType() == Stream::STREAM_TYPE_ANALOG) )
-		return true;
-
-	return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

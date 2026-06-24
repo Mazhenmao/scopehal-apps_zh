@@ -43,27 +43,24 @@ WindowFilter::WindowFilter(const string& color)
 	, m_duration(m_parameters["Duration"])
 {
 	AddStream(Unit(Unit::UNIT_VOLTS), "data", Stream::STREAM_TYPE_ANALOG);
-	CreateInput("din");
+	CreateInput<InputConstraintAND>(
+		"din",
+		initializer_list<shared_ptr<InputConstraint> >
+		{
+			make_shared<InputConstraintXUnit>(this, Unit(Unit::UNIT_FS)),
+			make_shared<InputConstraintStreamTypes>(this,
+				initializer_list<Stream::StreamType>
+				{
+					Stream::STREAM_TYPE_ANALOG,
+					Stream::STREAM_TYPE_DIGITAL
+				})
+		});
 
 	m_startTime = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_FS));
 	m_startTime.SetIntVal(0);
 
 	m_duration = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_FS));
 	m_duration.SetFloatVal(FS_PER_SECOND / 10);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool WindowFilter::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i == 0) && (stream.GetXAxisUnits() == Unit(Unit::UNIT_FS)) )
-		return true;
-
-	return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

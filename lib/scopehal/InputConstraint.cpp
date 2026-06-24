@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 *                                                                                                                      *
-* libscopeprotocols                                                                                                    *
+* libscopehal                                                                                                          *
 *                                                                                                                      *
 * Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
@@ -27,33 +27,66 @@
 *                                                                                                                      *
 ***********************************************************************************************************************/
 
-/**
-	@file
-	@author Andrew D. Zonenberg
-	@brief Declaration of VectorPhaseFilter
- */
-#ifndef VectorPhaseFilter_h
-#define VectorPhaseFilter_h
+#include "scopehal.h"
 
-class VectorPhaseConstants
+using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Construction / destruction
+
+InputConstraint::InputConstraint(FlowGraphNode* sink)
+	: m_sink(sink)
 {
-public:
-	uint32_t	len;
-	float		scale;
-};
+}
 
-class VectorPhaseFilter : public Filter
+InputConstraint::~InputConstraint()
 {
-public:
-	VectorPhaseFilter(const std::string& color);
 
-	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
+}
 
-	static std::string GetProtocolName();
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Formatting helpers
 
-	PROTOCOL_DECODER_INITPROC(VectorPhaseFilter)
+string InputConstraint::StreamTypeToString(Stream::StreamType type)
+{
+	switch(type)
+	{
+		case Stream::STREAM_TYPE_ANALOG:		return "analog waveform";
+		case Stream::STREAM_TYPE_DIGITAL:		return "digital waveform";
+		case Stream::STREAM_TYPE_DIGITAL_BUS:	return "digital bus";
+		case Stream::STREAM_TYPE_EYE:			return "eye pattern";
+		case Stream::STREAM_TYPE_SPECTROGRAM:	return "spectrogram";
+		case Stream::STREAM_TYPE_WATERFALL:		return "waterfall";
+		case Stream::STREAM_TYPE_CONSTELLATION:	return "constellation";
+		case Stream::STREAM_TYPE_TRIGGER:		return "trigger";
+		case Stream::STREAM_TYPE_PROTOCOL:		return "protocol";
+		case Stream::STREAM_TYPE_ANALOG_SCALAR:	return "analog scalar";
 
-	ComputePipeline m_computePipeline;
-};
+		case Stream::STREAM_TYPE_UNDEFINED:
+		default:
+			return "undefined";
+	}
+}
 
-#endif
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// InputConstraintStreamTypes
+
+string InputConstraintStreamTypes::ToString()
+{
+	string ret = "Stream type is ";
+
+	size_t len = m_types.size();
+	for(size_t i=0; i<len; i++)
+	{
+		if(i > 0)
+		{
+			if(len > 2)
+				ret += ", ";
+			if(i == (len-1))
+				ret += " or ";
+		}
+		ret += StreamTypeToString(m_types[i]);
+	}
+
+	return ret;
+}

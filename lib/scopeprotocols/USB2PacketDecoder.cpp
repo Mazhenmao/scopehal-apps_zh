@@ -40,21 +40,7 @@ USB2PacketDecoder::USB2PacketDecoder(const string& color)
 	: PacketDecoder(color, CAT_SERIAL)
 {
 	//Set up channels
-	CreateInput("PCS");
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool USB2PacketDecoder::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i == 0) && (dynamic_cast<USB2PCSDecoder*>(stream.m_channel) != nullptr) )
-		return true;
-
-	return false;
+	CreateInput<InputConstraintWaveformType<USB2PCSWaveform> >("PCS");
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

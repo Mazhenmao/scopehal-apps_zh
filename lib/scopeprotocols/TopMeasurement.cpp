@@ -42,7 +42,7 @@ TopMeasurement::TopMeasurement(const string& color)
 	AddStream(Unit(Unit::UNIT_VOLTS), "trend", Stream::STREAM_TYPE_ANALOG);
 	AddStream(Unit(Unit::UNIT_VOLTS), "avg", Stream::STREAM_TYPE_ANALOG_SCALAR);
 
-	CreateInput("din");
+	CreateInput<InputConstraintStreamType>("din", Stream::STREAM_TYPE_ANALOG);
 
 	if(g_hasShaderInt64 && g_hasShaderAtomicInt64)
 	{
@@ -53,19 +53,6 @@ TopMeasurement::TopMeasurement(const string& color)
 	}
 }
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool TopMeasurement::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i == 0) && (stream.GetType() == Stream::STREAM_TYPE_ANALOG) )
-		return true;
-
-	return false;
-}
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Accessors
 

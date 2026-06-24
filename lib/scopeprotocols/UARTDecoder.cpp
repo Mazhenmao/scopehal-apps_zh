@@ -46,7 +46,7 @@ UARTDecoder::UARTDecoder(const string& color)
 	, m_baud(m_parameters["Baud rate"])
 {
 	//Set up channels
-	CreateInput("din");
+	CreateInput<InputConstraintStreamType>("din", Stream::STREAM_TYPE_DIGITAL);
 
 	m_baud = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_BITRATE));
 	m_baud.SetIntVal(115200);
@@ -65,16 +65,6 @@ vector<string> UARTDecoder::GetHeaders()
 	ret.push_back("Length");
 	ret.push_back("ASCII");
 	return ret;
-}
-
-bool UARTDecoder::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i == 0) && (stream.GetType() == Stream::STREAM_TYPE_DIGITAL) )
-		return true;
-	return false;
 }
 
 string UARTDecoder::GetProtocolName()

@@ -41,7 +41,7 @@ ThresholdFilter::ThresholdFilter(const string& color)
 	, m_hysteresis(m_parameters["Hysteresis"])
 {
 	AddDigitalStream("data");
-	CreateInput("din");
+	CreateInput<InputConstraintStreamType>("din", Stream::STREAM_TYPE_ANALOG);
 
 	m_threshold = FilterParameter(FilterParameter::TYPE_FLOAT, Unit(Unit::UNIT_VOLTS));
 	m_threshold.SetFloatVal(0);
@@ -56,20 +56,6 @@ ThresholdFilter::ThresholdFilter(const string& color)
 			2,
 			sizeof(ThresholdPushConstants));
 	}
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool ThresholdFilter::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i == 0) && (stream.GetType() == Stream::STREAM_TYPE_ANALOG) )
-		return true;
-
-	return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

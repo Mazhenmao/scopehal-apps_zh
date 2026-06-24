@@ -1605,23 +1605,24 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
 			ImGui::TableNextRow();
 
 			auto stream = it.first;
-			auto sid = it.second;
 
 			//Input side (path from internal node to hierarchical port)
+			auto sidIn = group->m_hierOutputInternalMap[stream];
 			ImGui::TableNextColumn();
-			ax::NodeEditor::BeginPin(group->m_hierOutputInternalMap[stream], ax::NodeEditor::PinKind::Input);
+			ax::NodeEditor::BeginPin(sidIn, ax::NodeEditor::PinKind::Input);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
 				ImGui::TextUnformatted("‣");
 			ax::NodeEditor::EndPin();
 
 			//Output side (path from hierarchical port to external node)
+			auto sidOut = it.second;
 			ImGui::TableNextColumn();
-			ax::NodeEditor::BeginPin(sid, ax::NodeEditor::PinKind::Output);
+			ax::NodeEditor::BeginPin(sidOut, ax::NodeEditor::PinKind::Output);
 				ax::NodeEditor::PinPivotAlignment(ImVec2(1, 0.5));
 				RightJustifiedText(stream.GetName() + " ‣");
 			ax::NodeEditor::EndPin();
 
-			if(sid == ax::NodeEditor::GetHoveredPin())
+			if(sidOut == ax::NodeEditor::GetHoveredPin())
 				hoveredStream = stream;
 		}
 
@@ -1722,7 +1723,28 @@ void FilterGraphEditor::ClearOldPropertiesDialogs()
 }
 
 /**
-	@brief Display tooltips when mousing over interesting stuff
+	@brief Display tooltips when mousing over an input port
+ */
+void FilterGraphEditor::InputPortTooltip(FlowGraphNode* node, size_t idx)
+{
+	ImGui::BeginTooltip();
+
+	//Get the constraints
+	auto constraints = node->GetInputConstraints(idx);
+	if(constraints)
+		ImGui::Text("Input requirements:\n%s", constraints->ToString().c_str());
+
+	else
+	{
+		ImGui::TextUnformatted("This block uses the legacy input validation flow and\n");
+		ImGui::TextUnformatted("does not publish information on what inputs it accepts.\n");
+	}
+
+	ImGui::EndTooltip();
+}
+
+/**
+	@brief Display tooltips when mousing over an output port
  */
 void FilterGraphEditor::OutputPortTooltip(StreamDescriptor stream)
 {
@@ -2157,6 +2179,9 @@ void FilterGraphEditor::HandleLinkCreationRequests(Filter*& fReconfigure)
 					auto inputPort = m_inputIDMap[endId];
 					auto stream = m_streamIDMap[startId];
 
+					auto sinkNode = inputPort.first;
+					auto sinkIndex = inputPort.second;
+
 					//Check for and reject back edges (creates cycles)
 					if(IsBackEdge(stream.m_channel, inputPort.first))
 					{
@@ -2168,7 +2193,7 @@ void FilterGraphEditor::HandleLinkCreationRequests(Filter*& fReconfigure)
 					}
 
 					//See if the path is valid
-					else if(inputPort.first->ValidateChannel(inputPort.second, stream))
+					else if(sinkNode->ValidateChannel(sinkIndex, stream))
 					{
 						//Yep, looks good
 						ImGui::BeginTooltip();
@@ -2196,7 +2221,13 @@ void FilterGraphEditor::HandleLinkCreationRequests(Filter*& fReconfigure)
 						ax::NodeEditor::RejectNewItem(invalidcolor);
 
 						ImGui::BeginTooltip();
-							ImGui::TextColored(invalidcolor, "x Incompatible stream type for input");
+						ImGui::TextColored(invalidcolor, "x Incompatible stream type for input");
+
+						//Get the constraints
+						auto constraints = sinkNode->GetInputConstraints(sinkIndex);
+						if(constraints)
+						    ImGui::Text("Input requirements:\n%s", constraints->ToString().c_str());
+
 						ImGui::EndTooltip();
 					}
 				}
@@ -3016,6 +3047,7 @@ void FilterGraphEditor::DoNodeForChannel(
 	StreamDescriptor hoveredStream(nullptr, 0);
 	auto bodystart = ImGui::GetCursorPos();
 	ImVec2 iconpos(1, 1);
+	ssize_t hoveredInput = -1;
 	if(ImGui::BeginTable("Ports", 3, flags, ImVec2(nodewidth, 0 ) ) )
 	{
 		size_t maxports = max(channel->GetInputCount(), channel->GetStreamCount());
@@ -3038,6 +3070,9 @@ void FilterGraphEditor::DoNodeForChannel(
 					ax::NodeEditor::PinPivotAlignment(ImVec2(0, 0.5));
 					ImGui::TextUnformatted(inames[i].c_str());
 				ax::NodeEditor::EndPin();
+
+				if(sid == ax::NodeEditor::GetHoveredPin())
+					hoveredInput = i;
 			}
 
 			//Icon
@@ -3073,11 +3108,14 @@ void FilterGraphEditor::DoNodeForChannel(
 		ImGui::Dummy(ImVec2(1, minHeight - contentHeight));
 
 	//Tooltip on hovered output port
+	if(hoveredInput >= 0)
+	{
+		ax::NodeEditor::Suspend();
+			InputPortTooltip(channel, hoveredInput);
+		ax::NodeEditor::Resume();
+	}
 	if(hoveredStream)
 	{
-		//TODO: input port
-
-		//Output port
 		ax::NodeEditor::Suspend();
 			OutputPortTooltip(hoveredStream);
 		ax::NodeEditor::Resume();

@@ -40,6 +40,7 @@ class OscilloscopeChannel;
 class WaveformBase;
 class StreamDescriptor;
 class InputDescriptor;
+class InputConstraint;
 
 #include "FilterParameter.h"
 #include "Waveform.h"
@@ -70,6 +71,7 @@ public:
 	virtual bool ValidateChannel(size_t i, StreamDescriptor stream);
 
 	StreamDescriptor GetInput(size_t i);
+	std::shared_ptr<InputConstraint> GetInputConstraints(size_t i);
 
 protected:
 	virtual void OnInputChanged(size_t i);
@@ -170,6 +172,10 @@ protected:
 	{ return dynamic_cast<SparseDigitalBusWaveform*>(GetInputWaveform(i)); }
 
 	virtual void CreateInput(const std::string& name);
+
+	//Helper for creating a stream with constraints
+	template<class T, class... Args>
+	void CreateInput(const std::string& name, Args&&... args);
 
 	std::string GetInputDisplayName(size_t i);
 

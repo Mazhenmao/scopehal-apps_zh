@@ -48,23 +48,9 @@ XYSweepFilter::XYSweepFilter(const string& color)
 	m_parameters[m_mode].SetIntVal(MODE_LATCH);
 	*/
 
-	CreateInput("x");
-	CreateInput("y");
-	CreateInput("gate");
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool XYSweepFilter::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if( (i < 3) && (stream.GetType() == Stream::STREAM_TYPE_ANALOG_SCALAR) )
-		return true;
-
-	return false;
+	CreateInput<InputConstraintStreamType>("x", Stream::STREAM_TYPE_ANALOG_SCALAR);
+	CreateInput<InputConstraintStreamType>("y", Stream::STREAM_TYPE_ANALOG_SCALAR);
+	CreateInput<InputConstraintStreamType>("gate", Stream::STREAM_TYPE_ANALOG_SCALAR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

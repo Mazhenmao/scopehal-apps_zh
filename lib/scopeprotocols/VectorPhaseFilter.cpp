@@ -40,25 +40,8 @@ VectorPhaseFilter::VectorPhaseFilter(const string& color)
 	, m_computePipeline("shaders/VectorPhase.spv", 3, sizeof(VectorPhaseConstants))
 {
 	AddStream(Unit(Unit::UNIT_DEGREES), "data", Stream::STREAM_TYPE_ANALOG);
-	CreateInput("I");
-	CreateInput("Q");
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Factory methods
-
-bool VectorPhaseFilter::ValidateChannel(size_t i, StreamDescriptor stream)
-{
-	if(stream.m_channel == nullptr)
-		return false;
-
-	if(i > 1)
-		return false;
-
-	if(stream.GetType() == Stream::STREAM_TYPE_ANALOG)
-		return true;
-
-	return false;
+	CreateInput<InputConstraintStreamType>("I", Stream::STREAM_TYPE_ANALOG);
+	CreateInput<InputConstraintStreamType>("Q", Stream::STREAM_TYPE_ANALOG);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -38,6 +38,7 @@
 #define StreamDescriptor_h
 
 class InstrumentChannel;
+class InputConstraint;
 
 /**
 	@brief Descriptor for a single stream coming off a channel
@@ -131,10 +132,11 @@ public:
 	 */
 	std::string m_name;
 
-	/**
-		@brief The stream, if any, connected to this input port
-	 */
+	///@brief The stream, if any, connected to this input port
 	StreamDescriptor m_sourceStream;
+
+	///@brief Constraints that apply to this input
+	std::shared_ptr<InputConstraint> m_constraints;
 };
 
 
