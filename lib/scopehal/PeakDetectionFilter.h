@@ -79,7 +79,7 @@ public:
 		//double start = GetTime();
 
 		size_t nouts = cap->size();
-		if( (max_peaks == 0) || (nouts < 2) )
+		if( (max_peaks <= 0) || (nouts < 3) )
 			m_peaks.clear();
 		else
 		{
@@ -91,7 +91,12 @@ public:
 			//Get peak search width in bins
 			//(assume bins are equal size, this should get us close)
 			int64_t binsize = GetOffsetScaled(cap, 1) - GetOffsetScaled(cap, 0);
-			int64_t search_bins = ceil(search_hz / binsize);
+			if(binsize <= 0)
+			{
+				m_peaks.clear();
+				return;
+			}
+			int64_t search_bins = ceil(fabs(search_hz) / binsize);
 			int64_t search_rad = search_bins/2;
 			search_rad = std::max(search_rad, (int64_t)1);
 
@@ -101,7 +106,8 @@ public:
 			ssize_t nend = nouts-1;
 			size_t minpeak = 10;		//Skip this many bins at left to avoid false positives on the DC peak
 										//(TODO: this only makes sense for FFT)
-			for(ssize_t i=minpeak; i<(ssize_t)nouts; i++)
+			minpeak = std::min(minpeak, nouts - 2);
+			for(ssize_t i=minpeak; i<nend; i++)
 			{
 				//Locate the peak
 				ssize_t left = std::max((ssize_t)minpeak, (ssize_t)(i - search_rad));
@@ -133,7 +139,12 @@ public:
 				float alpha = cap->m_samples[i-1];
 				float beta = cap->m_samples[i];
 				float gamma = cap->m_samples[i+1];
-				float p = 0.5 * (alpha - gamma) / (alpha - 2*beta + gamma);
+				float denom = alpha - 2*beta + gamma;
+				float p = 0;
+				if(fabs(denom) > 1e-12)
+					p = 0.5 * (alpha - gamma) / denom;
+				if(!isfinite(p))
+					p = 0;
 				int64_t peak_location =
 					(i * cap->m_timescale) +
 					static_cast<int64_t>(round(p * cap->m_timescale)) +

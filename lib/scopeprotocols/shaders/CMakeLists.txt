@@ -45,6 +45,9 @@ add_compute_shaders(
 		ComplexSpectrogramPostprocess.glsl
 		ComplexToLogMagnitude.glsl
 		ComplexToMagnitude.glsl
+		CZTComplexMultiply.glsl
+		CZTFinalize.glsl
+		CZTPrepareInput.glsl
 		ConstellationFilter.glsl
 		CouplerDeEmbedFilter_ForwardPath.glsl
 		CosineSumWindow.glsl

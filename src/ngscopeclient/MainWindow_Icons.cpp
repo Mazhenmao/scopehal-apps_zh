@@ -64,6 +64,7 @@
 #include "../scopeprotocols/CouplerDeEmbedFilter.h"
 #include "../scopeprotocols/CTLEFilter.h"
 #include "../scopeprotocols/CurrentShuntFilter.h"
+#include "../scopeprotocols/CZTFilter.h"
 #include "../scopeprotocols/CSVExportFilter.h"
 #include "../scopeprotocols/CSVImportFilter.h"
 #include "../scopeprotocols/DDJMeasurement.h"
@@ -480,6 +481,7 @@ void MainWindow::LoadFilterIcons()
 	m_filterIconMap[type_index(typeid(CSVImportFilter))] 						= "filter-csv-import";
 	m_filterIconMap[type_index(typeid(CTLEFilter))] 							= "filter-ctle";
 	m_filterIconMap[type_index(typeid(CurrentShuntFilter))]						= "filter-current-shunt";
+	m_filterIconMap[type_index(typeid(CZTFilter))] 								= "filter-fft";
 	m_filterIconMap[type_index(typeid(DDR1Decoder))] 							= "filter-ddr1-command";
 	m_filterIconMap[type_index(typeid(DDR3Decoder))] 							= "filter-ddr3-command";
 	m_filterIconMap[type_index(typeid(DDJMeasurement))] 						= "filter-ddj";

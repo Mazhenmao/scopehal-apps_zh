@@ -54,7 +54,9 @@ PeakDetectionFilter::PeakDetectionFilter(const string& color, Category cat)
 	, m_peakwindow(m_parameters["Peak Window"])
 {
 	m_numpeaks = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_COUNTS));
-	m_numpeaks.SetIntVal(10);
+	// 默认不执行峰值搜索，避免FFT刷新时CPU侧峰值扫描造成卡顿。
+	// 需要峰值表时可在滤波器参数中手动把该数量调大。
+	m_numpeaks.SetIntVal(0);
 
 	m_peakwindow = FilterParameter(FilterParameter::TYPE_FLOAT, Unit(Unit::UNIT_HZ));
 	m_peakwindow.SetFloatVal(500000); //500 kHz between peaks

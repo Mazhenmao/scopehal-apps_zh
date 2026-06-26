@@ -27,6 +27,7 @@ set(SCOPEPROTOCOLS_SOURCES
 	CSVImportFilter.cpp
 	CTLEFilter.cpp
 	CurrentShuntFilter.cpp
+	CZTFilter.cpp
 	DCDMeasurement.cpp
 	DDJMeasurement.cpp
 	DDR1Decoder.cpp

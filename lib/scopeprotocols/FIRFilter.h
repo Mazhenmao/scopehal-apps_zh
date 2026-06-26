@@ -76,6 +76,14 @@ protected:
 	void CalculateFilterCoefficients(float fa, float fb, float stopbandAtten, FIRFilterType type)
 	{ CalculateFIRCoefficients(fa, fb, stopbandAtten, type, m_coefficients); }
 
+	/**
+		@brief 判断当前滤波器配置是否真的发生变化
+
+		只有在滤波器类型、归一化截止频率、阻带衰减或tap数变化时，
+		才需要重新生成FIR系数，避免在连续刷新时反复占满单个CPU核心。
+	 */
+	bool CoefficientsNeedUpdate(float flo, float fhi, float atten, FIRFilterType type, size_t filterlen) const;
+
 	FilterParameter& m_filterType;
 	FilterParameter& m_filterLength;
 	FilterParameter& m_stopbandAtten;
@@ -85,6 +93,14 @@ protected:
 	ComputePipeline m_computePipeline;
 
 	AcceleratorBuffer<float> m_coefficients;
+
+	///@brief 缓存上一次生成FIR系数时使用的关键参数，减少重复设计滤波器的CPU开销
+	bool m_coefficientsValid = false;
+	float m_cachedFlo = 0;
+	float m_cachedFhi = 0;
+	float m_cachedStopbandAtten = 0;
+	size_t m_cachedFilterLen = 0;
+	FIRFilterType m_cachedFilterType = FILTER_TYPE_LOWPASS;
 };
 
 #endif
