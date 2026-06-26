@@ -662,10 +662,10 @@ bool FilterGraphEditor::DoRender()
 	//Add top level help text if there's nothing else
 	if(!ax::NodeEditor::GetHoveredNode() && !ax::NodeEditor::GetHoveredLink() && windowHovered)
 	{
-		m_parent->AddStatusHelp("mouse_lmb_drag", "Select multiple");
-		m_parent->AddStatusHelp("mouse_wheel", "Zoom");
-		m_parent->AddStatusHelp("mouse_rmb", "Create group or filter");
-		m_parent->AddStatusHelp("mouse_rmb_drag", "Pan");
+		m_parent->AddStatusHelp("mouse_lmb_drag", "多选");
+		m_parent->AddStatusHelp("mouse_wheel", "缩放画布");
+		m_parent->AddStatusHelp("mouse_rmb", "创建组或者滤波器");
+		m_parent->AddStatusHelp("mouse_rmb_drag", "拖动画布");
 	}
 
 	ax::NodeEditor::SetCurrentEditor(nullptr);

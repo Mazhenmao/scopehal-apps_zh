@@ -64,6 +64,7 @@ This is a running list of significant bug fixes and new features since the last 
 * Filters: Peak detector for FFT etc now does quadratic interpolation for sub-sample peak fitting
 * Filters: Horizontal bathtub curve now works properly with MLT-3 / PAM-3 eyes as well as NRZ. No PAM-4 or higher support yet.
 * Filters: PcapNG export now has an additional mode selector for use with named pipes, allowing live streaming of PcapNG formatted data to WireShark
+* GUI: Filter palette now uses case insensitive sorting rather than putting all capital letters before lowercase
 * GUI: Added performance counters for CPU/GPU copies to better identify bottlenecks
 * GUI: enabled mouseover BER measurements on MLT-3 / PAM-3 eyes as well as NRZ. No PAM-4 or higher support yet.
 * GUI: Filter graph editor now allows filters and instrument channels to display error messages when their configuration is invalid or something goes wrong. Not all drivers/filters take advantage of this yet.
@@ -82,8 +83,9 @@ NOTE: This section only list changes which are potentially breaking to an *end u
 * Many filters no longer take the input signal and recovered clock as separate inputs. Instead, they take the new sampled output from the CDR PLL (or I/Q Demux) block. This eliminates redundant sampling and is significantly faster but was not possible to do in a fully backwards compatible fashion. The list of affected filters is:
   * 100baseTX
   * 128b/130b
-  * 8B/10B (IBM)
-  * 8B/10B (TMDS)
+  * 64b/66b
+  * 8b/10b (IBM)
+  * 8b/10b (TMDS)
   * Constellation
   * DDJ
   * Ethernet - 100baseT1
@@ -110,6 +112,7 @@ NOTE: This section only list changes which are potentially breaking to an *end u
 * Filters: FFT waveforms were shifted one bin to the right of the correct position and also sometimes had incorrect bin size calculation due to rounding
 * Filters: Frequency and period measurement had a rounding error during integer-to-floating-point conversion causing half a cycle of the waveform to be dropped under some circumstances leading to an incorrect result, with worse error at low frequencies and short memory depths. This only affected the "summary" output not the trend plot.
 * Filters: Upsample filter incorrectly calculated sample indexes on waveforms with more than 2^21 points
+* GUI: Opening a session for offline analysis would add the instruments in it to your recent list (https://github.com/ngscopeclient/scopehal-apps/issues/1005)
 * GUI: Crash when closing a session (https://github.com/ngscopeclient/scopehal-apps/issues/934)
 * GUI: Pressing middle mouse on the Y axis to autoscale would fail, setting the full scale range to zero volts, if the waveform was resident in GPU memory and the CPU-side copy of the buffer was stale
 * GUI: History dialog allowed zero or negative values for history depth (https://github.com/ngscopeclient/scopehal-apps/issues/940)

@@ -909,7 +909,7 @@ bool WaveformArea::Render(int iArea, int numAreas, ImVec2 clientArea)
 
 	//Handle help messages
 	if(ImGui::IsItemHovered() && !m_mouseOverButton)
-		m_parent->AddStatusHelp("mouse_wheel", "Zoom horizontal axis");
+		m_parent->AddStatusHelp("mouse_wheel", "缩放水平坐标轴");
 
 	//Cursor should now be at end of window
 	ImGui::SetCursorPos(ImVec2(cpos.x, cpos.y + unspacedHeightPerArea));
@@ -2892,9 +2892,9 @@ void WaveformArea::RenderYAxis(ImVec2 size, map<float, float>& gridmap, float vb
 			m_parent->AddStatusHelp("mouse_lmb_drag", "Adjust trigger level");
 		else
 		{
-			m_parent->AddStatusHelp("mouse_lmb_drag", "Adjust offset");
-			m_parent->AddStatusHelp("mouse_mmb", "Autofit range and offset");
-			m_parent->AddStatusHelp("mouse_wheel", "Adjust range");
+			m_parent->AddStatusHelp("mouse_lmb_drag", "调节偏移量");
+			m_parent->AddStatusHelp("mouse_mmb", "自动适配量程与偏移");
+			m_parent->AddStatusHelp("mouse_wheel", "调节量程");
 		}
 	}
 

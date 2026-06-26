@@ -1075,12 +1075,12 @@ void WaveformGroup::RenderTimeline(float width, float height)
 	if(ImGui::IsWindowHovered())
 	{
 		if(m_mouseOverTriggerArrow)
-			m_parent->AddStatusHelp("mouse_lmb_drag", "Move trigger position");
+			m_parent->AddStatusHelp("mouse_lmb_drag", "移动触发点位置");
 		else
-			m_parent->AddStatusHelp("mouse_lmb_drag", "Pan timeline");
+			m_parent->AddStatusHelp("mouse_lmb_drag", "平移时间轴");
 
-		m_parent->AddStatusHelp("mouse_wheel", "Zoom horizontal axis");
-		m_parent->AddStatusHelp("mouse_mmb", "Autoscale horizontal axis to waveforms");
+		m_parent->AddStatusHelp("mouse_wheel", "缩放水平坐标轴");
+		m_parent->AddStatusHelp("mouse_mmb", "水平轴自动适配波形时长");
 	}
 
 	ImGui::PopFont();

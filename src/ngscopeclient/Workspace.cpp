@@ -130,7 +130,7 @@ void Workspace::TitleHoverHelp()
 {
 	if(ImGui::IsItemHovered())
 	{
-		m_parent->AddStatusHelp("mouse_lmb_drag", "Move workspace");
-		m_parent->AddStatusHelp("mouse_rmb", "Rename workspace");
+		m_parent->AddStatusHelp("mouse_lmb_drag", "移动工作区域");
+		m_parent->AddStatusHelp("mouse_rmb", "重命名工作区");
 	}
 }
