@@ -27,64 +27,62 @@
 *                                                                                                                      *
 ***********************************************************************************************************************/
 
-/**
-	@file
-	@author Andrew D. Zonenberg
-	@brief Declaration of FIRFilter
- */
-#ifndef FIRFilter_h
-#define FIRFilter_h
+#include "../scopehal/scopehal.h"
+#include "DigitalConstantFilter.h"
 
-/**
-	@brief Performs an arbitrary FIR filter with tap delay equal to the sample rate
- */
-class FIRFilter : public Filter
+using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Construction / destruction
+
+DigitalConstantFilter::DigitalConstantFilter(const string& color)
+	: Filter(color, CAT_GENERATION)
+	, m_value(m_parameters["Value"])
+	, m_width(m_parameters["Width"])
 {
-public:
-	FIRFilter(const std::string& color);
+	AddStream(Unit(Unit::UNIT_COUNTS), "data", Stream::STREAM_TYPE_DIGITAL_SCALAR);
 
-	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
+	m_value = FilterParameter(FilterParameter::TYPE_BOOL, Unit(Unit::UNIT_HEXNUM));
+	m_value.SetIntVal(0);
 
-	static std::string GetProtocolName();
-	virtual void SetDefaultName() override;
+	m_width = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_COUNTS));
+	m_width.SetIntVal(1);
+	m_width.signal_changed().connect(sigc::mem_fun(*this, &DigitalConstantFilter::OnWidthChanged));
+	OnWidthChanged();
 
-	PROTOCOL_DECODER_INITPROC(FIRFilter)
+	SetData(nullptr, 0);
+}
 
-	void DoFilterKernel(
-		vk::raii::CommandBuffer& cmdBuf,
-		std::shared_ptr<QueueHandle> queue,
-		UniformAnalogWaveform* din,
-		UniformAnalogWaveform* cap);
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Accessors
 
-	FIRFilterType GetFilterType()
-	{ return m_filterType.GetEnumVal<FIRFilterType>(); }
+string DigitalConstantFilter::GetProtocolName()
+{
+	return "Digital Constant";
+}
 
-	void SetFilterType(FIRFilterType type)
-	{ m_filterType.SetIntVal(type); }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Actual decoder logic
 
-	void SetFreqLow(float freq)
-	{ m_freqLow.SetFloatVal(freq); }
+void DigitalConstantFilter::OnWidthChanged()
+{
+	auto width = m_width.GetIntVal();
+	if(width < 1)
+		width = 1;
+	if(width > 64)
+		width = 64;
 
-	void SetFreqHigh(float freq)
-	{ m_freqHigh.SetFloatVal(freq); }
+	if( (width == 1) && (m_value.GetType() != FilterParameter::TYPE_BOOL))
+		m_value = FilterParameter(FilterParameter::TYPE_BOOL, Unit(Unit::UNIT_HEXNUM));
+	else if( (width != 1) && (m_value.GetType() != FilterParameter::TYPE_INT))
+		m_value = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_HEXNUM));
 
-	AcceleratorBuffer<float>& GetCoefficients()
-	{ return m_coefficients; }
+	m_streams[0].m_digitalValueWidth = width;
+}
 
-protected:
-
-	void CalculateFilterCoefficients(float fa, float fb, float stopbandAtten, FIRFilterType type)
-	{ CalculateFIRCoefficients(fa, fb, stopbandAtten, type, m_coefficients); }
-
-	FilterParameter& m_filterType;
-	FilterParameter& m_filterLength;
-	FilterParameter& m_stopbandAtten;
-	FilterParameter& m_freqLow;
-	FilterParameter& m_freqHigh;
-
-	ComputePipeline m_computePipeline;
-
-	AcceleratorBuffer<float> m_coefficients;
-};
-
-#endif
+void DigitalConstantFilter::Refresh(
+	[[maybe_unused]] vk::raii::CommandBuffer& cmdBuf,
+	[[maybe_unused]] shared_ptr<QueueHandle> queue)
+{
+	m_streams[0].m_digitalValue = m_value.GetIntVal();
+}

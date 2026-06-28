@@ -118,29 +118,6 @@ string FIRFilter::GetProtocolName()
 	return "FIR Filter";
 }
 
-bool FIRFilter::CoefficientsNeedUpdate(float flo, float fhi, float atten, FIRFilterType type, size_t filterlen) const
-{
-	if(!m_coefficientsValid)
-		return true;
-
-	if(m_cachedFilterType != type)
-		return true;
-
-	if(m_cachedFilterLen != filterlen)
-		return true;
-
-	if(fabs(m_cachedFlo - flo) > 1e-6)
-		return true;
-
-	if(fabs(m_cachedFhi - fhi) > 1e-6)
-		return true;
-
-	if(fabs(m_cachedStopbandAtten - atten) > 1e-6)
-		return true;
-
-	return false;
-}
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Actual decoder logic
 
@@ -215,21 +192,9 @@ void FIRFilter::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_ptr<QueueHandle>
 		return;
 	}
 
-	// 只有在滤波器关键参数变化时才重新设计FIR系数。
-	// 对带通+FFT这类持续刷新的场景，这里能明显减少单核CPU重复开销。
-	float floNorm = flo / nyquist;
-	float fhiNorm = fhi / nyquist;
-	if(CoefficientsNeedUpdate(floNorm, fhiNorm, atten, type, filterlen))
-	{
-		m_coefficients.resize(filterlen);
-		CalculateFilterCoefficients(floNorm, fhiNorm, atten, type);
-		m_cachedFlo = floNorm;
-		m_cachedFhi = fhiNorm;
-		m_cachedStopbandAtten = atten;
-		m_cachedFilterLen = filterlen;
-		m_cachedFilterType = type;
-		m_coefficientsValid = true;
-	}
+	//Create the filter coefficients (TODO: cache this)
+	m_coefficients.resize(filterlen);
+	CalculateFilterCoefficients(flo / nyquist, fhi / nyquist, atten, type);
 
 	//Set up output
 	m_xAxisUnit = m_inputs[0]->GetXAxisUnits();

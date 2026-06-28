@@ -38,6 +38,32 @@
 #include "Dialog.h"
 #include "Session.h"
 
+class MeasurementDescriptor : public InputDescriptor
+{
+public:
+	MeasurementDescriptor(const std::string& name)
+	: InputDescriptor(name, StreamDescriptor(nullptr))
+	, m_format(FORMAT_HEX)
+	{}
+
+	MeasurementDescriptor(StreamDescriptor stream)
+	: InputDescriptor("", stream)
+	, m_format(FORMAT_HEX)
+	{}
+
+	virtual ~MeasurementDescriptor()
+	{}
+
+	enum format_t
+	{
+		FORMAT_HEX,
+		FORMAT_BINARY,
+		FORMAT_DEC
+	};
+
+	format_t m_format;
+};
+
 class MeasurementsDialog
 	: public Dialog
 	, public SinkNode
@@ -52,6 +78,9 @@ public:
 	void RemoveStreamsForChannel(OscilloscopeChannel* channel);
 
 	bool HasStream(StreamDescriptor stream);
+
+	virtual void CreateInput(const std::string& name) override;
+	virtual void CreateInput(StreamDescriptor stream);
 };
 
 #endif

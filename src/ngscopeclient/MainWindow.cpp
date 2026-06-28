@@ -1557,6 +1557,15 @@ void MainWindow::ShowChannelProperties(OscilloscopeChannel* channel)
 	}
 }
 
+void MainWindow::HideChannelProperties(InstrumentChannel* channel)
+{
+	auto it = m_channelPropertiesDialogs.find(channel);
+	if(it->second)
+	{
+		m_dialogs.erase(it->second);
+		m_channelPropertiesDialogs.erase(it->first);
+	}
+}
 
 void MainWindow::ShowInstrumentProperties(std::shared_ptr<Instrument> instrument)
 {
@@ -2158,8 +2167,16 @@ Filter* MainWindow::CreateFilter(
 		for(size_t i=0; i<f->GetStreamCount(); i++)
 		{
 			StreamDescriptor stream(f, i);
-			if(stream.GetType() == Stream::STREAM_TYPE_ANALOG_SCALAR)
-				FindAreaForStream(area, stream);
+			switch(stream.GetType())
+			{
+				case Stream::STREAM_TYPE_ANALOG_SCALAR:
+				case Stream::STREAM_TYPE_DIGITAL_SCALAR:
+					FindAreaForStream(area, stream);
+					break;
+
+				default:
+					break;
+			}
 		}
 	}
 
@@ -2298,7 +2315,8 @@ void MainWindow::FindAreaForStream(WaveformArea* area, StreamDescriptor stream)
 	LogIndenter li;
 
 	//If it's a scalar, add to the measurements dialog (creating it if necessary)
-	if(stream.GetType() == Stream::STREAM_TYPE_ANALOG_SCALAR)
+	auto stype = stream.GetType();
+	if( (stype == Stream::STREAM_TYPE_ANALOG_SCALAR) || (stype == Stream::STREAM_TYPE_DIGITAL_SCALAR) )
 	{
 		//Don't add infrequently used values by default
 		if(stream.GetFlags() & Stream::STREAM_INFREQUENTLY_USED)

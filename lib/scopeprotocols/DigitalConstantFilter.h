@@ -30,61 +30,27 @@
 /**
 	@file
 	@author Andrew D. Zonenberg
-	@brief Declaration of FIRFilter
+	@brief Declaration of DigitalConstantFilter
  */
-#ifndef FIRFilter_h
-#define FIRFilter_h
+#ifndef DigitalConstantFilter_h
+#define DigitalConstantFilter_h
 
-/**
-	@brief Performs an arbitrary FIR filter with tap delay equal to the sample rate
- */
-class FIRFilter : public Filter
+class DigitalConstantFilter : public Filter
 {
 public:
-	FIRFilter(const std::string& color);
+	DigitalConstantFilter(const std::string& color);
 
 	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
 
 	static std::string GetProtocolName();
-	virtual void SetDefaultName() override;
 
-	PROTOCOL_DECODER_INITPROC(FIRFilter)
-
-	void DoFilterKernel(
-		vk::raii::CommandBuffer& cmdBuf,
-		std::shared_ptr<QueueHandle> queue,
-		UniformAnalogWaveform* din,
-		UniformAnalogWaveform* cap);
-
-	FIRFilterType GetFilterType()
-	{ return m_filterType.GetEnumVal<FIRFilterType>(); }
-
-	void SetFilterType(FIRFilterType type)
-	{ m_filterType.SetIntVal(type); }
-
-	void SetFreqLow(float freq)
-	{ m_freqLow.SetFloatVal(freq); }
-
-	void SetFreqHigh(float freq)
-	{ m_freqHigh.SetFloatVal(freq); }
-
-	AcceleratorBuffer<float>& GetCoefficients()
-	{ return m_coefficients; }
+	PROTOCOL_DECODER_INITPROC(DigitalConstantFilter)
 
 protected:
+	FilterParameter& m_value;
+	FilterParameter& m_width;
 
-	void CalculateFilterCoefficients(float fa, float fb, float stopbandAtten, FIRFilterType type)
-	{ CalculateFIRCoefficients(fa, fb, stopbandAtten, type, m_coefficients); }
-
-	FilterParameter& m_filterType;
-	FilterParameter& m_filterLength;
-	FilterParameter& m_stopbandAtten;
-	FilterParameter& m_freqLow;
-	FilterParameter& m_freqHigh;
-
-	ComputePipeline m_computePipeline;
-
-	AcceleratorBuffer<float> m_coefficients;
+	void OnWidthChanged();
 };
 
 #endif
