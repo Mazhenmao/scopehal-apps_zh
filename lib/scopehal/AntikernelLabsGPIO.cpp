@@ -1,8 +1,8 @@
 /***********************************************************************************************************************
 *                                                                                                                      *
-* ngscopeclient                                                                                                        *
+* libscopehal                                                                                                          *
 *                                                                                                                      *
-* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
+* Copyright (c) 2012-2024 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
 *                                                                                                                      *
 * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
@@ -30,102 +30,121 @@
 /**
 	@file
 	@author Andrew D. Zonenberg
-	@brief Implementation of NotesDialog
+	@brief Implementation of AntikernelLabsGPIO
+	@ingroup miscdrivers
  */
 
-#include "ngscopeclient.h"
-#include "NotesDialog.h"
-#include "MainWindow.h"
-#include <imgui_markdown.h>
+#include "scopehal.h"
+#include "AntikernelLabsGPIO.h"
 
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction / destruction
 
-NotesDialog::NotesDialog(MainWindow* parent)
-	: Dialog("Lab Notes", "Lab Notes", ImVec2(800, 400), nullptr, parent)
+/**
+	@brief Initialize the driver
+
+	@param transport	SCPITransport pointing at the instrument
+ */
+AntikernelLabsGPIO::AntikernelLabsGPIO(SCPITransport* transport)
+	: SCPIDevice(transport, true)
+	, SCPIInstrument(transport, true)
 {
+	//Create initial stream
+	m_channels.push_back(new VectorGPIOChannel(
+		"GPIO",
+		this,
+		"#808080",
+		0,
+		32));
+
+	//needs to run *before* the Oscilloscope class implementation
+	m_preloaders.push_front(sigc::mem_fun(*this, &AntikernelLabsGPIO::DoPreLoadConfiguration));
 }
 
-NotesDialog::~NotesDialog()
+AntikernelLabsGPIO::~AntikernelLabsGPIO()
 {
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Rendering
+// Instantiation
 
-/**
-	@brief Renders the dialog and handles UI events
-
-	@return		True if we should continue showing the dialog
-				False if it's been closed
- */
-bool NotesDialog::DoRender()
+uint32_t AntikernelLabsGPIO::GetInstrumentTypes() const
 {
-	ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
-	if (ImGui::BeginTabBar("NotesFile", tab_bar_flags))
+	return INST_MISC;
+}
+
+uint32_t AntikernelLabsGPIO::GetInstrumentTypesForChannel(size_t /*i*/) const
+{
+	return INST_MISC;
+}
+
+///@brief Returns the constant driver name "csvstream"
+string AntikernelLabsGPIO::GetDriverNameInternal()
+{
+	return "akl.gpio";
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Serialization
+
+void AntikernelLabsGPIO::DoPreLoadConfiguration(
+	[[maybe_unused]] int version,
+	[[maybe_unused]] const YAML::Node& node,
+	[[maybe_unused]] IDTable& idmap,
+	[[maybe_unused]] ConfigWarningList& list)
+{
+
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Acquisition
+
+bool AntikernelLabsGPIO::AcquireData()
+{
+	auto chan = dynamic_cast<VectorGPIOChannel*>(m_channels[0]);
+	if(!chan)
+		return false;
+
+	//TODO: make this more efficient and only send deltas or something
+	uint32_t tris = 0;
+	uint32_t outval = 0;
+	for(size_t i=0; i<chan->GetStreamCount(); i++)
 	{
-		if (ImGui::BeginTabItem("设置记录"))
+		//If we have no input connected, set the tristate to 1
+		uint32_t mask = (1 << i);
+		auto in = chan->GetInput(i);
+		if(!in)
 		{
-			SetupNotes();
-			ImGui::EndTabItem();
+			tris |= mask;
+			continue;
 		}
 
-		if (ImGui::BeginTabItem("常规记录"))
-		{
-			GeneralNotes();
-			ImGui::EndTabItem();
-		}
+		//If we have an input, set the output to its scalar value
+		if(in.GetDigitalScalarValue())
+			outval |= mask;
+	}
 
-		ImGui::EndTabBar();
+	//Push tristate and output values
+	m_transport->SendCommandQueued(string("GPIO:TRIS ") + to_string_hex(tris));
+	m_transport->SendCommandQueued(string("GPIO:OUTVAL ") + to_string_hex(outval));
+
+	//Get the input value
+	auto inval = Trim(m_transport->SendCommandQueuedWithReply("GPIO:INVAL?"));
+	uint32_t hexinval = 0;
+	sscanf(inval.c_str(), "%x", &hexinval);
+
+	//Push to output streams
+	for(size_t i=0; i<chan->GetStreamCount(); i++)
+	{
+		uint32_t mask = (1 << i);
+		if( (hexinval & mask) == mask)
+			chan->SetDigitalScalarValue(i, 1);
+		else
+			chan->SetDigitalScalarValue(i, 0);
 	}
 
 	return true;
-}
-
-void NotesDialog::SetupNotes()
-{
-	ImGui::TextWrapped(
-	 "详细描述你的实验搭建方式，确保能据此核对接线是否正确。支持有限的 Markdown 语法。\n\n重新加载会话时会显示这些备注，方便你在修改硬件配置前，确认所有仪器通道已正确连接。"
-		);
-
-	MarkdownEditor(m_parent->GetSession().m_setupNotes);
-}
-
-void NotesDialog::GeneralNotes()
-{
-	ImGui::TextWrapped(
-	  "在此记录测试备注，支持有限 Markdown 语法。"
-		);
-
-	MarkdownEditor(m_parent->GetSession().m_generalNotes);
-}
-
-/**
-	@brief Displays a split view with a Markdown editor and viewer
- */
-void NotesDialog::MarkdownEditor(string& str)
-{
-	//Table with one col for live view and one for editor
-	static ImGuiTableFlags flags =
-		ImGuiTableFlags_Resizable |
-		ImGuiTableFlags_BordersOuter |
-		ImGuiTableFlags_BordersV |
-		ImGuiTableFlags_ScrollY |
-		ImGuiTableFlags_SizingStretchSame;
-	if(ImGui::BeginTable("setupnotes", 2, flags, ImGui::GetContentRegionAvail() ))
-	{
-		ImGui::TableNextRow(ImGuiTableRowFlags_None);
-
-		//Editor
-		ImGui::TableSetColumnIndex(0);
-		ImGui::InputTextMultiline("###设置记录", &str, ImGui::GetContentRegionAvail());
-
-		//Render the markdown
-		ImGui::TableSetColumnIndex(1);
-		ImGui::Markdown(str.c_str(), str.length(), m_parent->GetMarkdownConfig());
-
-		ImGui::EndTable();
-	}
 }

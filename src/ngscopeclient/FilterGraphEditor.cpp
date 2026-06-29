@@ -2497,16 +2497,24 @@ void FilterGraphEditor::CreateChannelMenu()
 void FilterGraphEditor::FilterMenu(StreamDescriptor stream)
 {
 	//See if the source stream is a scalar, if so offer to add a measurement
-	if(stream.GetType() == Stream::STREAM_TYPE_ANALOG_SCALAR)
+	switch(stream.GetType())
 	{
-		//Only offer to measure if not already being measured
-		auto dlg = m_parent->GetMeasurementsDialog(false);
-		if(!dlg || !dlg->HasStream(stream))
-		{
-			if(ImGui::MenuItem("测量"))
-				m_parent->GetMeasurementsDialog(true)->AddStream(stream);
-			ImGui::Separator();
-		}
+		case Stream::STREAM_TYPE_ANALOG_SCALAR:
+		case Stream::STREAM_TYPE_DIGITAL_SCALAR:
+			{
+				//Only offer to measure if not already being measured
+				auto dlg = m_parent->GetMeasurementsDialog(false);
+				if(!dlg || !dlg->HasStream(stream))
+				{
+					if(ImGui::MenuItem("测量"))
+						m_parent->GetMeasurementsDialog(true)->AddStream(stream);
+					ImGui::Separator();
+				}
+			}
+		break;
+
+		default:
+			break;
 	}
 
 	FilterSubmenu(stream, "总线", Filter::CAT_BUS);

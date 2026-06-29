@@ -188,6 +188,17 @@ bool MetricsDialog::DoRender()
 			if(ImGui::TreeNode(s->m_nickname.c_str()))
 			{
 				ImGui::BeginDisabled();
+					str = hz.PrettyPrint(s->GetWaveformDownloadRate());
+					ImGui::SetNextItemWidth(width);
+					ImGui::InputText("波形速率", &str);
+				ImGui::EndDisabled();
+
+				HelpMarker(
+					"从仪器队列中获取并处理波形的速率。\n\n"
+					"如果会话中只有一个触发组，这应该与顶层波形速率相同。"
+					);
+
+				ImGui::BeginDisabled();
 					str = counts.PrettyPrint(s->GetPendingWaveformCount());
 					ImGui::SetNextItemWidth(width);
 					ImGui::InputText("等待中的波形", &str);

@@ -315,6 +315,14 @@ bool UART::SetTimeouts([[maybe_unused]] unsigned int txUs, [[maybe_unused]] unsi
 	return true;
 }
 
+void UART::FlushRxBuffer()
+{
+	#ifdef _WIN32
+		LogError("UART::FlushRxBuffer not implemented for Win32 yet\n");
+	#else
+		tcflush(m_fd, TCIFLUSH);
+	#endif
+}
 
 /**
 	@brief Disconnects from the serial port

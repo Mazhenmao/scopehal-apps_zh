@@ -1,8 +1,8 @@
 /***********************************************************************************************************************
 *                                                                                                                      *
-* ngscopeclient                                                                                                        *
+* libscopehal                                                                                                          *
 *                                                                                                                      *
-* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
+* Copyright (c) 2012-2024 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
 *                                                                                                                      *
 * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
@@ -30,102 +30,54 @@
 /**
 	@file
 	@author Andrew D. Zonenberg
-	@brief Implementation of NotesDialog
+	@brief Implementation of VectorGPIOChannel
+	@ingroup core
  */
 
-#include "ngscopeclient.h"
-#include "NotesDialog.h"
-#include "MainWindow.h"
-#include <imgui_markdown.h>
+#include "scopehal.h"
 
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction / destruction
 
-NotesDialog::NotesDialog(MainWindow* parent)
-	: Dialog("Lab Notes", "Lab Notes", ImVec2(800, 400), nullptr, parent)
-{
-}
-
-NotesDialog::~NotesDialog()
-{
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Rendering
-
 /**
-	@brief Renders the dialog and handles UI events
+	@brief Initialize a digital GPIO channel
 
-	@return		True if we should continue showing the dialog
-				False if it's been closed
+	@param hwname	Internal hardware name of the channel (should match SCPI name if applicable)
+	@param parent	The instrument this channel is part of
+	@param color	Display color for the channel in plots and the filter graph
+	@param index	Position of this channel within m_channels of the parent instrument
  */
-bool NotesDialog::DoRender()
+VectorGPIOChannel::VectorGPIOChannel(
+	const string& hwname,
+	Instrument* parent,
+	const string& color,
+	size_t index,
+	size_t width)
+	: InstrumentChannel(parent, hwname, color, Unit(Unit::UNIT_FS), index)
 {
-	ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
-	if (ImGui::BeginTabBar("NotesFile", tab_bar_flags))
+	ClearStreams();
+
+	for(size_t i=0; i<width; i++)
 	{
-		if (ImGui::BeginTabItem("设置记录"))
-		{
-			SetupNotes();
-			ImGui::EndTabItem();
-		}
+		//Add inputs
+		CreateInput<InputConstraintStreamType>(string("out") + to_string(i), Stream::STREAM_TYPE_DIGITAL_SCALAR);
 
-		if (ImGui::BeginTabItem("常规记录"))
-		{
-			GeneralNotes();
-			ImGui::EndTabItem();
-		}
-
-		ImGui::EndTabBar();
+		//Add output streams
+		AddStream(Unit::UNIT_COUNTS, string("in") + to_string(i), Stream::STREAM_TYPE_DIGITAL_SCALAR);
+		m_streams[i].m_digitalValueWidth = 1;
 	}
-
-	return true;
 }
 
-void NotesDialog::SetupNotes()
+VectorGPIOChannel::~VectorGPIOChannel()
 {
-	ImGui::TextWrapped(
-	 "详细描述你的实验搭建方式，确保能据此核对接线是否正确。支持有限的 Markdown 语法。\n\n重新加载会话时会显示这些备注，方便你在修改硬件配置前，确认所有仪器通道已正确连接。"
-		);
-
-	MarkdownEditor(m_parent->GetSession().m_setupNotes);
 }
 
-void NotesDialog::GeneralNotes()
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Vertical scaling and stream management
+
+InstrumentChannel::PhysicalConnector VectorGPIOChannel::GetPhysicalConnector()
 {
-	ImGui::TextWrapped(
-	  "在此记录测试备注，支持有限 Markdown 语法。"
-		);
-
-	MarkdownEditor(m_parent->GetSession().m_generalNotes);
-}
-
-/**
-	@brief Displays a split view with a Markdown editor and viewer
- */
-void NotesDialog::MarkdownEditor(string& str)
-{
-	//Table with one col for live view and one for editor
-	static ImGuiTableFlags flags =
-		ImGuiTableFlags_Resizable |
-		ImGuiTableFlags_BordersOuter |
-		ImGuiTableFlags_BordersV |
-		ImGuiTableFlags_ScrollY |
-		ImGuiTableFlags_SizingStretchSame;
-	if(ImGui::BeginTable("setupnotes", 2, flags, ImGui::GetContentRegionAvail() ))
-	{
-		ImGui::TableNextRow(ImGuiTableRowFlags_None);
-
-		//Editor
-		ImGui::TableSetColumnIndex(0);
-		ImGui::InputTextMultiline("###设置记录", &str, ImGui::GetContentRegionAvail());
-
-		//Render the markdown
-		ImGui::TableSetColumnIndex(1);
-		ImGui::Markdown(str.c_str(), str.length(), m_parent->GetMarkdownConfig());
-
-		ImGui::EndTable();
-	}
+	return CONNECTOR_SMA;
 }

@@ -75,6 +75,8 @@ public:
 	bool Read(unsigned char* data, int len);
 	bool Write(const unsigned char* data, int len);
 
+	void FlushRxBuffer();
+
 	FILE_DESCRIPTOR GetHandle()
 	{ return m_fd; }
 

@@ -163,10 +163,12 @@ set(SCOPEHAL_SOURCES
 	SpectrometerDarkFrameChannel.cpp
 	SwitchMatrix.cpp
 	RemoteBridgeOscilloscope.cpp
+	VectorGPIOChannel.cpp
 
 	AgilentMultimeter.cpp
 	AgilentOscilloscope.cpp
 	AlientekPowerSupply.cpp
+	AntikernelLabsGPIO.cpp
 	AntikernelLabsOscilloscope.cpp
 	AntikernelLabsTriggerCrossbar.cpp
 	AntikernelLogicAnalyzer.cpp

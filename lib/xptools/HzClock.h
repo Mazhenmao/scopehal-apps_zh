@@ -59,6 +59,8 @@ public:
 
 	void Reset()
 	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
 		m_lastMs = GetTime();
 
 		m_deltas.clear();
@@ -72,6 +74,8 @@ public:
 
 	void Tick()
 	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
 		uint64_t now = GetTime() * 1000;
 		uint64_t delta = now - m_lastMs;
 
@@ -96,6 +100,8 @@ public:
 
 	double GetStdDev()
 	{
+		std::lock_guard<std::mutex> lock(m_mutex);
+
 		double dev = 0;
 
 		for (auto i : m_deltas)
@@ -126,6 +132,8 @@ public:
 	}
 
 protected:
+	std::mutex m_mutex;
+
 	int m_depth;
 	uint64_t m_lastMs;
 	std::deque<uint64_t> m_deltas;
