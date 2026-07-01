@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 *                                                                                                                      *
-* libscopehal                                                                                                          *
+* libscopeprotocols                                                                                                    *
 *                                                                                                                      *
 * Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
@@ -30,46 +30,36 @@
 /**
 	@file
 	@author Andrew D. Zonenberg
-	@brief Declaration of AntikernelLabsGPIO
-	@ingroup miscdrivers
+	@brief Declaration of DigitalToAnalogFilter
  */
+#ifndef DigitalToAnalogFilter_h
+#define DigitalToAnalogFilter_h
 
-#ifndef AntikernelLabsGPIO_h
-#define AntikernelLabsGPIO_h
-
-/**
-	@brief A miscellaneous instrument which provides access to an Antikernel Labs GPIO bridge
-
-	@ingroup miscdrivers
- */
-class AntikernelLabsGPIO
-	: public virtual SCPIMiscInstrument
+class DigitalToAnalogFilter : public Filter
 {
 public:
-	AntikernelLabsGPIO(SCPITransport* transport);
-	virtual ~AntikernelLabsGPIO();
+	DigitalToAnalogFilter(const std::string& color);
 
-	//Device information
-	virtual uint32_t GetInstrumentTypes() const override;
-	virtual uint32_t GetInstrumentTypesForChannel(size_t i) const override;
+	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
 
-	//Acquisition
-	virtual bool AcquireData() override;
+	static std::string GetProtocolName();
+
+	PROTOCOL_DECODER_INITPROC(DigitalToAnalogFilter)
 
 protected:
+	FilterParameter& m_gain;
+	FilterParameter& m_offset;
+	FilterParameter& m_unit;
 
-	/**
-		@brief Validate instrument and channel configuration from a save file
-	 */
-	void DoPreLoadConfiguration(int version, const YAML::Node& node, IDTable& idmap, ConfigWarningList& list);
+	FilterParameter& m_mode;
 
-	bool m_cachedConfigValid;
-	uint32_t m_cachedTris;
-	uint32_t m_cachedOut;
+	enum mode_t
+	{
+		MODE_UNSIGNED_NORMALIZED,
+		MODE_UNSIGNED
+	};
 
-public:
-	static std::string GetDriverNameInternal();
-	MISC_INITPROC(AntikernelLabsGPIO);
+	void OnUnitChanged();
 };
 
 #endif

@@ -1,8 +1,8 @@
 /***********************************************************************************************************************
 *                                                                                                                      *
-* libscopehal                                                                                                          *
+* libscopeprotocols                                                                                                    *
 *                                                                                                                      *
-* Copyright (c) 2012-2024 Andrew D. Zonenberg and contributors                                                         *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
 *                                                                                                                      *
 * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
@@ -27,143 +27,96 @@
 *                                                                                                                      *
 ***********************************************************************************************************************/
 
-/**
-	@file
-	@author Andrew D. Zonenberg
-	@brief Implementation of AntikernelLabsGPIO
-	@ingroup miscdrivers
- */
-
-#include "scopehal.h"
-#include "AntikernelLabsGPIO.h"
+#include "../scopehal/scopehal.h"
+#include "DigitalToAnalogFilter.h"
 
 using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Construction / destruction
 
-/**
-	@brief Initialize the driver
-
-	@param transport	SCPITransport pointing at the instrument
- */
-AntikernelLabsGPIO::AntikernelLabsGPIO(SCPITransport* transport)
-	: SCPIDevice(transport, true)
-	, SCPIInstrument(transport, true)
-	, m_cachedConfigValid(false)
-	, m_cachedTris(0)
-	, m_cachedOut(0)
+DigitalToAnalogFilter::DigitalToAnalogFilter(const string& color)
+	: Filter(color, CAT_MATH)
+	, m_gain(m_parameters["Gain"])
+	, m_offset(m_parameters["Offset"])
+	, m_unit(m_parameters["Unit"])
+	, m_mode(m_parameters["Mode"])
 {
-	//Create initial stream
-	m_channels.push_back(new VectorGPIOChannel(
-		"GPIO",
-		this,
-		"#808080",
-		0,
-		32));
+	AddStream(Unit(Unit::UNIT_VOLTS), "data", Stream::STREAM_TYPE_ANALOG_SCALAR);
 
-	//needs to run *before* the Oscilloscope class implementation
-	m_preloaders.push_front(sigc::mem_fun(*this, &AntikernelLabsGPIO::DoPreLoadConfiguration));
-}
+	CreateInput<InputConstraintStreamType>("din", Stream::STREAM_TYPE_DIGITAL_SCALAR);
 
-AntikernelLabsGPIO::~AntikernelLabsGPIO()
-{
+	m_gain = FilterParameter(FilterParameter::TYPE_FLOAT, Unit(Unit::UNIT_VOLTS));
+	m_gain.SetFloatVal(1);
 
-}
+	m_offset = FilterParameter(FilterParameter::TYPE_FLOAT, Unit(Unit::UNIT_VOLTS));
+	m_offset.SetFloatVal(0);
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Instantiation
+	m_unit = FilterParameter::UnitSelector();
+	m_unit.SetIntVal(Unit::UNIT_VOLTS);
+	m_unit.signal_changed().connect(sigc::mem_fun(*this, &DigitalToAnalogFilter::OnUnitChanged));
 
-uint32_t AntikernelLabsGPIO::GetInstrumentTypes() const
-{
-	return INST_MISC;
-}
+	m_mode = FilterParameter(FilterParameter::TYPE_ENUM, Unit(Unit::UNIT_COUNTS));
+	m_mode.AddEnumValue("Unsigned normalized", MODE_UNSIGNED_NORMALIZED);
+	m_mode.AddEnumValue("Unsigned", MODE_UNSIGNED);
+	m_mode.SetIntVal(MODE_UNSIGNED_NORMALIZED);
 
-uint32_t AntikernelLabsGPIO::GetInstrumentTypesForChannel(size_t /*i*/) const
-{
-	return INST_MISC;
-}
-
-///@brief Returns the constant driver name
-string AntikernelLabsGPIO::GetDriverNameInternal()
-{
-	return "akl.gpio";
+	SetData(nullptr, 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Serialization
+// Accessors
 
-void AntikernelLabsGPIO::DoPreLoadConfiguration(
-	[[maybe_unused]] int version,
-	[[maybe_unused]] const YAML::Node& node,
-	[[maybe_unused]] IDTable& idmap,
-	[[maybe_unused]] ConfigWarningList& list)
+string DigitalToAnalogFilter::GetProtocolName()
 {
-
+	return "Digital to Analog";
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Acquisition
+// Actual decoder logic
 
-bool AntikernelLabsGPIO::AcquireData()
+void DigitalToAnalogFilter::OnUnitChanged()
 {
-	auto chan = dynamic_cast<VectorGPIOChannel*>(m_channels[0]);
-	if(!chan)
-		return false;
+	//TODO preserve values
+	m_gain = FilterParameter(FilterParameter::TYPE_FLOAT, m_unit.GetEnumVal<Unit::UnitType>());
+	m_offset = FilterParameter(FilterParameter::TYPE_FLOAT, m_unit.GetEnumVal<Unit::UnitType>());
+}
 
-	//Get the input value
-	auto inval = Trim(m_transport->SendCommandQueuedWithReply("GPIO:INVAL?"));
-	uint32_t hexinval = 0;
-	sscanf(inval.c_str(), "%x", &hexinval);
+void DigitalToAnalogFilter::Refresh(
+	[[maybe_unused]] vk::raii::CommandBuffer& cmdBuf,
+	[[maybe_unused]] shared_ptr<QueueHandle> queue)
+{
+	SetYAxisUnits(m_unit.GetEnumVal<Unit::UnitType>(), 0);
 
-	//Push to output streams
-	for(size_t i=0; i<chan->GetStreamCount(); i++)
+	auto din = GetInput(0);
+	ClearErrors();
+	if(!din)
 	{
-		uint32_t mask = (1 << i);
-		if( (hexinval & mask) == mask)
-			chan->SetDigitalScalarValue(i, 1);
-		else
-			chan->SetDigitalScalarValue(i, 0);
+		AddErrorMessage("Missing inputs", "No signal input connected");
+		return;
 	}
 
-	//Generate output register values
-	uint32_t tris = 0;
-	uint32_t outval = 0;
-	for(size_t i=0; i<chan->GetStreamCount(); i++)
-	{
-		//If we have no input connected, set the tristate to 1
-		uint32_t mask = (1 << i);
-		auto in = chan->GetInput(i);
-		if(!in)
-		{
-			tris |= mask;
-			continue;
-		}
+	auto inval = din.GetDigitalScalarValue();
+	auto width = din.GetDigitalScalarWidth();
 
-		//If we have an input, set the output to its scalar value
-		if(in.GetDigitalScalarValue())
-			outval |= mask;
-	}
+	//TODO: signed value path, for now assume unsigned
 
-	//Push tristate and output values
-	//Skip if we didn't change anything
-	if(m_cachedConfigValid && (m_cachedTris == tris) )
-	{}
-	else
-	{
-		m_transport->SendCommandQueued(string("GPIO:TRIS ") + to_string_hex(tris));
-		m_cachedTris = tris;
-	}
+	auto mode = m_mode.GetEnumVal<mode_t>();
 
-	if(m_cachedConfigValid && (m_cachedOut == outval) )
-	{}
-	else
-	{
-		m_transport->SendCommandQueued(string("GPIO:OUTVAL ") + to_string_hex(outval));
-		m_cachedOut = outval;
-	}
+	//Get the full-scale value
+	uint64_t fullscale = 0;
+	fullscale = ~fullscale;
+	fullscale <<= width;
+	fullscale = ~fullscale;
 
-	m_cachedConfigValid = true;
+	//Normalize and scale the input
+	//TODO: option to not normalize
+	double norm = static_cast<double>(inval);
+	if(mode == MODE_UNSIGNED_NORMALIZED)
+		norm /= static_cast<double>(fullscale);
+	norm -= m_offset.GetFloatVal();
+	norm *= m_gain.GetFloatVal();
 
-	return true;
+	//Save the output
+	m_streams[0].m_value = norm;
 }

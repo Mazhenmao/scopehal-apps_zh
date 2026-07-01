@@ -35,6 +35,7 @@ set(SCOPEPROTOCOLS_SOURCES
 	DeEmbedFilter.cpp
 	DeskewFilter.cpp
 	DigitalConstantFilter.cpp
+	DigitalToAnalogFilter.cpp
 	DigitalToPAM4Filter.cpp
 	DigitalToNRZFilter.cpp
 	DivideFilter.cpp
