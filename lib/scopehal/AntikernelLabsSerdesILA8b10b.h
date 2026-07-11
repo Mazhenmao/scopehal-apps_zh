@@ -30,62 +30,66 @@
 /**
 	@file
 	@author Andrew D. Zonenberg
-	@brief Declaration of ThunderScopeOscilloscope
+	@brief Declaration of AntikernelLabsSerdesILA8b10b
 	@ingroup scopedrivers
  */
 
-#ifndef ThunderScopeOscilloscope_h
-#define ThunderScopeOscilloscope_h
+#ifndef AntikernelLabsSerdesILA8b10b_h
+#define AntikernelLabsSerdesILA8b10b_h
 
-#include "RemoteBridgeOscilloscope.h"
-#include "../xptools/HzClock.h"
+class EdgeTrigger;
 
 /**
-	@brief Driver for talking to the TS.NET server controlling a ThunderScope
-
+	@brief Protocol analyzer driver for Linux SocketCAN API
 	@ingroup scopedrivers
  */
-class ThunderScopeOscilloscope : public RemoteBridgeOscilloscope
+class AntikernelLabsSerdesILA8b10b
+	: public virtual SCPIOscilloscope
 {
 public:
-	ThunderScopeOscilloscope(SCPITransport* transport);
-	virtual ~ThunderScopeOscilloscope();
+	AntikernelLabsSerdesILA8b10b(SCPITransport* transport);
+	virtual ~AntikernelLabsSerdesILA8b10b();
 
 	//not copyable or assignable
-	ThunderScopeOscilloscope(const ThunderScopeOscilloscope& rhs) =delete;
-	ThunderScopeOscilloscope& operator=(const ThunderScopeOscilloscope& rhs) =delete;
+	AntikernelLabsSerdesILA8b10b(const AntikernelLabsSerdesILA8b10b& rhs) =delete;
+	AntikernelLabsSerdesILA8b10b& operator=(const AntikernelLabsSerdesILA8b10b& rhs) =delete;
 
 public:
-
 	//Device information
 	virtual unsigned int GetInstrumentTypes() const override;
+
 	virtual void FlushConfigCache() override;
+	virtual OscilloscopeChannel* GetExternalTrigger() override;
 
 	//Channel configuration
+	virtual uint32_t GetInstrumentTypesForChannel(size_t i) const override;
+	virtual bool IsChannelEnabled(size_t i) override;
+	virtual void EnableChannel(size_t i) override;
+	virtual void DisableChannel(size_t i) override;
+	virtual OscilloscopeChannel::CouplingType GetChannelCoupling(size_t i) override;
+	virtual void SetChannelCoupling(size_t i, OscilloscopeChannel::CouplingType type) override;
 	virtual std::vector<OscilloscopeChannel::CouplingType> GetAvailableCouplings(size_t i) override;
 	virtual double GetChannelAttenuation(size_t i) override;
 	virtual void SetChannelAttenuation(size_t i, double atten) override;
 	virtual unsigned int GetChannelBandwidthLimit(size_t i) override;
 	virtual void SetChannelBandwidthLimit(size_t i, unsigned int limit_mhz) override;
 	virtual std::vector<unsigned int> GetChannelBandwidthLimiters(size_t i) override;
-	virtual OscilloscopeChannel* GetExternalTrigger() override;
-	virtual bool CanEnableChannel(size_t i) override;
-	virtual uint32_t GetInstrumentTypesForChannel(size_t i) const override;
-	virtual void SetChannelCoupling(size_t i, OscilloscopeChannel::CouplingType type) override;
-	virtual void EnableChannel(size_t i) override;
-	virtual bool IsHighRateOffsetCapable(size_t i) override;
+	virtual float GetChannelVoltageRange(size_t i, size_t stream) override;
+	virtual void SetChannelVoltageRange(size_t i, size_t stream, float range) override;
+	virtual float GetChannelOffset(size_t i, size_t stream) override;
+	virtual void SetChannelOffset(size_t i, size_t stream, float offset) override;
+	virtual std::string GetProbeName(size_t i) override;
 
 	//Triggering
-	virtual void BackgroundProcessing() override;
 	virtual Oscilloscope::TriggerMode PollTrigger() override;
 	virtual bool AcquireData() override;
-	virtual void PushEdgeTrigger(EdgeTrigger* trig) override;
-
-	// Captures
 	virtual void Start() override;
 	virtual void StartSingleTrigger() override;
 	virtual void Stop() override;
 	virtual void ForceTrigger() override;
+	virtual bool IsTriggerArmed() override;
+	virtual void PushTrigger() override;
+	virtual void PullTrigger() override;
 
 	//Timebase
 	virtual std::vector<uint64_t> GetSampleRatesNonInterleaved() override;
@@ -93,103 +97,39 @@ public:
 	virtual std::set<InterleaveConflict> GetInterleaveConflicts() override;
 	virtual std::vector<uint64_t> GetSampleDepthsNonInterleaved() override;
 	virtual std::vector<uint64_t> GetSampleDepthsInterleaved() override;
+	virtual uint64_t GetSampleRate() override;
+	virtual uint64_t GetSampleDepth() override;
+	virtual void SetSampleDepth(uint64_t depth) override;
+	virtual void SetSampleRate(uint64_t rate) override;
+	virtual void SetTriggerOffset(int64_t offset) override;
+	virtual int64_t GetTriggerOffset() override;
 	virtual bool IsInterleaving() override;
 	virtual bool SetInterleaving(bool combine) override;
-	virtual bool CanInterleave() override;
-	virtual bool HasInterleavingControls() override;
-	void SetSampleDepth(uint64_t depth) override;
-	void SetSampleRate(uint64_t rate) override;
-
-	//ADC modes
-	virtual bool IsADCModeConfigurable() override;
-	virtual std::vector<std::string> GetADCModeNames(size_t channel) override;
-	virtual size_t GetADCMode(size_t channel) override;
-	virtual void SetADCMode(size_t channel, size_t mode) override;
 
 protected:
-	void ResetPerCaptureDiagnostics();
-	void RefreshSampleRate();
-	bool DoAcquireData(bool keep);
 
-	void PushPendingWaveformsIfReady();
+	///@brief True if the trigger is armed
+	bool m_triggerArmed;
 
-	std::string GetChannelColor(size_t i);
+	///@brief True if most recent trigger was a single-shot
+	bool m_triggerOneShot;
 
-	///@brief Number of analog channels (always 4 at the moment)
-	size_t m_analogChannelCount;
+	///@brief Memory depth
+	uint32_t m_memDepth;
 
-	///@brief Map of channel numbers to attenuation levels
-	std::map<size_t, double> m_channelAttenuations;
+	///@brief Sample period, in fs
+	uint64_t m_period;
 
-	///@brief Number of WFM/s acquired by hardware
-	FilterParameter m_diag_hardwareWFMHz;
+	///@brief Sample rate, in Hz
+	uint64_t m_srate;
 
-	///@brief Number of WFM/s recieved by the driver
-	FilterParameter m_diag_receivedWFMHz;
-
-	///@brief Number of waveforms acquired during this session
-	FilterParameter m_diag_totalWFMs;
-
-	///@brief Number of waveforms dropped because some part of the pipeline couldn't keep up
-	FilterParameter m_diag_droppedWFMs;
-
-	///@brief Percentage of waveforms which were dropped
-	FilterParameter m_diag_droppedPercent;
-
-	///@brief Counter of average trigger rate
-	HzClock m_receiveClock;
-
-	///@brief Buffers for storing raw ADC samples before converting to fp32
-	std::vector<std::unique_ptr<AcceleratorBuffer<int16_t> > > m_analogRawWaveformBuffers;
-
-	///@brief Index of next buffer from m_analogRawWaveformBuffers to use
-	unsigned int m_nextWaveformWriteBuffer;
-
-	///@brief Compute pipeline for converting raw ADC codes to float32 samples
-	std::unique_ptr<ComputePipeline> m_conversion8BitPipeline;
-
-	///@brief Compute pipeline for converting raw ADC codes to float32 samples
-	std::unique_ptr<ComputePipeline> m_conversion16BitPipeline;
-
-	///@brief Buffer for storing channel clip state
-	AcceleratorBuffer<uint32_t> m_clippingBuffer;
-
-	///@brief Bandwidth limiters
-	std::vector<unsigned int> m_bandwidthLimits;
-
-	///@brief ADC modes
-	enum ADCMode
-	{
-		MODE_8BIT,
-		MODE_12BIT
-	} m_adcMode;
-
-	///@brief Most recently received sequence number
-	uint32_t m_lastSeq;
-
-	///@brief Sequence number to drop until (if we get stale data after stopping the trigger)
-	uint32_t m_dropUntilSeq;
-
-	///@brief Mutex for m_wipWaveforms
-	std::recursive_mutex m_wipWaveformMutex;
-
-	///@brief Waveforms actively being downloaded and processed but not ready to push to the filter graph yet
-	SequenceSet m_wipWaveforms;
+	///@brief Trigger position
+	uint32_t m_triggerWordPosition;
 
 public:
-
-	//This is intentionally not virtual since it's a static method used by enumeration
-	//cppcheck-suppress duplInheritedMember
-	static std::vector<SCPIInstrumentModel> GetDriverSupportedModels()
-	{
-		return
-		{
-			{"TS0xxx", {{ SCPITransportType::TRANSPORT_TWINLAN, "localhost:5025:5026" }}}
-        };
-	}
-
 	static std::string GetDriverNameInternal();
-	OSCILLOSCOPE_INITPROC(ThunderScopeOscilloscope);
+	OSCILLOSCOPE_INITPROC(AntikernelLabsSerdesILA8b10b)
 };
 
 #endif
+

@@ -41,7 +41,9 @@
 #include "AlientekPowerSupply.h"
 #include "HP662xAPowerSupply.h"
 #include "AntikernelLabsGPIO.h"
+#include "AntikernelLabsILA.h"
 #include "AntikernelLabsOscilloscope.h"
+#include "AntikernelLabsSerdesILA8b10b.h"
 #include "AntikernelLabsVIO.h"
 #include "AntikernelLogicAnalyzer.h"
 #include "DemoOscilloscope.h"
@@ -301,6 +303,8 @@ void DriverStaticInit()
 
 	AddDriverClass(AgilentOscilloscope);
 	AddDriverClass(AntikernelLabsOscilloscope);
+	AddDriverClass(AntikernelLabsILA);
+	AddDriverClass(AntikernelLabsSerdesILA8b10b);
 	//AddDriverClass(AntikernelLogicAnalyzer);
 	AddDriverClass(DemoOscilloscope);
 	AddDriverClass(DigilentOscilloscope);

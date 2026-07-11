@@ -1522,7 +1522,7 @@ void StreamBrowserDialog::renderChannelNode(
 	auto awg = std::dynamic_pointer_cast<FunctionGenerator>(instrument);
 	auto dmm = std::dynamic_pointer_cast<Multimeter>(instrument);
 
-	bool singleStream = channel->GetStreamCount() == 1;
+	bool singleStream = channel->GetStreamCount() <= 1;		//allow zero for input-only channels
 	auto scopechan = dynamic_cast<OscilloscopeChannel *>(channel);
 	auto psuchan = dynamic_cast<PowerSupplyChannel *>(channel);
 	auto awgchan = dynamic_cast<FunctionGeneratorChannel *>(channel);
@@ -1530,7 +1530,15 @@ void StreamBrowserDialog::renderChannelNode(
 	bool renderProps = false;
 	if (scopechan)
 	{
-		renderProps = scopechan->IsEnabled();
+		if(singleStream &&
+			(scopechan->GetType(0) == Stream::STREAM_TYPE_DIGITAL) &&
+			scope &&
+			!scope->IsDigitalThresholdConfigurable())
+		{
+			//digital channels with no configurable threshold have no properties to edit
+		}
+		else
+			renderProps = scopechan->IsEnabled();
 	}
 	else if(awg && awgchan)
 	{
@@ -1945,10 +1953,8 @@ void StreamBrowserDialog::renderStreamNode(shared_ptr<Instrument> instrument, In
 				hasProps = true;
 				break;
 			case Stream::STREAM_TYPE_DIGITAL:
-				if(scope)
-				{
+				if(scope && scope->IsDigitalThresholdConfigurable())
 					hasProps = true;
-				}
 				break;
 			default:
 				break;

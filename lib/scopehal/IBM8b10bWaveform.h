@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 *                                                                                                                      *
-* ngscopeclient                                                                                                        *
+* libscopeprotocols                                                                                                    *
 *                                                                                                                      *
 * Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
@@ -30,23 +30,79 @@
 /**
 	@file
 	@author Andrew D. Zonenberg
-	@brief Declaration of PersistenceSettingsDialog
+	@brief Declaration of IBM8b10bWaveform
  */
-#ifndef PersistenceSettingsDialog_h
-#define PersistenceSettingsDialog_h
+#ifndef IBM8b10bWaveform_h
+#define IBM8b10bWaveform_h
 
-#include "Dialog.h"
-class MainWindow;
+/**
+	@brief A single 8b/10b symbol
 
-class PersistenceSettingsDialog : public Dialog
+	This class is used for serialization and GPU interchange and must be POD, taking up a two bytes in memory.
+	!!! Any changes to memory layout will break compatibility with saved waveforms !!!
+ */
+class IBM8b10bSymbol
 {
 public:
-	PersistenceSettingsDialog(MainWindow* parent);
-	virtual ~PersistenceSettingsDialog();
+	IBM8b10bSymbol()
+	{}
 
-	virtual bool DoRender();
+	enum flags
+	{
+		FLAG_ERROR_3	= 0x1,	//Invalid 3b4b sub-code
+		FLAG_ERROR_5	= 0x2,	//Invalid 5b6b sub-code
+		FLAG_ERROR_DISP	= 0x4,	//Invalid disparity
+		FLAG_ERROR_MASK	= 0x7,	//Any error
+
+		FLAG_CONTROL	= 0x40,	//K character
+		FLAG_DISP_POS	= 0x80	//Disparity positive
+	};
+
+	IBM8b10bSymbol(bool b, bool e5, bool e3, bool ed, uint8_t d, int8_t disp)
+	 : m_data(d)
+	 , m_flags(0)
+	{
+		if(b)
+			m_flags	|= FLAG_CONTROL;
+		if(e5)
+			m_flags |= FLAG_ERROR_5;
+		if(e3)
+			m_flags |= FLAG_ERROR_3;
+		if(ed)
+			m_flags |= FLAG_ERROR_DISP;
+		if(disp > 0)
+			m_flags |= FLAG_DISP_POS;
+	}
+
+	uint8_t m_data;
+	uint8_t m_flags;
+
+	bool operator== (const IBM8b10bSymbol& s) const
+	{ return (m_flags == s.m_flags) && (m_data == s.m_data); }
+};
+
+class IBM8b10bWaveform : public SparseWaveform<IBM8b10bSymbol>
+{
+public:
+	IBM8b10bWaveform()
+		: SparseWaveform<IBM8b10bSymbol>(),
+		m_displayFormat(FORMAT_DOTTED)
+	{};
+	virtual std::string GetText(size_t) override;
+	virtual std::string GetColor(size_t) override;
+	static FilterParameter MakeIBM8b10bDisplayFormatParameter();
+
+	enum DisplayFormat
+	{
+		FORMAT_DOTTED,
+		FORMAT_HEX
+	};
+
+	void SetDisplayFormat(DisplayFormat format)
+	{ m_displayFormat = format; }
 
 protected:
+	DisplayFormat m_displayFormat;
 };
 
 #endif

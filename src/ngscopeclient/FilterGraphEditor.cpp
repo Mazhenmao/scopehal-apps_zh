@@ -1763,7 +1763,7 @@ void FilterGraphEditor::OutputPortTooltip(StreamDescriptor stream)
 				break;
 
 			case Stream::STREAM_TYPE_DIGITAL_BUS:
-				ImGui::TextUnformatted("数字总线");
+				ImGui::Text("数字总线, %zu 位宽", stream.GetDigitalWidth());
 				break;
 
 			case Stream::STREAM_TYPE_EYE:
@@ -2229,12 +2229,12 @@ void FilterGraphEditor::HandleLinkCreationRequests(Filter*& fReconfigure)
 						ax::NodeEditor::RejectNewItem(invalidcolor);
 
 						ImGui::BeginTooltip();
-						ImGui::TextColored(invalidcolor, "x Incompatible stream type for input");
+							ImGui::TextColored(invalidcolor, "x Incompatible stream type for input");
 
-						//Get the constraints
-						auto constraints = sinkNode->GetInputConstraints(sinkIndex);
-						if(constraints)
-						    ImGui::Text("Input requirements:\n%s", constraints->ToString().c_str());
+							//Get the constraints
+							auto constraints = sinkNode->GetInputConstraints(sinkIndex);
+							if(constraints)
+								ImGui::Text("Input requirements:\n%s", constraints->ToString().c_str());
 
 						ImGui::EndTooltip();
 					}

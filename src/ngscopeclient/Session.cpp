@@ -50,9 +50,14 @@
 #include "../scopehal/MockOscilloscope.h"
 #include "../scopehal/MockPowerSupply.h"
 #include "../scopeprotocols/EyePattern.h"
+#include "../scopehal/IBM8b10bWaveform.h"
 
 #include <fstream>
 #include <cinttypes>
+
+#ifdef __GNUC__
+#include <cxxabi.h>
+#endif
 
 #ifdef _WIN32
 #include <windows.h>
@@ -743,38 +748,75 @@ bool Session::LoadWaveformDataForScope(
 			formats.push_back(format);
 
 			bool dense = (format == "densev1");
+			auto dtype = ch["datatype"];
 
 			//TODO: support non-analog/digital captures (eyes, spectrograms, etc)
 			WaveformBase* cap = nullptr;
 
 			//if datatype is specified, use that
-			if( (format == "sparsev1") && ch["datatype"] )
+			if( (format == "sparsev1") && dtype )
 			{
-				auto dtype = ch["datatype"].as<string>();
-				if(dtype == "analog")
+				auto sdtype = dtype.as<string>();
+				if(sdtype == "analog")
 					cap = new SparseAnalogWaveform;
-				else if(dtype == "digital")
+				else if(sdtype == "digital")
 					cap = new SparseDigitalWaveform;
-				else if(dtype == "can")
+				else if(sdtype == "can")
 					cap = new CANWaveform;
 				else
-					LogError("Unrecognized sparsev1 datatype %s\n", dtype.c_str());
+					LogError("Unrecognized sparsev1 datatype %s\n", sdtype.c_str());
+			}
+
+			else if( (format == "sparsev2") && dtype )
+			{
+				auto sdtype = dtype.as<string>();
+				/*if(sdtype == "analog")
+					cap = new SparseAnalogWaveform;
+				else if(sdtype == "digital")
+					cap = new SparseDigitalWaveform;
+				else if(sdtype == "can")
+					cap = new CANWaveform;
+				else */ if(sdtype == "8b10b")
+					cap = new IBM8b10bWaveform;
+				else
+					LogError("Unrecognized sparsev2 datatype %s\n", sdtype.c_str());
+			}
+
+			else if( (format == "densev1") && dtype )
+			{
+				auto sdtype = dtype.as<string>();
+				if(sdtype == "analog")
+					cap = new UniformAnalogWaveform;
+				else if(sdtype == "digital")
+					cap = new UniformDigitalWaveform;
+				else if(sdtype == "bus32")
+					cap = new UniformDigitalBusWaveform32;
+				else if(sdtype == "bus64")
+					cap = new UniformDigitalBusWaveform64;
+				else
+					LogError("Unrecognized densev1 datatype %s\n", sdtype.c_str());
 			}
 
 			//if not guess based on stream type
-			else if(chan->GetType(0) == Stream::STREAM_TYPE_ANALOG)
-			{
-				if(dense)
-					cap = new UniformAnalogWaveform;
-				else
-					cap = new SparseAnalogWaveform;
-			}
 			else
 			{
-				if(dense)
-					cap = new UniformDigitalWaveform;
-				else
-					cap = new SparseDigitalWaveform;
+				auto type = chan->GetType(0);
+				switch(type)
+				{
+					case Stream::STREAM_TYPE_ANALOG:
+						if(dense)
+							cap = new UniformAnalogWaveform;
+						else
+							cap = new SparseAnalogWaveform;
+						break;
+
+					default:
+						if(dense)
+							cap = new UniformDigitalWaveform;
+						else
+							cap = new SparseDigitalWaveform;
+						break;
+				}
 			}
 
 			//Channel waveform metadata
@@ -830,7 +872,6 @@ bool Session::LoadWaveformDataForScope(
 			waveformsToLoad.push_back(info);
 		}
 
-		//TODO: merge history in multi scope sessions?
 		vector<shared_ptr<Oscilloscope>> temp;
 		temp.push_back(scope);
 		m_history.AddHistory(temp, false, pinned, label);
@@ -865,11 +906,15 @@ bool Session::LoadWaveformDataForScope(
 
 void Session::DoLoadWaveformDataForStream(WaveformBase* cap, const string& format, const string& fname)
 {
+	auto sbase = dynamic_cast<SparseWaveformBase*>(cap);
 	auto sacap = dynamic_cast<SparseAnalogWaveform*>(cap);
 	auto uacap = dynamic_cast<UniformAnalogWaveform*>(cap);
 	auto sdcap = dynamic_cast<SparseDigitalWaveform*>(cap);
 	auto udcap = dynamic_cast<UniformDigitalWaveform*>(cap);
 	auto ccap = dynamic_cast<CANWaveform*>(cap);
+	auto icap = dynamic_cast<IBM8b10bWaveform*>(cap);
+	auto u32cap = dynamic_cast<UniformDigitalBusWaveform32*>(cap);
+	auto u64cap = dynamic_cast<UniformDigitalBusWaveform64*>(cap);
 
 	cap->PrepareForCpuAccess();
 
@@ -972,6 +1017,36 @@ void Session::DoLoadWaveformDataForStream(WaveformBase* cap, const string& forma
 		}
 	}
 
+	//Sparse non-interleaved
+	else if(format == "sparsev2")
+	{
+		if(sbase)
+		{
+			//Figure out how many samples we have
+			size_t samplesize = 2*sizeof(int64_t);
+			/*
+			if(sacap)
+				samplesize += sizeof(float);
+			else if(sdcap)
+				samplesize += sizeof(bool);
+			else if(ccap)
+				samplesize += 2*sizeof(int32_t);
+			else */ if(icap)
+				samplesize += sizeof(IBM8b10bSymbol);
+
+			size_t nsamples = len / samplesize;
+			cap->Resize(nsamples);
+
+			size_t metasize = nsamples * sizeof(int64_t);
+			memcpy(&sbase->m_offsets[0], buf, metasize);
+			memcpy(&sbase->m_durations[0], buf + metasize, metasize);
+			if(icap)
+				memcpy(&icap->m_samples[0], buf + 2*metasize, nsamples * sizeof(IBM8b10bSymbol));
+		}
+		else
+			LogError("requested sparsev2 format but the waveform we have isn't actually sparse\n");
+	}
+
 	//Dense packed
 	else if(format == "densev1")
 	{
@@ -981,6 +1056,12 @@ void Session::DoLoadWaveformDataForStream(WaveformBase* cap, const string& forma
 			nsamples = len / sizeof(float);
 		else if(udcap)
 			nsamples = len / sizeof(bool);
+		else if(u32cap)
+			nsamples = len / sizeof(uint32_t);
+		else if(u64cap)
+			nsamples = len / sizeof(uint64_t);
+		else
+			LogError("unknown densev1 sample type\n");
 		cap->Resize(nsamples);
 
 		//Read sample data
@@ -988,6 +1069,10 @@ void Session::DoLoadWaveformDataForStream(WaveformBase* cap, const string& forma
 			memcpy(uacap->m_samples.GetCpuPointer(), buf, nsamples*sizeof(float));
 		else if(udcap)
 			memcpy(udcap->m_samples.GetCpuPointer(), buf, nsamples*sizeof(bool));
+		else if(u32cap)
+			memcpy(u32cap->m_samples.GetCpuPointer(), buf, nsamples*sizeof(uint32_t));
+		else if(u64cap)
+			memcpy(u64cap->m_samples.GetCpuPointer(), buf, nsamples*sizeof(uint64_t));
 	}
 
 	else
@@ -2409,21 +2494,42 @@ bool Session::SerializeWaveforms(const string& dataDir)
 					auto uniform = dynamic_cast<UniformWaveformBase*>(data);
 					if(sparse)
 					{
-						chnode["format"] = "sparsev1";
-						SerializeSparseWaveform(sparse, datapath);
+						//TODO: implement sparsev2 for all waveform types
+						//Start out with only 8b10b
+						auto ibm = dynamic_cast<IBM8b10bWaveform*>(sparse);
+						if(ibm)
+						{
+							chnode["format"] = "sparsev2";
+							if(ibm)
+								chnode["datatype"] = "8b10b";
+							SerializeSparseWaveformV2(sparse, datapath);
+						}
+						else
+						{
+							chnode["format"] = "sparsev1";
+							SerializeSparseWaveform(sparse, datapath);
 
-						//Save type if it's a protocol waveform
-						//so if we do an offline load, we know what type of waveform to make
-						if(dynamic_cast<SparseAnalogWaveform*>(sparse) != nullptr)
-							chnode["datatype"] = "analog";
-						else if(dynamic_cast<SparseDigitalWaveform*>(sparse) != nullptr)
-							chnode["datatype"] = "digital";
-						else if(dynamic_cast<CANWaveform*>(sparse) != nullptr)
-							chnode["datatype"] = "can";
+							//Save type if it's a protocol waveform
+							//so if we do an offline load, we know what type of waveform to make
+							if(dynamic_cast<SparseAnalogWaveform*>(sparse) != nullptr)
+								chnode["datatype"] = "analog";
+							else if(dynamic_cast<SparseDigitalWaveform*>(sparse) != nullptr)
+								chnode["datatype"] = "digital";
+							else if(dynamic_cast<CANWaveform*>(sparse) != nullptr)
+								chnode["datatype"] = "can";
+						}
 					}
 					else
 					{
 						chnode["format"] = "densev1";
+						if(dynamic_cast<UniformDigitalBusWaveform32*>(uniform) != nullptr)
+							chnode["datatype"] = "bus32";
+						else if(dynamic_cast<UniformDigitalBusWaveform64*>(uniform) != nullptr)
+							chnode["datatype"] = "bus64";
+						else if(dynamic_cast<UniformDigitalWaveform*>(uniform) != nullptr)
+							chnode["datatype"] = "digital";
+						else if(dynamic_cast<UniformAnalogWaveform*>(uniform) != nullptr)
+							chnode["datatype"] = "analog";
 						SerializeUniformWaveform(uniform, datapath);
 					}
 
@@ -2513,8 +2619,24 @@ bool Session::SerializeWaveforms(const string& dataDir)
 			auto uniform = dynamic_cast<UniformWaveformBase*>(data);
 			if(sparse)
 			{
-				chnode["format"] = "sparsev1";
-				SerializeSparseWaveform(sparse, datapath);
+				//TODO: implement sparsev2 for all waveform types
+				//Start out with only 8b10b
+				auto ibm = dynamic_cast<IBM8b10bWaveform*>(sparse);
+				if(ibm)
+				{
+					chnode["format"] = "sparsev2";
+
+					//Save data type
+					if(ibm)
+						chnode["datatype"] = "8b10b";
+
+					SerializeSparseWaveformV2(sparse, datapath);
+				}
+				else
+				{
+					chnode["format"] = "sparsev1";
+					SerializeSparseWaveform(sparse, datapath);
+				}
 			}
 			else
 			{
@@ -2535,6 +2657,61 @@ bool Session::SerializeWaveforms(const string& dataDir)
 	outfs << filterNode;
 	outfs.close();
 
+	return true;
+}
+
+/**
+	@brief Saves waveform sample data in the "sparsev2" file format.
+
+	Array based (fast):
+		int64 offset[]
+		int64 len[]
+		for analog
+			float voltage[]
+		for digital
+			bool voltage[]
+		for protocol
+			T samples[]
+ */
+bool Session::SerializeSparseWaveformV2(SparseWaveformBase* wfm, const string& path)
+{
+	FILE* fp = fopen(path.c_str(), "wb");
+	if(!fp)
+		return false;
+
+	wfm->PrepareForCpuAccess();
+
+	auto ichan = dynamic_cast<IBM8b10bWaveform*>(wfm);
+	size_t len = wfm->size();
+
+	//Serialize offsets and durations
+	if(len != fwrite(&wfm->m_offsets[0], sizeof(int64_t), len, fp))
+	{
+		LogError("write offsets failed\n");
+		fclose(fp);
+		return false;
+	}
+	if(len != fwrite(&wfm->m_durations[0], sizeof(int64_t), len, fp))
+	{
+		LogError("write durations failed\n");
+		fclose(fp);
+		return false;
+	}
+
+	//Serialize sample data
+	if(ichan)
+	{
+		if(len != fwrite(&ichan->m_samples[0], sizeof(IBM8b10bSymbol), len, fp))
+		{
+			LogError("write samples failed\n");
+			fclose(fp);
+			return false;
+		}
+	}
+	else
+		LogError("trying to serialize unrecognized data type\n");
+
+	fclose(fp);
 	return true;
 }
 
@@ -2667,8 +2844,20 @@ bool Session::SerializeSparseWaveform(SparseWaveformBase* wfm, const string& pat
 	}
 	else
 	{
+		//separate path here needed since GCC returns mangled name
+		string stype;
+		#ifdef __GNUC__
+			int status;
+			auto tmp = abi::__cxa_demangle(typeid(*wfm).name(), nullptr, nullptr, &status);
+			stype = std::string(tmp);
+			free(tmp);
+		#else
+			stype = typeid(*wfm).name();
+		#endif
+
 		//TODO: support other waveform types (buses, eyes, etc)
-		LogError("unrecognized sample type\n");
+		LogError("unrecognized sample type (trying to serialize sparse waveform of type %s)\n",
+			stype.c_str());
 		fclose(fp);
 		return false;
 	}
@@ -2696,42 +2885,52 @@ bool Session::SerializeUniformWaveform(UniformWaveformBase* wfm, const string& p
 	wfm->PrepareForCpuAccess();
 	auto achan = dynamic_cast<UniformAnalogWaveform*>(wfm);
 	auto dchan = dynamic_cast<UniformDigitalWaveform*>(wfm);
+	auto b32 = dynamic_cast<UniformDigitalBusWaveform32*>(wfm);
+	auto b64 = dynamic_cast<UniformDigitalBusWaveform64*>(wfm);
 	size_t len = wfm->size();
 
 	//Analog channels
-	const size_t samples_per_block = 10000;
 	if(achan)
 	{
-		//Write it
-		for(size_t i=0; i<len; i+= samples_per_block)
+		if(len != fwrite(achan->m_samples.GetCpuPointer(), sizeof(float), len, fp))
 		{
-			size_t blocklen = min(len-i, samples_per_block);
-
-			if(blocklen != fwrite(achan->m_samples.GetCpuPointer() + i, sizeof(float), blocklen, fp))
-			{
-				LogError("file write error\n");
-				return false;
-			}
+			LogError("file write error\n");
+			fclose(fp);
+			return false;
 		}
 	}
 	else if(dchan)
 	{
-		//Write it
-		for(size_t i=0; i<len; i+= samples_per_block)
+		if(len != fwrite(dchan->m_samples.GetCpuPointer(), sizeof(bool), len, fp))
 		{
-			size_t blocklen = min(len-i, samples_per_block);
-
-			if(blocklen != fwrite(dchan->m_samples.GetCpuPointer() + i, sizeof(bool), blocklen, fp))
-			{
-				LogError("file write error\n");
-				return false;
-			}
+			LogError("file write error\n");
+			fclose(fp);
+			return false;
+		}
+	}
+	else if(b32)
+	{
+		if(len != fwrite(b32->m_samples.GetCpuPointer(), sizeof(uint32_t), len, fp))
+		{
+			LogError("file write error\n");
+			fclose(fp);
+			return false;
+		}
+	}
+	else if(b64)
+	{
+		if(len != fwrite(b64->m_samples.GetCpuPointer(), sizeof(uint64_t), len, fp))
+		{
+			LogError("file write error\n");
+			fclose(fp);
+			return false;
 		}
 	}
 	else
 	{
 		//TODO: support other waveform types (buses, eyes, etc)
 		LogError("unrecognized sample type\n");
+		fclose(fp);
 		return false;
 	}
 

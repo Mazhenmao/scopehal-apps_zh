@@ -63,7 +63,6 @@
 #include "MemoryDialog.h"
 #include "MetricsDialog.h"
 #include "NotesDialog.h"
-#include "PersistenceSettingsDialog.h"
 #include "PowerSupplyDialog.h"
 #include "PreferenceDialog.h"
 #include "ProtocolAnalyzerDialog.h"
@@ -71,6 +70,7 @@
 #include "SCPIConsoleDialog.h"
 #include "ScopeDeskewWizard.h"
 #include "TriggerPropertiesDialog.h"
+#include "../scopeprotocols/TouchstoneImportFilter.h"
 
 #include <imgui_markdown.h>
 #include <filesystem>
@@ -122,7 +122,7 @@ MainWindow::MainWindow(shared_ptr<QueueHandle> queue, bool maximized, bool resto
 	, m_nextWaveformGroup(1)
 	, m_toolbarIconSize(0)
 	, m_traceAlpha(0.75)
-	, m_persistenceDecay(0.8)
+	, m_persistenceDecay(0.0)
 	, m_session(this)
 	, m_sessionClosing(true)	//reset a default session on the first frame after we start up
 	, m_fileLoadInProgress(false)
@@ -269,7 +269,6 @@ void MainWindow::CloseSession()
 	m_streamBrowser = nullptr;
 	m_historyDialog = nullptr;
 	m_preferenceDialog = nullptr;
-	m_persistenceDialog = nullptr;
 	m_tutorialDialog = nullptr;
 	m_manageInstrumentsDialog = nullptr;
 	m_initialWorkspaceDockRequest = nullptr;
@@ -504,7 +503,7 @@ void MainWindow::OnScopeAdded(shared_ptr<Oscilloscope> scope, bool createViews)
 				continue;
 
 			//If this is a digital stream, add to existing digital waveform areas if one can be found
-			if(stype == Stream::STREAM_TYPE_DIGITAL)
+			if( (stype == Stream::STREAM_TYPE_DIGITAL) || (stype == Stream::STREAM_TYPE_DIGITAL_BUS) )
 			{
 				FindAreaForStream(nullptr, s);
 				continue;
@@ -833,8 +832,14 @@ void MainWindow::Toolbar()
 	float y = ImGui::GetCursorPosY();
 	ImGui::SetCursorPosY(y + 5);
 	ImGui::SetNextItemWidth(6 * toolbarHeight);
-	if(ImGui::SliderFloat("强度", &m_traceAlpha, 0, 0.75, "", ImGuiSliderFlags_Logarithmic))
+	if(ImGui::SliderFloat("波形强度", &m_traceAlpha, 0, 0.75, "", ImGuiSliderFlags_Logarithmic))
 		SetNeedRender();
+
+	//Slider for persistence decay
+	ImGui::SameLine();
+	ImGui::SetCursorPosY(y + 5);
+	ImGui::SetNextItemWidth(6 * toolbarHeight);
+	ImGui::SliderFloat("波形余晖", &m_persistenceDecay, 0, 1, "", ImGuiSliderFlags_AlwaysClamp);
 
 	ImGui::End();
 }
@@ -1217,8 +1222,6 @@ void MainWindow::OnDialogClosed(const std::shared_ptr<Dialog>& dlg)
 		m_historyDialog = nullptr;
 	if(m_preferenceDialog == dlg)
 		m_preferenceDialog = nullptr;
-	if(m_persistenceDialog == dlg)
-		m_persistenceDialog = nullptr;
 	if(m_notesDialog == dlg)
 		m_notesDialog = nullptr;
 	if(m_tutorialDialog == dlg)
@@ -2128,14 +2131,13 @@ void MainWindow::UpdateFonts()
 	@param name				Name of the filter
 	@param area				Waveform area we launched the context menu from (if any)
 	@param initialStream	Stream we launched the context menu from (if any)
-	@param showProperties	True to show the properties dialog
 	@param addtoArea		True to add to a waveform area
  */
 Filter* MainWindow::CreateFilter(
 	const string& name,
 	WaveformArea* area,
 	StreamDescriptor initialStream,
-	bool showProperties,
+	[[maybe_unused]] bool showProperties,	//TODO deprecate and remove this
 	bool addToArea)
 {
 	LogTrace("CreateFilter %s\n", name.c_str());
@@ -2180,8 +2182,9 @@ Filter* MainWindow::CreateFilter(
 		}
 	}
 
-	//Create and show filter properties dialog
-	if( (f->NeedsConfig() && showProperties) || (f->GetCategory() == Filter::CAT_GENERATION))
+	//Create and show filter properties dialog iff it's an import filter
+	//(TouchstoneImportFilter is not derived from ImportFilter for complicated reasons so is special cased)
+	if( (dynamic_cast<ImportFilter*>(f) != nullptr) || (dynamic_cast<TouchstoneImportFilter*>(f) != nullptr) )
 	{
 		auto dlg = make_shared<FilterPropertiesDialog>(f, this);
 		m_channelPropertiesDialogs[f] = dlg;
@@ -2753,10 +2756,12 @@ bool MainWindow::LoadUIConfiguration(int version, const YAML::Node& node)
 			m_pendingHeight = window["height"].as<int>();
 			m_softwareResizeRequested = true;
 		}
+
 		// Load trace alpha
 		if(window["traceAlpha"])
 			m_traceAlpha = window["traceAlpha"].as<float>();
-		// Load persistance s
+
+		// Load persistance coefficient
 		if(window["persistenceDecay"])
 			m_persistenceDecay = window["persistenceDecay"].as<float>();
 	}
@@ -3124,13 +3129,6 @@ bool MainWindow::LoadDialogs(const YAML::Node& node)
 	auto trig = node["trigger"];
 	if(trig && trig.as<bool>())
 		ShowTriggerProperties();
-
-	auto persist = node["persistence"];
-	if(persist && persist.as<bool>())
-	{
-		m_persistenceDialog = make_shared<PersistenceSettingsDialog>(this);
-		AddDialog(m_persistenceDialog);
-	}
 
 	//Load graph config before graph editor
 	auto graphGroups = node["graphgroups"];
@@ -3696,10 +3694,6 @@ YAML::Node MainWindow::SerializeDialogs()
 	//Trigger
 	if(m_triggerDialog)
 		node["trigger"] = true;
-
-	//Persistence settings
-	if(m_persistenceDialog)
-		node["persistence"] = true;
 
 	//Graph editor
 	if(m_graphEditor)

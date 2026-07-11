@@ -55,7 +55,6 @@
 #include "MetricsDialog.h"
 #include "MemoryDialog.h"
 #include "NotesDialog.h"
-#include "PersistenceSettingsDialog.h"
 #include "PowerSupplyDialog.h"
 #include "PreferenceDialog.h"
 #include "ProtocolAnalyzerDialog.h"
@@ -218,24 +217,8 @@ void MainWindow::ViewMenu()
 {//@brief lmst
 	if(ImGui::BeginMenu("视图"))
 	{
-		if(m_fullscreen == false)
-		{
-			if(ImGui::MenuItem("全屏显示"))
-				SetFullscreen(!m_fullscreen);
-		}
-		else
-		{
-			if(ImGui::MenuItem("退出全屏显示"))
-				SetFullscreen(!m_fullscreen);
-		}
-
-		ImGui::Separator();
-
-		if(ImGui::MenuItem("余辉设置"))
-		{
-			m_persistenceDialog = make_shared<PersistenceSettingsDialog>(this);
-			AddDialog(m_persistenceDialog);
-		}
+		if(ImGui::MenuItem("全屏显示"))
+			SetFullscreen(!m_fullscreen);
 
 		ImGui::EndMenu();
 	}
@@ -390,7 +373,7 @@ void MainWindow::DoAddSubMenu(
 						if(!success)
 						{	// Spawn an AddInstrument dialog here, prefilled with intrument informations, to allow changing connection path
 							m_dialogs.emplace(make_shared<AddInstrumentDialog>(
-								"更新 " + typePretty,
+								string("更新 ") + typePretty,
 								nick,
 								&m_session,
 								this,
@@ -622,32 +605,6 @@ void MainWindow::WindowMenu()
 		if(hasMeasurements)
 			ImGui::EndDisabled();
 
-		bool hasMetrics = m_metricsDialog != nullptr;
-		if(hasMetrics)
-			ImGui::BeginDisabled();
-
-		if(ImGui::MenuItem("性能指标"))
-		{
-			m_metricsDialog = make_shared<MetricsDialog>(&m_session);
-			AddDialog(m_metricsDialog);
-		}
-
-		if(hasMetrics)
-			ImGui::EndDisabled();
-
-		bool hasMemory = m_memoryDialog != nullptr;
-		if(hasMemory)
-			ImGui::BeginDisabled();
-
-		if(ImGui::MenuItem("内存分析"))
-		{
-			m_memoryDialog = make_shared<MemoryDialog>(&m_session, this);
-			AddDialog(m_memoryDialog);
-		}
-
-		if(hasMemory)
-			ImGui::EndDisabled();
-
 		bool hasHistory = m_historyDialog != nullptr;
 		if(hasHistory)
 			ImGui::BeginDisabled();
@@ -842,6 +799,32 @@ void MainWindow::DebugMenu()
 
 		if(ImGui::MenuItem("硬件标志"))
 			AddDialog(make_shared<HardwareFlagsDialog>());
+
+		bool hasMetrics = m_metricsDialog != nullptr;
+		if(hasMetrics)
+			ImGui::BeginDisabled();
+
+		if(ImGui::MenuItem("性能指标"))
+		{
+			m_metricsDialog = make_shared<MetricsDialog>(&m_session);
+			AddDialog(m_metricsDialog);
+		}
+
+		if(hasMetrics)
+			ImGui::EndDisabled();
+
+		bool hasMemory = m_memoryDialog != nullptr;
+		if(hasMemory)
+			ImGui::BeginDisabled();
+
+		if(ImGui::MenuItem("内存分析"))
+		{
+			m_memoryDialog = make_shared<MemoryDialog>(&m_session, this);
+			AddDialog(m_memoryDialog);
+		}
+
+		if(hasMemory)
+			ImGui::EndDisabled();
 
 		ImGui::EndMenu();
 	}

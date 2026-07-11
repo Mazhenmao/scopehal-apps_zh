@@ -27,114 +27,79 @@
 *                                                                                                                      *
 ***********************************************************************************************************************/
 
-#include "../scopehal/scopehal.h"
-#include "ParallelBus.h"
+/**
+	@file
+	@author Andrew D. Zonenberg
+	@brief Implementation of IBM8b10bWaveform
+ */
+#include "scopehal.h"
+#include "IBM8b10bWaveform.h"
 
 using namespace std;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Construction / destruction
-
-ParallelBus::ParallelBus(const string& color)
-	: Filter(color, CAT_BUS)
-	, m_width(m_parameters["Width"])
+string IBM8b10bWaveform::GetColor(size_t i)
 {
-	AddStream( Unit(Unit::UNIT_COUNTS), "data", Stream::STREAM_TYPE_DIGITAL_BUS);
+	const IBM8b10bSymbol& s = m_samples[i];
 
-	//Set up channels
+	if(s.m_flags & IBM8b10bSymbol::FLAG_ERROR_MASK)
+		return StandardColors::colors[StandardColors::COLOR_ERROR];
+	else if(s.m_flags & IBM8b10bSymbol::FLAG_CONTROL)
+		return StandardColors::colors[StandardColors::COLOR_CONTROL];
+	else
+		return StandardColors::colors[StandardColors::COLOR_DATA];
+}
+
+string IBM8b10bWaveform::GetText(size_t i)
+{
+	const IBM8b10bSymbol& s = m_samples[i];
+
+	auto cachedDisplayFormat = m_displayFormat;
+
+	unsigned int right = s.m_data >> 5;
+	unsigned int left = s.m_data & 0x1F;
+
 	char tmp[32];
-	for(size_t i=0; i<16; i++)
+	if(s.m_flags & IBM8b10bSymbol::FLAG_ERROR_5)
+		return "ERROR (5b/6b)";
+	else if(s.m_flags & IBM8b10bSymbol::FLAG_ERROR_3)
+		return "ERROR (3b/4b)";
+	else if(s.m_flags & IBM8b10bSymbol::FLAG_ERROR_DISP)
+		return "ERROR (disparity)";
+	else
 	{
-		snprintf(tmp, sizeof(tmp), "din%zu", i);
-		CreateInput<InputConstraintStreamType>(tmp, Stream::STREAM_TYPE_DIGITAL);
-	}
-
-	m_width = FilterParameter(FilterParameter::TYPE_INT, Unit(Unit::UNIT_COUNTS));
-	m_width.SetIntVal(0);
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Accessors
-
-string ParallelBus::GetProtocolName()
-{
-	return "Parallel Bus";
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Actual decoder logic
-
-void ParallelBus::Refresh(
-	[[maybe_unused]] vk::raii::CommandBuffer& cmdBuf,
-	[[maybe_unused]] shared_ptr<QueueHandle> queue)
-{
-	/*
-	#ifdef HAVE_NVTX
-		nvtx3::scoped_range nrange("ParallelBus::Refresh");
-	#endif
-	ClearErrors();
-
-	//Figure out how wide our input is
-	int width = m_width.GetIntVal();
-
-	//Make sure we have an input for each channel in use
-	vector<SparseDigitalWaveform*> inputs;
-	for(int i=0; i<width; i++)
-	{
-		auto din = dynamic_cast<SparseDigitalWaveform*>(GetInputWaveform(i));
-		if(din == nullptr)
+		//Dotted format
+		if(cachedDisplayFormat == FORMAT_DOTTED)
 		{
-			AddErrorMessage("Missing input", "One or more inputs are unconnected");
-			SetData(nullptr, 0);
-			return;
+			if(s.m_flags & IBM8b10bSymbol::FLAG_CONTROL)
+				snprintf(tmp, sizeof(tmp), "K%u.%u", left, right);
+			else
+				snprintf(tmp, sizeof(tmp), "D%u.%u", left, right);
+
+			if(s.m_flags & IBM8b10bSymbol::FLAG_DISP_POS)
+				return string(tmp) + "+";
+			else
+				return string(tmp) + "-";
 		}
-		din->PrepareForCpuAccess();
-		inputs.push_back(din);
-	}
-	if(inputs.empty())
-	{
-		AddErrorMessage("Missing input", "No inputs provided");
-		SetData(nullptr, 0);
-		return;
-	}
 
-	//Figure out length of the output
-	size_t len = inputs[0]->m_samples.size();
-	for(int j=1; j<width; j++)
-		len = min(len, inputs[j]->m_samples.size());
-
-	//Merge all of our samples
-	//TODO: handle variable sample rates etc
-	auto cap = new SparseDigitalBusWaveform;
-	cap->PrepareForCpuAccess();
-	cap->Resize(len);
-	cap->CopyTimestamps(inputs[0]);
-	#pragma omp parallel for
-	for(size_t i=0; i<len; i++)
-	{
-		for(int j=0; j<width; j++)
-			cap->m_samples[i].push_back(inputs[j]->m_samples[i]);
-	}
-	SetData(cap, 0);
-
-	//Copy our time scales from the input
-	cap->m_timescale = inputs[0]->m_timescale;
-	cap->m_startTimestamp = inputs[0]->m_startTimestamp;
-	cap->m_startFemtoseconds = inputs[0]->m_startFemtoseconds;
-
-	//Set all unused channels to NULL
-	for(size_t i=width; i < 16; i++)
-	{
-		auto chan = m_inputs[i]->m_sourceStream.m_channel;
-		if(chan)
+		//Hex format
+		else
 		{
-			auto schan = dynamic_cast<OscilloscopeChannel*>(chan);
-			if(schan)
-				schan->Release();
-			m_inputs[i]->m_sourceStream.m_channel = nullptr;
+			if(s.m_flags & IBM8b10bSymbol::FLAG_CONTROL)
+				snprintf(tmp, sizeof(tmp), "K.%02x", s.m_data);
+			else
+				snprintf(tmp, sizeof(tmp), "%02x", s.m_data);
+			return string(tmp);
 		}
 	}
 
-	cap->MarkModifiedFromCpu();
-	*/
+	return "";
+}
+
+FilterParameter IBM8b10bWaveform::MakeIBM8b10bDisplayFormatParameter()
+{
+	auto f = FilterParameter(FilterParameter::TYPE_ENUM, Unit(Unit::UNIT_COUNTS));
+	f.AddEnumValue("Dotted (K28.5 D21.5)", FORMAT_DOTTED);
+	f.AddEnumValue("Hex (K.bc b5)", FORMAT_HEX);
+	f.SetIntVal(FORMAT_DOTTED);
+	return f;
 }

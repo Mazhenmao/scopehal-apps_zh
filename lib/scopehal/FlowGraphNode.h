@@ -70,6 +70,8 @@ public:
 	void SetInput(const std::string& name, StreamDescriptor stream, bool force = false);
 	virtual bool ValidateChannel(size_t i, StreamDescriptor stream);
 
+	bool HasInput(StreamDescriptor desc);
+
 	StreamDescriptor GetInput(size_t i);
 	std::shared_ptr<InputConstraint> GetInputConstraints(size_t i);
 
@@ -168,8 +170,8 @@ protected:
 	{ return dynamic_cast<UniformDigitalWaveform*>(GetInputWaveform(i)); }
 
 	///Gets the digital bus waveform attached to the specified input
-	SparseDigitalBusWaveform* GetSparseDigitalBusInputWaveform(size_t i)
-	{ return dynamic_cast<SparseDigitalBusWaveform*>(GetInputWaveform(i)); }
+	//SparseDigitalBusWaveform* GetSparseDigitalBusInputWaveform(size_t i)
+	//{ return dynamic_cast<SparseDigitalBusWaveform*>(GetInputWaveform(i)); }
 
 	virtual void CreateInput(const std::string& name);
 

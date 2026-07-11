@@ -1,6 +1,6 @@
 /***********************************************************************************************************************
 *                                                                                                                      *
-* ngscopeclient                                                                                                        *
+* libscopeprotocols                                                                                                    *
 *                                                                                                                      *
 * Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
@@ -30,45 +30,59 @@
 /**
 	@file
 	@author Andrew D. Zonenberg
-	@brief Implementation of PersistenceSettingsDialog
+	@brief Declaration of APBDecoder
  */
+#ifndef APBDecoder_h
+#define APBDecoder_h
 
-#include "ngscopeclient.h"
-#include "PersistenceSettingsDialog.h"
-#include "MainWindow.h"
+#include "../scopehal/PacketDecoder.h"
 
-using namespace std;
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Construction / destruction
-
-PersistenceSettingsDialog::PersistenceSettingsDialog(MainWindow* parent)
-	: Dialog("余辉", "Persistence", ImVec2(600, 150), nullptr, parent)
+class APBSymbol
 {
+public:
 
-}
+	APBSymbol()
+	{}
 
-PersistenceSettingsDialog::~PersistenceSettingsDialog()
+	APBSymbol(bool write, uint32_t addr, uint32_t data)
+	 : m_write(write)
+	 , m_addr(addr)
+	 , m_data(data)
+	{}
+
+	bool m_write;
+	uint32_t m_addr;
+	uint32_t m_data;
+	//TODO: byte masking
+
+	bool operator== (const APBSymbol& s) const
+	{
+		return (m_write == s.m_write) && (m_addr == s.m_addr) && (m_data == s.m_data);
+	}
+};
+
+class APBWaveform : public SparseWaveform<APBSymbol>
 {
-}
+public:
+	APBWaveform () : SparseWaveform<APBSymbol>() {};
+	virtual std::string GetText(size_t) override;
+	virtual std::string GetColor(size_t) override;
+};
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Rendering
-
-/**
-	@brief Renders the dialog and handles UI events
-
-	@return		True if we should continue showing the dialog
-				False if it's been closed
- */
-bool PersistenceSettingsDialog::DoRender()
+class APBDecoder : public PacketDecoder
 {
-	float decay = m_parent->GetPersistDecay();
-	if(ImGui::SliderFloat("衰减系数", &decay, 0, 1, "%.3f", ImGuiSliderFlags_AlwaysClamp))
-		m_parent->SetPersistDecay(decay);
+public:
+	APBDecoder(const std::string& color);
 
-	return true;
-}
+	virtual void Refresh(vk::raii::CommandBuffer& cmdBuf, std::shared_ptr<QueueHandle> queue) override;
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// UI event handlers
+	static std::string GetProtocolName();
+
+	std::vector<std::string> GetHeaders() override;
+
+	PROTOCOL_DECODER_INITPROC(APBDecoder)
+
+protected:
+};
+
+#endif

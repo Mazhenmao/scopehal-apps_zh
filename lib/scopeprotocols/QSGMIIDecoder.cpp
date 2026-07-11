@@ -54,7 +54,7 @@ QSGMIIDecoder::QSGMIIDecoder(const string& color)
 	AddProtocolStream("Lane 2");
 	AddProtocolStream("Lane 3");
 
-	m_displayformat = IBM8b10bDecoder::MakeIBM8b10bDisplayFormatParameter();
+	m_displayformat = IBM8b10bWaveform::MakeIBM8b10bDisplayFormatParameter();
 }
 
 QSGMIIDecoder::~QSGMIIDecoder()
@@ -101,7 +101,7 @@ void QSGMIIDecoder::Refresh(
 	for(size_t i=0; i<4; i++)
 	{
 		auto cap = SetupEmptyWaveform<IBM8b10bWaveform>(din, i);
-		cap->SetDisplayFormat(m_displayformat.GetIntVal());
+		cap->SetDisplayFormat(m_displayformat.GetEnumVal<IBM8b10bWaveform::DisplayFormat>());
 		cap->PrepareForCpuAccess();
 		caps.push_back(cap);
 
@@ -116,7 +116,7 @@ void QSGMIIDecoder::Refresh(
 	for(size_t i=0; i<len; i++)
 	{
 		auto s = din->m_samples[i];
-		if(s.m_control && (s.m_data == 0x3c) )
+		if((s.m_flags & IBM8b10bSymbol::FLAG_CONTROL) && (s.m_data == 0x3c) )
 		{
 			phase = i & 3;
 			found = true;
@@ -137,8 +137,16 @@ void QSGMIIDecoder::Refresh(
 
 		//Copy sample unless it's a K28.1. if so, convert to K28.5
 		auto s = din->m_samples[i];
-		if(s.m_control && (s.m_data == 0x3c) )
-			caps[nlane]->m_samples.push_back(IBM8b10bSymbol(true, false, false, false, 0xbc, s.m_disparity));
+		if( (s.m_flags & IBM8b10bSymbol::FLAG_CONTROL) && (s.m_data == 0x3c) )
+		{
+			caps[nlane]->m_samples.push_back(IBM8b10bSymbol(
+				true,
+				false,
+				false,
+				false,
+				0xbc,
+				(s.m_flags & IBM8b10bSymbol::FLAG_DISP_POS) ? 1 : -1 ));
+		}
 		else
 			caps[nlane]->m_samples.push_back(din->m_samples[i]);
 

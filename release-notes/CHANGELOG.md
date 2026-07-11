@@ -11,6 +11,7 @@ This is a running list of significant bug fixes and new features since the last 
 * Core: Restructured int8 to float32 conversion to enable GPU acceleration on all Vulkan-capable GPUs without needing CPU fallback, as well as significantly improve performance on already-supported platforms. Not yet deployed to all drivers (https://github.com/ngscopeclient/scopehal/issues/1083)
 * Core: Allow instruments (currently only demo scope and ThunderScope implemented) to declare that they support high-rate updates to channel DC offset, allowing for more responsive updates while dragging the axis
 * Core: Replaced filter graph input validation flow so that nodes can declare what kinds of input they want in a human-readable format, making it easier to understand why an attempted connection wasn't allowed
+* Core: Added new "sparsev2" serialization format for improved speed loading and saving sparse waveforms. Only used for 8B/10B so far, other waveform types will switch in the future.
 * Drivers: Added support for many more PicoScope models
 * Drivers: Added Agilent 34401A 6.5 digit DMM driver (https://github.com/ngscopeclient/scopehal/pull/1076/)
 * Drivers: Added R&S RTB2000 driver (https://github.com/ngscopeclient/scopehal/pull/1048/)
@@ -19,6 +20,8 @@ This is a running list of significant bug fixes and new features since the last 
 * Drivers: ThunderScope now overlaps socket IO and GPU processing of waveforms giving a significant increase in WFM/s rate
 * Drivers: Demo scope now uses xorshift32 instead of glibc LCG for better statistical properties on the simulated noise
 * Drivers: Added Antikernel Labs GPIO driver (FPGA debug IP)
+* Drivers: Added Antikernel Labs 8b10b SERDES ILA driver (FPGA debug IP)
+* Drivers: Added Antikernel Labs ILA driver (FPGA debug IP)
 * Drivers: Added Antikernel Labs VIO driver (FPGA debug IP)
 * Filters: Added GPU acceleration and/or optimized many more filters (https://github.com/ngscopeclient/scopehal/issues/977) including but not limited to the list below. Typical performance improvements (RTX 2080 Ti vs Xeon 6144):
   * 8B/10B (IBM) (12.1x speedup)
@@ -56,6 +59,8 @@ This is a running list of significant bug fixes and new features since the last 
   * Vector Frequency (1040x speedup)
   * Vector Magnitude (73x speedup)
   * Vector Phase (243x speedup)
+* Filters: Added AMBA APB protocol decoder
+* Filters: Added digital-to-analog filter to convert a digital scalar value (e.g. from a VIO) to an analog value
 * Filters: Added Ethernet clause 73 (base-KX copper backplane) autonegotiation decoder (https://github.com/ngscopeclient/scopehal/pull/1074)
 * Filters: Invert now works on digital signals as well as analog (https://github.com/ngscopeclient/scopehal/issues/1088)
 * Filters: 100baseT1 now has configurable decision thresholds for better decoding of weak signals
@@ -76,6 +81,8 @@ This is a running list of significant bug fixes and new features since the last 
 * GUI: Filter graph editor now allows deletion of filter blocks by selecting a block and hitting "delete"
 * GUI: added performance counter for per-scope waveform rate to better profile multi-scope sessions
 * Serialization: trace alpha and persistence decay settings are now saved in session files (https://github.com/ngscopeclient/scopehal-apps/issues/936)
+* GUI: Properties dialogs don't auto-spawn when filters (other than import filters) are created, to avoid unnecessary clutter
+* GUI: Removed hard-to-find persistence settings dialog and just made persistence a slider on the toolbar
 
 ## Breaking changes since v0.1.1
 
@@ -104,6 +111,7 @@ NOTE: This section only list changes which are potentially breaking to an *end u
 * Core: missing mutex lock causing threading issues on GPUs with less Vulkan queues than active threads (common on AMD cards)
 * Core: Boolean properties of filter graph blocks were serialized to scopesessions with a trailing space, which caused them to load incorrectly
 * Core: Fixed some numerical precision errors in conversion of 64-bit integer values to strings and back (https://github.com/ngscopeclient/scopehal/issues/1073)
+* Core: Fixed hexadecimal values in Y axis sometimes being truncated
 * Drivers: LeCroy allowed some APIs intended for analog inputs to be called on the trigger channel as well, confusing the scope
 * Drivers: LeCroy "force trigger" button did not work if the trigger wasn't already armed (https://github.com/ngscopeclient/scopehal-apps/issues/1053)
 * Filters: broken CSV import with \r\n line endings (https://github.com/ngscopeclient/scopehal-apps/issues/939)
