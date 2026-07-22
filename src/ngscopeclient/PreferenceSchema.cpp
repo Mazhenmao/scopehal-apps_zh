@@ -131,7 +131,7 @@ void PreferenceManager::InitializeDefaults()
 					.Label("非全屏对话框样式")
 					.Description("选择非全屏模式下加载和保存文件时使用的文件浏览器。\n\nngscopeclient 处于全屏模式时无法使用原生文件浏览器，\n因此全屏时始终使用 ImGui 浏览器。")
 					.EnumValue("ImGui", BROWSER_IMGUI)
-					.EnumValue("Native", "原生", BROWSER_NATIVE)
+					.EnumValue("Native", BROWSER_NATIVE)
 					.EnumValue("KDialog", BROWSER_KDIALOG)
 				);
 
@@ -155,11 +155,7 @@ void PreferenceManager::InitializeDefaults()
 			graph.AddPreference(
 				Preference::Color("infobubble_color", ColorFromString("#404040"))
 				.Label("信息气泡颜色")
-				.Description("图节点上方信息气泡的颜色"));
-			graph.AddPreference(
-				Preference::Color("error_outline_color", ColorFromString("#ff0000"))
-				.Label("错误轮廓颜色")
-				.Description("带错误图节点的轮廓颜色"));
+				.Description("图表节点上方信息气泡的颜色"));
 			graph.AddPreference(
 				Preference::Font("icon_caption_font", FontDescription(FindDataFile("fonts/DejaVuSans.ttf"), 13))
 				.Label("图标字体")
@@ -167,7 +163,28 @@ void PreferenceManager::InitializeDefaults()
 			graph.AddPreference(
 				Preference::Color("icon_caption_color", ColorFromString("#ffffff"))
 				.Label("图标颜色")
-				.Description("图标标题的颜色"));
+				.Description("图标标题颜色"));
+
+			graph.AddPreference(
+				Preference::Color("error_outline_color", ColorFromString("#ff0000"))
+				.Label("错误轮廓颜色")
+				.Description("带错误图节点的轮廓颜色"));
+			graph.AddPreference(
+				Preference::Color("warning_outline_color", ColorFromString("#ffff00"))
+				.Label("警告轮廓颜色")
+				.Description("含警告图节点轮廓颜色"));
+			graph.AddPreference(
+				Preference::Color("notice_outline_color", ColorFromString("#00ff00"))
+				.Label("提示轮廓颜色")
+				.Description("含提示信息图节点轮廓颜色"));
+			graph.AddPreference(
+					Preference::Color("verbose_outline_color", ColorFromString("#a0a0ff"))
+					.Label("详细轮廓颜色r")
+					.Description("用于以详细消息勾勒图节点的颜色"));
+			graph.AddPreference(
+					Preference::Color("debug_outline_color", ColorFromString("#a0a0a0"))
+					.Label("调试轮廓颜色")
+					.Description("用于高亮显示调试消息的图节点颜色"));
 
 		auto& ahelp = appearance.AddCategory("Help", "帮助");
 			ahelp.AddPreference(
@@ -442,13 +459,22 @@ void PreferenceManager::InitializeDefaults()
 				.Label("X 轴字体")
 				.Description("X 轴文本使用的字体"));
 
-		/*auto& waveforms = appearance.AddCategory("Waveforms", "波形");
-			waveforms.AddPreference(
-				Preference::Real("persist_decay_rate", 0.9)
-				.Label("余辉衰减率（0 = 无，1 = 无限）")
-				.Description("余辉波形的衰减率。")
-				.Unit(Unit::UNIT_COUNTS));
-		*/
+		auto& toolbar = appearance.AddCategory("Toolbar", "工具栏");
+			toolbar.AddPreference(
+				Preference::Enum("icon_size", 24)
+					.Label("Icon Size")
+					.Description("Toolbar icon size, in pixels")
+					.EnumValue("24x24", 24)
+					.EnumValue("48x48", 48)
+				);
+			toolbar.AddPreference(
+				Preference::Enum("icon_theme", ICON_THEME_DARK)
+					.Label("Icon Theme")
+					.Description("Toolbar theme")
+					.EnumValue("Dark", ICON_THEME_DARK)
+					.EnumValue("Light", ICON_THEME_LIGHT)
+				);
+
 		auto& windows = appearance.AddCategory("Windowing", "窗口");
 			windows.AddPreference(
 				Preference::Enum("viewport_mode", VIEWPORT_ENABLE)

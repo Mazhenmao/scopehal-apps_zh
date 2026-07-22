@@ -35,7 +35,6 @@
 #include "ngscopeclient.h"
 #include "ngscopeclient-version.h"
 #include "MainWindow.h"
-#include "PreferenceTypes.h"
 #include "FileSystem.h"
 
 #include <iostream>
@@ -121,6 +120,7 @@ MainWindow::MainWindow(shared_ptr<QueueHandle> queue, bool maximized, bool resto
 	, m_showDemo(false)
 	, m_nextWaveformGroup(1)
 	, m_toolbarIconSize(0)
+	, m_toolbarIconTheme(ICON_THEME_DARK)
 	, m_traceAlpha(0.75)
 	, m_persistenceDecay(0.0)
 	, m_session(this)
@@ -162,7 +162,6 @@ MainWindow::MainWindow(shared_ptr<QueueHandle> queue, bool maximized, bool resto
 	UpdateFonts();
 
 	//Load some textures
-	m_toolbarIconSize = 0;
 	LoadToolbarIcons();
 	LoadGradients();
 	LoadMiscIcons();
@@ -762,6 +761,8 @@ void MainWindow::RenderUI()
 	{
 		if(it.second->PollForSelectionChanges())
 		{
+			LogTrace("Protocol analyzer selection changed\n");
+
 			auto tstamp = it.second->GetSelectedWaveformTimestamp();
 			auto& hist = m_session.GetHistory();
 			if(m_historyDialog)
@@ -770,6 +771,8 @@ void MainWindow::RenderUI()
 			auto hpt = hist.GetHistory(tstamp);
 			if(hpt)
 			{
+				LogTrace("Loading history\n");
+
 				hpt->LoadHistoryToSession(m_session);
 				m_needRender = true;
 			}
@@ -827,6 +830,9 @@ void MainWindow::Toolbar()
 	ImGui::PopStyleColor();
 	ImGui::PopStyleVar(2);
 
+	ImGui::SameLine();
+	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
+
 	//Slider for trace alpha
 	ImGui::SameLine();
 	float y = ImGui::GetCursorPosY();
@@ -834,6 +840,9 @@ void MainWindow::Toolbar()
 	ImGui::SetNextItemWidth(6 * toolbarHeight);
 	if(ImGui::SliderFloat("波形强度", &m_traceAlpha, 0, 0.75, "", ImGuiSliderFlags_Logarithmic))
 		SetNeedRender();
+
+	ImGui::SameLine();
+	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
 	//Slider for persistence decay
 	ImGui::SameLine();
@@ -1083,6 +1092,16 @@ void MainWindow::ToolbarButtons()
 		m_tutorialDialog->DrawSpeechBubble(anchorPos, ImGuiDir_Up, "启动触发");
 	}
 
+	if(ImGui::ImageButton("trigger-auto", GetTexture("trigger-auto"), buttonsize))
+		m_session.ArmTrigger(TriggerGroup::TRIGGER_TYPE_AUTO);
+	Dialog::Tooltip("Arm the trigger, then force an acquisition if no trigger event occurs");
+	if(multigroup)
+	{
+		ImGui::SameLine(0.0, 0.0);
+		TriggerAutoDropdown(buttonsize.y);
+	}
+
+	ImGui::SameLine(0.0, 0.0);
 	if(ImGui::ImageButton("trigger-single", GetTexture("trigger-single"), buttonsize))
 		m_session.ArmTrigger(TriggerGroup::TRIGGER_TYPE_SINGLE);
 	Dialog::Tooltip("单次触发模式");
@@ -1103,16 +1122,6 @@ void MainWindow::ToolbarButtons()
 	}
 
 	ImGui::SameLine(0.0, 0.0);
-	if(ImGui::ImageButton("trigger-auto", GetTexture("trigger-auto"), buttonsize))
-		m_session.ArmTrigger(TriggerGroup::TRIGGER_TYPE_AUTO);
-	Dialog::Tooltip("触发放置就绪，无触发时自动强制采集");
-	if(multigroup)
-	{
-		ImGui::SameLine(0.0, 0.0);
-		TriggerAutoDropdown(buttonsize.y);
-	}
-
-	ImGui::SameLine(0.0, 0.0);
 	if(ImGui::ImageButton("trigger-stop", GetTexture("trigger-stop"), buttonsize))
 		m_session.StopTrigger();
 	Dialog::Tooltip("停止采集");
@@ -1121,6 +1130,9 @@ void MainWindow::ToolbarButtons()
 		ImGui::SameLine(0.0, 0.0);
 		TriggerStopDropdown(buttonsize.y);
 	}
+
+	ImGui::SameLine();
+	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
 	//History selector
 	bool hasHist = (m_historyDialog != nullptr);
@@ -1495,6 +1507,8 @@ void MainWindow::StatusBar(float height)
  */
 void MainWindow::NavigateToTimestamp(int64_t stamp, int64_t duration, StreamDescriptor target)
 {
+	LogTrace("Navigating to timestamp %" PRIi64 "\n", stamp);
+
 	lock_guard<recursive_mutex> lock(m_waveformGroupsMutex);
 	for(auto group : m_waveformGroups)
 		group->NavigateToTimestamp(stamp, duration, target);
@@ -2129,16 +2143,15 @@ void MainWindow::UpdateFonts()
 	@brief Creates a filter optionally and adds all of its streams to the best waveform area
 
 	@param name				Name of the filter
+	@param flags			Bitwise OR of one or more FilterCreate_t flags
 	@param area				Waveform area we launched the context menu from (if any)
 	@param initialStream	Stream we launched the context menu from (if any)
-	@param addtoArea		True to add to a waveform area
  */
 Filter* MainWindow::CreateFilter(
 	const string& name,
+	uint32_t flags,
 	WaveformArea* area,
-	StreamDescriptor initialStream,
-	[[maybe_unused]] bool showProperties,	//TODO deprecate and remove this
-	bool addToArea)
+	StreamDescriptor initialStream)
 {
 	LogTrace("CreateFilter %s\n", name.c_str());
 
@@ -2157,14 +2170,14 @@ Filter* MainWindow::CreateFilter(
 	m_session.MarkChannelDirty(f);
 
 	//Find a home for each of its streams
-	if(addToArea)
+	if(flags & ADD_PLOT)
 	{
 		m_pendingChannelDisplayRequests.emplace(pair<OscilloscopeChannel*, WaveformArea*>(f, area));
 		f->AddRef();
 	}
 
 	//Not adding waveforms to plots, but still check for scalar values and add to measurements view
-	else
+	else if(flags & ADD_MEASURE)
 	{
 		for(size_t i=0; i<f->GetStreamCount(); i++)
 		{
@@ -2209,99 +2222,6 @@ Filter* MainWindow::CreateFilter(
 		m_session.GetTrendFilterGroup()->AddFilter(pf);
 
 	return f;
-}
-
-/**
-	@brief Remove queued waveform display requests for a channel that is being deleted
- */
-void MainWindow::RemovePendingChannelDisplayRequests(OscilloscopeChannel* channel)
-{
-	for(auto it = m_pendingChannelDisplayRequests.begin(); it != m_pendingChannelDisplayRequests.end(); )
-	{
-		if(it->first == channel)
-		{
-			// 删除新建滤波器时，它可能还在待显示队列里。
-			// 这里释放 CreateFilter() 为队列持有的引用，避免后续处理队列时访问已删除对象。
-			it->first->Release();
-			it = m_pendingChannelDisplayRequests.erase(it);
-		}
-		else
-			++it;
-	}
-}
-
-/**
-	@brief Remove all visible waveform streams that belong to a channel being deleted
- */
-void MainWindow::RemoveChannelFromWaveformAreas(OscilloscopeChannel* channel)
-{
-	lock_guard<recursive_mutex> lock(m_waveformGroupsMutex);
-
-	for(auto group : m_waveformGroups)
-	{
-		auto areas = group->GetWaveformAreas();
-		for(auto area : areas)
-		{
-			// 删除滤波器前必须先从波形区移除对应显示项。
-			// 否则 ToneMapAllWaveforms() 下一帧会继续访问已删除滤波器导致段错误。
-			for(ssize_t i = static_cast<ssize_t>(area->GetStreamCount()) - 1; i >= 0; i--)
-			{
-				auto stream = area->GetStream(i);
-				if(stream.m_channel == channel)
-					area->RemoveStreamForChannelDeletion(i);
-			}
-		}
-	}
-}
-
-/**
-	@brief Remove all measurement rows that belong to a channel being deleted
- */
-void MainWindow::RemoveChannelFromMeasurements(OscilloscopeChannel* channel)
-{
-	if(m_measurementsDialog)
-		m_measurementsDialog->RemoveStreamsForChannel(channel);
-}
-
-/**
-	@brief Check if a stream is visible in any waveform area other than the specified area
- */
-bool MainWindow::IsStreamDisplayedInOtherWaveformArea(StreamDescriptor stream, WaveformArea* area)
-{
-	if(!stream)
-		return false;
-
-	lock_guard<recursive_mutex> lock(m_waveformGroupsMutex);
-
-	for(auto group : m_waveformGroups)
-	{
-		auto areas = group->GetWaveformAreas();
-		for(auto otherArea : areas)
-		{
-			if(otherArea.get() == area)
-				continue;
-
-			// 拖动滤波器输出时，不直接遍历 StreamDescriptor 的 sink 列表。
-			// sink 列表可能包含上一帧刚删除的 UI 对象；只检查当前仍存在的波形区更安全。
-			if(otherArea->IsStreamBeingDisplayed(stream))
-				return true;
-		}
-	}
-
-	return false;
-}
-
-/**
-	@brief Delete a filter from any UI path using the filter graph's cleanup rules
- */
-bool MainWindow::DeleteFilter(Filter* filter)
-{
-	if(!filter)
-		return false;
-
-	// 波形组菜单删除滤波器时，也要同步清理滤波器图里的节点、连线和 ID 缓存。
-	// 复用 FilterGraphEditor 的删除流程，避免两套 UI 的生命周期处理不一致。
-	return m_graphEditor->DeleteFilter(filter);
 }
 
 /**

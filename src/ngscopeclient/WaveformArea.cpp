@@ -53,7 +53,7 @@ using namespace std;
 // DisplayedChannel
 
 DisplayedChannel::DisplayedChannel(StreamDescriptor stream, Session& session)
-		: InputDescriptor("", stream)
+		: MeasurementDescriptor("", stream)
 		, m_colorRamp("eye-gradient-viridis")
 		, m_session(session)
 		, m_rasterizedWaveform("DisplayedChannel.m_rasterizedWaveform")
@@ -509,9 +509,6 @@ void WaveformArea::AddStream(StreamDescriptor desc, size_t position, bool persis
  */
 void WaveformArea::OnStreamAdded(StreamDescriptor desc)
 {
-	if(!desc)
-		return;
-
 	LogTrace("Stream %s added to waveform area\n", desc.GetName().c_str());
 	LogIndenter li;
 
@@ -524,10 +521,24 @@ void WaveformArea::OnStreamAdded(StreamDescriptor desc)
 
 	//If we get here it's a filter or otherwise not part of an instrument
 	//Check which waveform areas it drives
-	// 拖动滤波器输出时，旧的 sink 列表可能还残留刚删除/移动的波形区指针。
-	// 这里改为从 MainWindow 当前有效的波形区列表查询，避免 OnStreamAdded() 动态转型失效指针导致闪退。
-	bool drivesWaveformAreasOtherThanUs =
-		m_parent->IsStreamDisplayedInOtherWaveformArea(desc, this);
+	bool drivesWaveformAreasOtherThanUs = false;
+	auto& sinks = desc.GetSinks();
+	LogTrace("Sinks\n");
+	for(auto sink : sinks)
+	{
+		LogIndenter li2;
+
+		auto w = dynamic_cast<WaveformArea*>(sink);
+		if(w == this)
+			LogTrace("This waveform area\n");
+		else if(w)
+		{
+			LogTrace("Another waveform area\n");
+			drivesWaveformAreasOtherThanUs = true;
+		}
+		else
+			LogTrace("Not a waveform area\n");
+	}
 
 	//We are the first waveform area this stream is being added to, and it's a filter
 	//Rescale it to match
@@ -562,28 +573,6 @@ void WaveformArea::RemoveStream(size_t i)
 
 	//Make names consistent again
 	RefreshInputNames();
-}
-
-/**
-	@brief Immediately removes a stream because its source channel is being deleted
- */
-void WaveformArea::RemoveStreamForChannelDeletion(size_t i)
-{
-	auto stream = m_inputs[i]->m_sourceStream;
-	auto removed = m_inputs[i];
-
-	// 删除滤波器时不能像普通 UI 删除那样延迟释放 DisplayedChannel。
-	// 否则滤波器引用计数不会立刻下降，后端会拒绝删除，节点下一帧又重新出现。
-	if( (m_dragState == DRAG_STATE_CHANNEL) && (stream == m_dragStream) )
-		m_dragState = DRAG_STATE_NONE;
-
-	m_inputs.erase(m_inputs.begin() + i);
-	stream.RemoveSink(this);
-	RefreshInputNames();
-
-	// DisplayedChannel 析构会释放源通道引用；释放前等 GPU 空闲，避免销毁仍被使用的纹理资源。
-	g_vkComputeDevice->waitIdle();
-	removed = nullptr;
 }
 
 /**
@@ -1974,10 +1963,28 @@ void WaveformArea::RenderUniformDigitalBusWaveform(
 
 	auto color = ColorFromString(channel->GetStream().m_channel->m_displaycolor);
 
+	//Figure out how wide to display it
 	uint32_t widthBits = channel->GetStream().GetDigitalWidth();
-	uint32_t widthNibbles = widthBits / 4;
-	if(widthBits & 3)
-		widthNibbles ++;
+	uint32_t displayWidth = 0;
+	switch(channel->m_format)
+	{
+		case MeasurementDescriptor::FORMAT_DEC:
+			displayWidth = ceil(log10(pow(2, widthBits)));
+			if(displayWidth > 16)
+				displayWidth = 16;
+			break;
+
+		case MeasurementDescriptor::FORMAT_BINARY:
+			displayWidth = widthBits;
+			break;
+
+		case MeasurementDescriptor::FORMAT_HEX:
+		default:
+			displayWidth = widthBits / 4;
+			if(widthBits & 3)
+				displayWidth ++;
+			break;
+	}
 
 	//Draw the actual stuff
 	size_t len = data->size();
@@ -2023,7 +2030,39 @@ void WaveformArea::RenderUniformDigitalBusWaveform(
 
 		else
 		{
-			field = to_string_hex(value, true, widthNibbles);
+			switch(channel->m_format)
+			{
+				case MeasurementDescriptor::FORMAT_DEC:
+					{
+						char format[32];
+						snprintf(format, sizeof(format), "%%0%d%s", displayWidth, PRIu64);
+
+						//Actually format the value
+						char tmp[32];
+						snprintf(tmp, sizeof(tmp), format, value);
+						field = tmp;
+					}
+					break;
+
+				case MeasurementDescriptor::FORMAT_BINARY:
+					{
+						for(int j=displayWidth-1; j >= 0; j--)
+						{
+							uint64_t mask = static_cast<uint64_t>(1) << j;
+							if( (value & mask) == mask)
+								field += "1";
+							else
+								field += "0";
+						}
+					}
+					break;
+
+				case MeasurementDescriptor::FORMAT_HEX:
+				default:
+					field = to_string_hex(value, true, displayWidth);
+					break;
+			}
+
 			RenderComplexSignal(
 				list,
 				start.x, xend,
@@ -4395,6 +4434,24 @@ void WaveformArea::ChannelButton(shared_ptr<DisplayedChannel> chan, size_t index
 			chan->SetPersistenceEnabled(!persist);
 		ImGui::Separator();
 
+		//See if the stream is a digital vector and if so, show the radix menu
+		if(stream.GetType() == Stream::STREAM_TYPE_DIGITAL_BUS)
+		{
+			if(ImGui::BeginMenu("Radix"))
+			{
+				if(ImGui::MenuItem("Hex", nullptr, (chan->m_format == MeasurementDescriptor::FORMAT_HEX)))
+					chan->m_format = MeasurementDescriptor::FORMAT_HEX;
+				if(ImGui::MenuItem("Binary", nullptr, (chan->m_format == MeasurementDescriptor::FORMAT_BINARY)))
+					chan->m_format = MeasurementDescriptor::FORMAT_BINARY;
+				if(ImGui::MenuItem("Decimal", nullptr, (chan->m_format == MeasurementDescriptor::FORMAT_DEC)))
+					chan->m_format = MeasurementDescriptor::FORMAT_DEC;
+
+				ImGui::EndMenu();
+			}
+
+			ImGui::Separator();
+		}
+
 		FilterMenu(chan);
 
 		ImGui::EndPopup();
@@ -4460,10 +4517,10 @@ void WaveformArea::FilterSubmenu(shared_ptr<DisplayedChannel> chan, const string
 				if(ImGui::BeginMenu(fname.c_str(), valid))
 				{
 					if(ImGui::MenuItem("趋势"))
-						m_parent->CreateFilter(fname, this, stream, false);
+						m_parent->CreateFilter(fname, MainWindow::ADD_PLOT, this, stream);
 
 					if(ImGui::MenuItem("摘要"))
-						m_parent->CreateFilter(fname, this, stream, false, false);
+						m_parent->CreateFilter(fname, MainWindow::ADD_MEASURE, this, stream);
 
 					ImGui::EndMenu();
 				}
@@ -4472,7 +4529,7 @@ void WaveformArea::FilterSubmenu(shared_ptr<DisplayedChannel> chan, const string
 			else
 			{
 				if(ImGui::MenuItem(fname.c_str(), nullptr, false, valid))
-					m_parent->CreateFilter(fname, this, stream);
+					m_parent->CreateFilter(fname, MainWindow::ADD_PLOT, this, stream);
 			}
 		}
 

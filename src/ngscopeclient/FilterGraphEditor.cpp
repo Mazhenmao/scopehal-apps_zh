@@ -45,6 +45,7 @@
 #include "EmbeddedTriggerPropertiesDialog.h"
 #include "MeasurementsDialog.h"
 #include "../scopehal/DensityFunctionWaveform.h"
+#include "../scopeprotocols/DigitalConstantFilter.h"
 
 using namespace std;
 
@@ -491,7 +492,13 @@ bool FilterGraphEditor::DoRender()
 				//Make the filter but don't spawn a properties dialog for it
 				//If measurement, don't add trends by default... but always add something
 				StreamDescriptor emptyStream;
-				auto f = m_parent->CreateFilter(fname, nullptr, emptyStream, false, (cat != Filter::CAT_MEASUREMENT) );
+				uint32_t flags = 0;
+				if(cat == Filter::CAT_MEASUREMENT)
+					flags = MainWindow::ADD_MEASURE;
+				else
+					flags = MainWindow::ADD_PLOT;
+
+				auto f = m_parent->CreateFilter(fname, flags, nullptr, emptyStream);
 
 				//If it's a measurement that has no scalar outputs (only one as of this writing is burst width),
 				//we *do* want to spawn a waveform area for it
@@ -2470,7 +2477,7 @@ void FilterGraphEditor::CreateChannelMenu()
 			if(ImGui::MenuItem(fname.c_str()))
 			{
 				//Make the filter but don't spawn a properties dialog for it or add to a waveform area
-				auto f = m_parent->CreateFilter(fname, nullptr, StreamDescriptor(nullptr, 0), false, false);
+				auto f = m_parent->CreateFilter(fname, 0, nullptr, StreamDescriptor(nullptr, 0));
 
 				//Get relative mouse position
 				auto mousePos = ax::NodeEditor::ScreenToCanvas(m_createMousePos);
@@ -2567,10 +2574,10 @@ void FilterGraphEditor::FilterSubmenu(StreamDescriptor stream, const string& nam
 			{
 				//Make the filter but don't spawn a properties dialog for it
 				//If measurement, don't add trends by default
-				bool addToArea = true;
+				uint32_t flags = MainWindow::ADD_PLOT;
 				if(cat == Filter::CAT_MEASUREMENT )
-					addToArea = false;
-				auto f = m_parent->CreateFilter(fname, nullptr, stream, false, addToArea);
+					flags = 0;
+				auto f = m_parent->CreateFilter(fname, flags, nullptr, stream);
 
 				//Get relative mouse position
 				auto mousePos = ax::NodeEditor::ScreenToCanvas(m_createMousePos);
@@ -2740,125 +2747,45 @@ bool FilterGraphEditor::OnFilterDeleted(Filter* node, bool hasRenderRef)
 	node->AddRef();
 	LogTrace("Added temporary ref, rc=%zu\n", node->GetRefCount());
 
-	// 新建滤波器在同一帧内可能还没有加入波形区，只是挂在 MainWindow 的待显示队列里。
-	// 删除前必须先取消这个队列引用，否则队列稍后会拿着已释放的指针继续创建显示区域。
-	m_parent->RemovePendingChannelDisplayRequests(node);
-
-	// 波形区会在每帧开始执行 ToneMapAllWaveforms()。
-	// 先移除该滤波器的所有显示项，避免波形区下一帧继续渲染已删除的滤波器。
-	m_parent->RemoveChannelFromWaveformAreas(node);
-	m_parent->RemoveChannelFromMeasurements(node);
-
+	//Find sinks from each source stream, and break the links
 	auto nstreams = node->GetStreamCount();
-	auto ninputs = node->GetInputCount();
-
-	// 先收集待删除节点相关的 pin/link 信息。
-	// 不依赖 Filter::GetSinks()，因为部分 UI 删除路径可能留下已失效的 sink 指针。
-	set<ax::NodeEditor::PinId, lessID<ax::NodeEditor::PinId> > pinsToRemove;
 	for(size_t i=0; i<nstreams; i++)
 	{
-		StreamDescriptor stream(node, i);
-		if(m_streamIDMap.HasEntry(stream))
+		//important to pass by value here and NOT grab the reference that GetSinks() returns natively
+		//because we need to keep iterators valid after a deletion
+		auto sinks = node->GetSinks(i);
+
+		//Iterate over sinks and break the connections
+		//Note that we may have >1 connection to a given sink node
+		for(auto dest : sinks)
 		{
-			pinsToRemove.emplace(m_streamIDMap[stream]);
-		}
-	}
-
-	for(size_t i=0; i<ninputs; i++)
-	{
-		pair<FlowGraphNode*, int> input(node, static_cast<int>(i));
-		if(m_inputIDMap.HasEntry(input))
-			pinsToRemove.emplace(m_inputIDMap[input]);
-	}
-
-	set<pair<FlowGraphNode*, int> > downstreamInputsToClear;
-	set<ax::NodeEditor::LinkId, lessID<ax::NodeEditor::LinkId> > linksToRemove;
-	for(auto it : m_linkMap)
-	{
-		auto srcPin = it.first.first;
-		auto dstPin = it.first.second;
-		bool touchesDeletedNode =
-			(pinsToRemove.find(srcPin) != pinsToRemove.end()) ||
-			(pinsToRemove.find(dstPin) != pinsToRemove.end());
-
-		if(!touchesDeletedNode)
-			continue;
-
-		linksToRemove.emplace(it.second);
-
-		// 如果这是从待删滤波器输出到其它节点输入的连线，记录目标输入稍后断开。
-		if(pinsToRemove.find(srcPin) != pinsToRemove.end())
-		{
-			auto canonicalDst = CanonicalizePin(dstPin);
-			if(m_inputIDMap.HasEntry(canonicalDst))
+			//Walk over its inputs and remove us
+			//Do not stop if we find a hit
+			size_t nin = dest->GetInputCount();
+			for(size_t j=0; j<nin; j++)
 			{
-				auto inputPort = m_inputIDMap[canonicalDst];
-				if(inputPort.first != node)
-					downstreamInputsToClear.emplace(inputPort);
+				if(dest->GetInput(j).m_channel == node)
+				{
+					LogTrace("We are input %zu of %p, breaking link\n", j, (void*)dest);
+					dest->SetInput(j, StreamDescriptor(nullptr, 0), true);
+
+					LogTrace("Link broken, rc=%zu\n", node->GetRefCount());
+				}
 			}
 		}
 	}
 
-	// 先断开待删滤波器自己的输入，释放输入通道引用并从源通道 sink 列表中移除本节点。
-	for(size_t i=0; i<ninputs; i++)
-		node->SetInput(i, StreamDescriptor(nullptr, 0), true);
-
-	// 再断开该滤波器输出驱动的下游输入。
-	for(auto inputPort : downstreamInputsToClear)
-	{
-		if(m_session->m_idtable.HasID(inputPort.first))
-			inputPort.first->SetInput(inputPort.second, StreamDescriptor(nullptr, 0), true);
-	}
-
-	//Delete it. If we did our job right, only this function should still hold a ref.
-	// 从滤波器图内部删除时，本帧渲染还会额外持有一个临时引用；从波形组删除时没有这个引用。
+	//Delete it. If we did our job right it should be gone now
 	auto finalRefCount = node->GetRefCount();
-	size_t expectedRefs = hasRenderRef ? 2 : 1;
 	LogTrace("Preparing to remove temporary ref, rc=%zu\n", finalRefCount);
-	if(finalRefCount > expectedRefs)
-	{
-		LogWarning("Unable to fully delete filter due to %zu unresolved dangling reference(s)\n", finalRefCount - expectedRefs);
-		node->Release();
-		return false;
-	}
-
-	// 删除对象前清掉图编辑器和会话里的缓存 ID，避免下一帧通过旧 ID 找到悬挂指针。
-	if(m_session->m_idtable.HasID(node))
-	{
-		ax::NodeEditor::NodeId nid(m_session->m_idtable[node]);
-		m_propertiesDialogs.erase(nid);
-		m_session->m_idtable.erase(node);
-	}
-
-	if(m_nodeGroupMap.HasEntry(node))
-		m_nodeGroupMap.erase(node);
-
-	for(size_t i=0; i<nstreams; i++)
-	{
-		StreamDescriptor stream(node, i);
-		if(m_streamIDMap.HasEntry(stream))
-		{
-			pinsToRemove.emplace(m_streamIDMap[stream]);
-			m_streamIDMap.erase(stream);
-		}
-	}
-
-	for(size_t i=0; i<ninputs; i++)
-	{
-		pair<FlowGraphNode*, int> input(node, static_cast<int>(i));
-		if(m_inputIDMap.HasEntry(input))
-		{
-			pinsToRemove.emplace(m_inputIDMap[input]);
-			m_inputIDMap.erase(input);
-		}
-	}
-
-	for(auto lid : linksToRemove)
-		m_linkMap.erase(lid);
-
-	// 这里释放的是删除流程的临时引用；渲染流程的临时引用会在 DoRender() 末尾释放并真正销毁滤波器。
 	node->Release();
-	return true;
+
+	if(finalRefCount > 1)
+		LogWarning("Unable to fully delete filter due to %zu unresolved dangling reference(s)\n", finalRefCount - 1);
+
+	//If the final ref count was 1, we just deleted the last ref and it's now gone.
+	//If it's not, we have either leaky references or a sink that wasn't in the filter graph preventing full deletion
+	return (finalRefCount <= 1);
 }
 
 /**
@@ -2970,7 +2897,16 @@ void FilterGraphEditor::DoNodeForChannel(
 		displaycolor = "#808080";
 
 	auto& prefs = m_session->GetPreferences();
-	auto errorColor = prefs.GetColor("Appearance.Filter Graph.error_outline_color");
+	ImU32 messageColors[] = {
+		prefs.GetColor("Appearance.Filter Graph.error_outline_color"), // 0 zero in enum is not set, therefore placeholder
+		prefs.GetColor("Appearance.Filter Graph.error_outline_color"), // Also no fatal error should be ever sent, but better than crash
+		prefs.GetColor("Appearance.Filter Graph.error_outline_color"),
+		prefs.GetColor("Appearance.Filter Graph.warning_outline_color"),
+		prefs.GetColor("Appearance.Filter Graph.notice_outline_color"),
+		prefs.GetColor("Appearance.Filter Graph.verbose_outline_color"),
+		prefs.GetColor("Appearance.Filter Graph.debug_outline_color"),
+		prefs.GetColor("Appearance.Filter Graph.debug_outline_color"), // We don't need crash, so placeholder
+	};
 
 	//Get some configuration / style settings
 	auto color = ColorFromString(displaycolor);
@@ -3012,13 +2948,19 @@ void FilterGraphEditor::DoNodeForChannel(
 			(dynamic_cast<FunctionGeneratorChannel*>(channel)) ||
 			(dynamic_cast<RFSignalGeneratorChannel*>(channel)) ||
 			(dynamic_cast<DigitalOutputChannel*>(channel)) ||
-			(dynamic_cast<BERTOutputChannel*>(channel))
+			(dynamic_cast<BERTOutputChannel*>(channel)) ||
+			(dynamic_cast<VIOOutputChannel*>(channel))
 			)
 		{
 			blocktype = "Hardware output";
 		}
-		else if(dynamic_cast<DigitalIOChannel*>(channel))
+		else if(
+			dynamic_cast<DigitalIOChannel*>(channel) ||
+			dynamic_cast<VectorGPIOChannel*>(channel)
+			)
+		{
 			blocktype = "Hardware I/O";
+		}
 		else
 			blocktype = "Hardware input";
 	}
@@ -3056,6 +2998,24 @@ void FilterGraphEditor::DoNodeForChannel(
 	//Reserve space for the node header
 	auto startpos = ImGui::GetCursorPos();
 	ImGui::Dummy(ImVec2(nodewidth, headerheight));
+
+	//SPECIAL CASE: If we're a constant filter, allow it to be edited directly in the graph editor
+	//TODO: we need to store state somewhere for text inputs
+	auto dc = dynamic_cast<DigitalConstantFilter*>(f);
+	if(dc)
+	{
+		auto& width = dc->GetWidth();
+		auto& value = dc->GetValue();
+		if(width.GetIntVal() == 1)
+		{
+			bool b = value.GetBoolVal();
+			if(ImGui::Checkbox("Value", &b))
+			{
+				value.SetBoolVal(b);
+				m_parent->OnFilterReconfigured(f);
+			}
+		}
+	}
 
 	//Table of inputs at left and outputs at right
 	//TODO: this should move up to base class or something?
@@ -3207,9 +3167,11 @@ void FilterGraphEditor::DoNodeForChannel(
 	}
 
 	//Display errors
-	if(channel->HasErrors())
+	if(channel->HasMessages())
 	{
-		auto errorText = channel->GetErrorTitle();
+		// We only display the most severe message for now
+		auto msg = channel->GetMostSevereMessage();
+		auto errorText = msg->GetTitle();
 		auto errorSize = ImGui::CalcTextSize(errorText.c_str());
 
 		auto textColor = ImGui::GetColorU32(ImGui::GetStyleColorVec4(ImGuiCol_Text));
@@ -3234,7 +3196,7 @@ void FilterGraphEditor::DoNodeForChannel(
 		if( (mousepos.x > rectStart.x) && (mousepos.y > rectStart.y) &&
 			(mousepos.x < rectEnd.x) && (mousepos.y < rectEnd.y) )
 		{
-			auto log = Trim(channel->GetErrorLog());
+			auto log = Trim(msg->GetMessage());
 
 			ax::NodeEditor::Suspend();
 				MainWindow::SetTooltipPosition();
@@ -3248,7 +3210,8 @@ void FilterGraphEditor::DoNodeForChannel(
 
 		//Draw outline rectangle around the entire filter
 		auto errorOutlineThickness = 0.4 * ImGui::GetFontSize();
-		bgList->AddRect(pos, pos+size, errorColor, rounding, ImDrawFlags_RoundCornersAll, errorOutlineThickness);
+		auto outlineColor = messageColors[static_cast<int>(msg->GetSeverity())];
+		bgList->AddRect(pos, pos+size, outlineColor, rounding, ImDrawFlags_RoundCornersAll, errorOutlineThickness);
 	}
 
 	ImGui::PopFont(); // headerfont
@@ -3558,10 +3521,8 @@ void FilterGraphEditor::DoAddMenu()
 
 			string shortname = fname.substr(0, fname.size() - strlen(" Import"));
 
-			//Unlike normal filter creation, we DO want the properties dialog shown immediately
-			//since we need to specify a file name to do anything
 			if(ImGui::MenuItem(shortname.c_str()))
-				m_parent->CreateFilter(fname, nullptr, StreamDescriptor(nullptr, 0));
+				m_parent->CreateFilter(fname, 0, nullptr, StreamDescriptor(nullptr, 0));
 		}
 
 		ImGui::PopFont();
@@ -3584,7 +3545,7 @@ void FilterGraphEditor::DoAddMenu()
 				continue;
 
 			if(ImGui::MenuItem(fname.c_str()))
-				m_parent->CreateFilter(fname, nullptr, StreamDescriptor(nullptr, 0));
+				m_parent->CreateFilter(fname, MainWindow::ADD_PLOT, nullptr, StreamDescriptor(nullptr, 0));
 		}
 
 		ImGui::PopFont();

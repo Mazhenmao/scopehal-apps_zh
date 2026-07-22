@@ -244,21 +244,6 @@ void MeasurementsDialog::AddStream(StreamDescriptor stream)
 	RefreshInputNames();
 }
 
-void MeasurementsDialog::RemoveStreamsForChannel(OscilloscopeChannel* channel)
-{
-	for(ssize_t i = static_cast<ssize_t>(m_inputs.size()) - 1; i >= 0; i--)
-	{
-		if(m_inputs[i]->m_sourceStream.m_channel == channel)
-		{
-			// 删除滤波器时，测量窗口也可能持有该滤波器的标量输出引用。
-			// 这里用 SetInput(nullptr) 释放引用，再清掉空输入，避免节点删除后测量窗口留下悬挂项。
-			SetInput(i, StreamDescriptor(nullptr, 0));
-		}
-	}
-
-	ClearEmptyInputs();
-}
-
 bool MeasurementsDialog::HasStream(StreamDescriptor stream)
 {
 	auto nin = GetInputCount();

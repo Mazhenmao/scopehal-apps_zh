@@ -12,6 +12,7 @@ This is a running list of significant bug fixes and new features since the last 
 * Core: Allow instruments (currently only demo scope and ThunderScope implemented) to declare that they support high-rate updates to channel DC offset, allowing for more responsive updates while dragging the axis
 * Core: Replaced filter graph input validation flow so that nodes can declare what kinds of input they want in a human-readable format, making it easier to understand why an attempted connection wasn't allowed
 * Core: Added new "sparsev2" serialization format for improved speed loading and saving sparse waveforms. Only used for 8B/10B so far, other waveform types will switch in the future.
+* Core: Initial auto trigger support
 * Drivers: Added support for many more PicoScope models
 * Drivers: Added Agilent 34401A 6.5 digit DMM driver (https://github.com/ngscopeclient/scopehal/pull/1076/)
 * Drivers: Added R&S RTB2000 driver (https://github.com/ngscopeclient/scopehal/pull/1048/)
@@ -19,6 +20,7 @@ This is a running list of significant bug fixes and new features since the last 
 * Drivers: Added Teledyne LeCroy SDA6000A support (https://github.com/ngscopeclient/scopehal/issues/1065)
 * Drivers: ThunderScope now overlaps socket IO and GPU processing of waveforms giving a significant increase in WFM/s rate
 * Drivers: Demo scope now uses xorshift32 instead of glibc LCG for better statistical properties on the simulated noise
+* Drivers: Demo scope now has some MSO channels in addition to the analog ones
 * Drivers: Added Antikernel Labs GPIO driver (FPGA debug IP)
 * Drivers: Added Antikernel Labs 8b10b SERDES ILA driver (FPGA debug IP)
 * Drivers: Added Antikernel Labs ILA driver (FPGA debug IP)
@@ -83,6 +85,8 @@ This is a running list of significant bug fixes and new features since the last 
 * Serialization: trace alpha and persistence decay settings are now saved in session files (https://github.com/ngscopeclient/scopehal-apps/issues/936)
 * GUI: Properties dialogs don't auto-spawn when filters (other than import filters) are created, to avoid unnecessary clutter
 * GUI: Removed hard-to-find persistence settings dialog and just made persistence a slider on the toolbar
+* GUI: Redraw of toolbar artwork to improve readability and add icons for auto/force trigger (https://github.com/ngscopeclient/scopehal-apps/issues/791)
+* Build: Added reproducible tarball to CI/release (https://github.com/ngscopeclient/scopehal-apps/pull/911)
 
 ## Breaking changes since v0.1.1
 

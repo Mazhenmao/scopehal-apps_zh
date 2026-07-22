@@ -174,9 +174,7 @@ set(SCOPEHAL_SOURCES
 	AntikernelLabsILA.cpp
 	AntikernelLabsSerdesILA8b10b.cpp
 	AntikernelLabsVIO.cpp
-	AntikernelLabsOscilloscope.cpp
 	AntikernelLabsTriggerCrossbar.cpp
-	AntikernelLogicAnalyzer.cpp
 	AseqSpectrometer.cpp
 	CopperMountainVNA.cpp
 	CSVStreamInstrument.cpp
@@ -234,6 +232,7 @@ set(SCOPEHAL_SOURCES
 	SParameterFilter.cpp
 
 	TestWaveformSource.cpp
+	TestDigitalWaveformSource.cpp
 
 	ComputePipeline.cpp
 	FilterGraphExecutor.cpp

@@ -60,15 +60,15 @@ bool FilterGraphErrorWindow::Render()
 {
 	//Refresh list of errors
 	auto& nodes = Filter::GetAllInstances();
-	m_nodesWithErrors.clear();
+	m_nodesWithMessages.clear();
 	for(auto node : nodes)
 	{
-		if(node->HasErrors())
-			m_nodesWithErrors.emplace(node);
+		if(node->HasMessages())
+			m_nodesWithMessages.emplace(node);
 	}
 
 	//Show error window on first run, or if we have errors
-	if(!m_nodesWithErrors.empty())
+	if(!m_nodesWithMessages.empty())
 	{
 		m_open = true;
 		m_emptyErrorFrames = 0;
@@ -99,11 +99,6 @@ bool FilterGraphErrorWindow::Render()
  */
 bool FilterGraphErrorWindow::DoRender()
 {
-	// 防抖期间窗口可能仍保持打开，但当前错误列表已经为空。
-	// 直接返回，避免删除滤波器后继续访问上一帧保存的节点指针。
-	if(m_nodesWithErrors.empty())
-		return true;
-
 	const ImGuiTableFlags flags =
 		ImGuiTableFlags_Resizable |
 		ImGuiTableFlags_BordersOuter |
@@ -113,27 +108,30 @@ bool FilterGraphErrorWindow::DoRender()
 		ImGuiTableFlags_SizingFixedFit;
 
 	auto width = ImGui::GetFontSize();
-	if(ImGui::BeginTable("table", 2, flags))
+	if(ImGui::BeginTable("table", 3, flags))
 	{
 		ImGui::TableSetupScrollFreeze(0, 1); //Header row does not scroll
 
+		ImGui::TableSetupColumn("严重等级", ImGuiTableColumnFlags_WidthFixed, 6*width);
 		ImGui::TableSetupColumn("通道", ImGuiTableColumnFlags_WidthFixed, 12*width);
 		ImGui::TableSetupColumn("错误", ImGuiTableColumnFlags_WidthStretch, 0);
 		ImGui::TableHeadersRow();
 
-		for(auto f : m_nodesWithErrors)
+		for(auto f : m_nodesWithMessages)
 		{
-			auto messages = explode(f->GetErrorLog(), '\n');
-			for(auto& m : messages)
+			for(auto& m : f->GetMessages())
 			{
-				//remove bullet and space
-				string s = m.substr(m.find(' ') + 1);
-
+				// TODO: Combine this with logging library and merge the enum-Str mapping
+				const char* severity_str[] = {
+					"NOTHING", "FATAL", "ERROR", "WARNING", "NOTICE", "VERBOSE", "DEBUG", "TRACE"
+				};
 				ImGui::TableNextRow(ImGuiTableRowFlags_None);
 				ImGui::TableSetColumnIndex(0);
-				ImGui::TextUnformatted(f->GetDisplayName().c_str());
+				ImGui::TextUnformatted(severity_str[static_cast<int>(m.GetSeverity())]);
 				ImGui::TableSetColumnIndex(1);
-				ImGui::TextUnformatted(s.c_str());
+				ImGui::TextUnformatted(f->GetDisplayName().c_str());
+				ImGui::TableSetColumnIndex(2);
+				ImGui::TextUnformatted(m.GetMessage().c_str());
 			}
 		}
 

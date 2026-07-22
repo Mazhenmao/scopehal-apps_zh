@@ -197,7 +197,7 @@ struct PeakLabel
 /**
 	@brief Context data for a single channel being displayed within a WaveformArea
  */
-class DisplayedChannel : public InputDescriptor
+class DisplayedChannel : public MeasurementDescriptor
 {
 public:
 	DisplayedChannel(StreamDescriptor stream, Session& session);
@@ -496,7 +496,6 @@ public:
 	bool IsShowing(StreamDescriptor desc);
 
 	virtual void RemoveStream(size_t i) override;
-	void RemoveStreamForChannelDeletion(size_t i);
 
 	void ClearPersistence();
 	void ClearPersistenceOfChannel(OscilloscopeChannel* chan);

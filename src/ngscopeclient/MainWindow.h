@@ -51,6 +51,8 @@
 #include "Workspace.h"
 #include "imgui_markdown.h"
 
+#include "PreferenceTypes.h"
+
 #include "../scopehal/PacketDecoder.h"
 
 class MeasurementsDialog;
@@ -255,18 +257,19 @@ public:
 	float GetPersistDecay()
 	{ return m_persistenceDecay; }
 
+	enum FilterCreate_t
+	{
+		ADD_PLOT	= 1,	//Add to waveform areas, if applicable (implies ADD_MEASURE too)
+		ADD_MEASURE	= 2		//Add to measurements, if applicable
+	};
+
 	Filter* CreateFilter(
 		const std::string& name,
+		uint32_t flags,
 		WaveformArea* area,
-		StreamDescriptor initialStream,
-		bool showProperties = true,
-		bool addToArea = true);
+		StreamDescriptor initialStream);
+
 	void FindAreaForStream(WaveformArea* area, StreamDescriptor stream);
-	void RemovePendingChannelDisplayRequests(OscilloscopeChannel* channel);
-	void RemoveChannelFromWaveformAreas(OscilloscopeChannel* channel);
-	void RemoveChannelFromMeasurements(OscilloscopeChannel* channel);
-	bool IsStreamDisplayedInOtherWaveformArea(StreamDescriptor stream, WaveformArea* area);
-	bool DeleteFilter(Filter* filter);
 
 	void OnFilterReconfigured(Filter* f);
 
@@ -467,6 +470,9 @@ protected:
 
 	///@brief Cached toolbar icon size
 	int m_toolbarIconSize;
+
+	///@brief cached toolbar icon theme
+	IconTheme_t m_toolbarIconTheme;
 
 	///@brief Trace alpha
 	float m_traceAlpha;

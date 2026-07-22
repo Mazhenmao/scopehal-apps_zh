@@ -121,7 +121,7 @@ void CZTFilter::Refresh(
 		nvtx3::scoped_range nrange("CZTFilter::Refresh");
 	#endif
 
-	ClearErrors();
+	ClearMessages();
 	auto din = dynamic_cast<UniformAnalogWaveform*>(GetInputWaveform(0));
 	if(!din)
 	{
