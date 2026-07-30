@@ -15,7 +15,12 @@ layout(std430, binding=0) restrict readonly buffer buf_din
 	float din[];
 };
 
-layout(std430, binding=1) restrict writeonly buffer buf_dout
+layout(std430, binding=1) restrict readonly buffer buf_kernel
+{
+	float kernel[];
+};
+
+layout(std430, binding=2) restrict writeonly buffer buf_dout
 {
 	float dout[];
 };
@@ -27,6 +32,8 @@ layout(std430, push_constant) uniform constants
 	uint inputStep;
 	uint inputLength;
 	uint window;
+	uint kernelRadius;
+	float mixerPhaseStep;
 	float startPhaseStep;
 	float theta;
 };
@@ -62,10 +69,36 @@ void main()
 		return;
 	}
 
-	uint n = min(i * inputStep, inputLength - 1);
-	float phase = -(startPhaseStep * i) - (theta * i * i / 2);
-	float value = din[n] * GetWindowCoefficient(i);
+	uint base = min(i * inputStep, inputLength - 1);
+	int firstDelta = max(-int(kernelRadius), -int(base));
+	int lastDelta = min(int(kernelRadius), int(inputLength - 1 - base));
+	uint firstSample = uint(int(base) + firstDelta);
 
-	dout[2*i] = value * cos(phase);
-	dout[2*i + 1] = value * sin(phase);
+	// Mix the requested RF band to complex baseband before low-pass filtering and decimation. This prevents high
+	// frequency content outside the requested CZT span from folding into the result.
+	float mixerPhase = -mixerPhaseStep * firstSample;
+	vec2 oscillator = vec2(cos(mixerPhase), sin(mixerPhase));
+	vec2 oscillatorStep = vec2(cos(mixerPhaseStep), -sin(mixerPhaseStep));
+	vec2 filtered = vec2(0);
+	float coefficientSum = 0;
+	for(int delta=firstDelta; delta<=lastDelta; delta++)
+	{
+		float coefficient = kernel[delta + int(kernelRadius)];
+		float sampleValue = din[int(base) + delta];
+		filtered += sampleValue * coefficient * oscillator;
+		coefficientSum += coefficient;
+		oscillator = vec2(
+			oscillator.x*oscillatorStep.x - oscillator.y*oscillatorStep.y,
+			oscillator.x*oscillatorStep.y + oscillator.y*oscillatorStep.x);
+	}
+	if(abs(coefficientSum) > 1e-12)
+		filtered /= coefficientSum;
+
+	float phase = -(startPhaseStep * i) - (theta * i * i / 2);
+	float windowCoefficient = GetWindowCoefficient(i);
+	float c = cos(phase);
+	float s = sin(phase);
+
+	dout[2*i] = windowCoefficient * (filtered.x*c - filtered.y*s);
+	dout[2*i + 1] = windowCoefficient * (filtered.x*s + filtered.y*c);
 }

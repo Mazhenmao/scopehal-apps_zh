@@ -803,7 +803,8 @@ void MainWindow::Toolbar()
 	//Toolbar should be at the top of the main window.
 	//Update work area size so docking area doesn't include the toolbar rectangle
 	auto viewport = ImGui::GetMainViewport();
-	float toolbarHeight = 2.5 * ImGui::GetFontSize();
+	float toolbarMultiplier = m_session.GetPreferences().GetEnumRaw("Appearance.Toolbar.toolbar_height");
+	float toolbarHeight = (toolbarMultiplier + 0.5) * ImGui::GetFontSize();
 	m_workPos = ImVec2(viewport->WorkPos.x, viewport->WorkPos.y + toolbarHeight);
 	m_workSize = ImVec2(viewport->WorkSize.x, viewport->WorkSize.y - toolbarHeight);
 	ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -833,11 +834,15 @@ void MainWindow::Toolbar()
 	ImGui::SameLine();
 	ImGui::SeparatorEx(ImGuiSeparatorFlags_Vertical);
 
+	//Adjust size of sliders to match toolbar height
+	auto sliderWidth = 12 * ImGui::GetFontSize();
+	ImGui::PushFont(nullptr, (toolbarMultiplier / 2) * ImGui::GetStyle().FontSizeBase);
+
 	//Slider for trace alpha
 	ImGui::SameLine();
 	float y = ImGui::GetCursorPosY();
 	ImGui::SetCursorPosY(y + 5);
-	ImGui::SetNextItemWidth(6 * toolbarHeight);
+	ImGui::SetNextItemWidth(sliderWidth);
 	if(ImGui::SliderFloat("波形强度", &m_traceAlpha, 0, 0.75, "", ImGuiSliderFlags_Logarithmic))
 		SetNeedRender();
 
@@ -847,8 +852,10 @@ void MainWindow::Toolbar()
 	//Slider for persistence decay
 	ImGui::SameLine();
 	ImGui::SetCursorPosY(y + 5);
-	ImGui::SetNextItemWidth(6 * toolbarHeight);
+	ImGui::SetNextItemWidth(sliderWidth);
 	ImGui::SliderFloat("波形余晖", &m_persistenceDecay, 0, 1, "", ImGuiSliderFlags_AlwaysClamp);
+
+	ImGui::PopFont();
 
 	ImGui::End();
 }
@@ -1058,8 +1065,7 @@ void MainWindow::TriggerStopDropdown(float buttonsize)
 
 void MainWindow::ToolbarButtons()
 {
-	// 工具栏图标显示尺寸固定为默认 24 像素，避免跟随字体大小变化。
-	float sz = 24.0f;
+	float sz = m_session.GetPreferences().GetEnumRaw("Appearance.Toolbar.toolbar_height") * ImGui::GetFontSize();
 	ImVec2 buttonsize(sz, sz);
 
 	bool multigroup = (m_session.GetTriggerGroups().size() > 1);
@@ -1094,7 +1100,7 @@ void MainWindow::ToolbarButtons()
 
 	if(ImGui::ImageButton("trigger-auto", GetTexture("trigger-auto"), buttonsize))
 		m_session.ArmTrigger(TriggerGroup::TRIGGER_TYPE_AUTO);
-	Dialog::Tooltip("Arm the trigger, then force an acquisition if no trigger event occurs");
+	Dialog::Tooltip("启用触发，若无触发事件则强制采集");
 	if(multigroup)
 	{
 		ImGui::SameLine(0.0, 0.0);
@@ -1188,6 +1194,8 @@ void MainWindow::ToolbarButtons()
 
 void MainWindow::OnDialogClosed(const std::shared_ptr<Dialog>& dlg)
 {
+	LogTrace("OnDialogClosed %p\n", (void*)dlg.get());
+
 	//Handle multi-instance dialogs
 	auto psuDlg = dynamic_pointer_cast<PowerSupplyDialog>(dlg);
 	if(psuDlg)
@@ -1215,7 +1223,21 @@ void MainWindow::OnDialogClosed(const std::shared_ptr<Dialog>& dlg)
 
 	auto protoDlg = dynamic_pointer_cast<ProtocolAnalyzerDialog>(dlg);
 	if(protoDlg)
-		m_protocolAnalyzerDialogs.erase(protoDlg->GetFilter());
+	{
+		//We cannot always do the naive search because the dialog may have been disconnected
+		//and no longer have a pointer to the filter. So brute force search
+		PacketDecoder* pd = nullptr;
+		for(auto it : m_protocolAnalyzerDialogs)
+		{
+			if(it.second == protoDlg)
+			{
+				pd = it.first;
+				break;
+			}
+		}
+		if(pd)
+			m_protocolAnalyzerDialogs.erase(pd);
+	}
 
 	//Handle single-instance dialogs
 	if(m_filterPalette == dlg)
@@ -2153,7 +2175,8 @@ Filter* MainWindow::CreateFilter(
 	WaveformArea* area,
 	StreamDescriptor initialStream)
 {
-	LogTrace("CreateFilter %s\n", name.c_str());
+	LogTrace("CreateFilter %s flags=%x\n", name.c_str(), flags);
+	LogIndenter li;
 
 	//Make sure we have a WaveformThread to handle background processing
 	m_session.StartWaveformThreadIfNeeded();

@@ -25,7 +25,7 @@ CZTFilter::CZTFilter(const string& color)
 	, m_outputPoints(m_parameters["输出点数"])
 	, m_maxInputSamples(m_parameters["最大输入点数"])
 	, m_window(m_parameters["窗函数"])
-	, m_prepareInputPipeline("shaders/CZTPrepareInput.spv", 2, sizeof(CZTPrepareInputArgs))
+	, m_prepareInputPipeline("shaders/CZTPrepareInput.spv", 3, sizeof(CZTPrepareInputArgs))
 	, m_complexMultiplyPipeline("shaders/CZTComplexMultiply.spv", 3, sizeof(CZTComplexMultiplyArgs))
 	, m_finalizePipeline("shaders/CZTFinalize.spv", 2, sizeof(CZTFinalizeArgs))
 {
@@ -54,6 +54,9 @@ CZTFilter::CZTFilter(const string& color)
 	m_window.AddEnumValue("Hann", WINDOW_HANN);
 	m_window.AddEnumValue("Rectangular", WINDOW_RECTANGULAR);
 	m_window.SetIntVal(WINDOW_HAMMING);
+
+	m_antialiasKernel.SetCpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
+	m_antialiasKernel.SetGpuAccessHint(AcceleratorBuffer<float>::HINT_LIKELY);
 }
 
 CZTFilter::~CZTFilter()
@@ -111,6 +114,118 @@ float CZTFilter::GetWindowGainCorrection(WindowFunction window) const
 		case WINDOW_RECTANGULAR:
 			return 1;
 	}
+}
+
+/**
+	@brief Finds peaks in a CZT waveform without allowing endpoint interpolation
+
+	The shared peak detector can evaluate the final bin and then read one sample beyond the waveform during quadratic
+	interpolation. CZT uses a local implementation so its endpoint handling can be fixed without changing shared code.
+ */
+void CZTFilter::FindCztPeaks(UniformAnalogWaveform* cap)
+{
+	int64_t maxPeaks = m_numpeaks.GetIntVal();
+	size_t nouts = cap ? cap->size() : 0;
+	if( (maxPeaks <= 0) || (nouts < 3) )
+	{
+		m_peaks.clear();
+		return;
+	}
+
+	int64_t binSize = std::abs(cap->m_timescale);
+	if(binSize == 0)
+	{
+		m_peaks.clear();
+		return;
+	}
+
+	cap->PrepareForCpuAccess();
+
+	// CZT waveform offsets are stored in microhertz, while Peak Window is configured in hertz.
+	double searchWindowUhz = std::abs(static_cast<double>(m_peakwindow.GetFloatVal())) * 1e6;
+	double searchBinsRaw = ceil(searchWindowUhz / binSize);
+	size_t searchRadius = 1;
+	if(std::isfinite(searchBinsRaw))
+	{
+		double radius = max(1.0, searchBinsRaw / 2);
+		searchRadius = static_cast<size_t>(min(radius, static_cast<double>(nouts - 2)));
+	}
+
+	vector<Peak> peaks;
+	for(size_t i=1; (i + 1)<nouts; i++)
+	{
+		float target = cap->m_samples[i];
+		if(!std::isfinite(target))
+			continue;
+
+		size_t left = (i > searchRadius) ? (i - searchRadius) : 1;
+		size_t right = i + min(searchRadius, nouts - 2 - i);
+		bool isPeak = true;
+		for(size_t j=left; j<=right; j++)
+		{
+			if(i == j)
+				continue;
+
+			float neighbor = cap->m_samples[j];
+			if(std::isfinite(neighbor) && (neighbor >= target))
+			{
+				if(j > i)
+					i = j - 1;
+				isPeak = false;
+				break;
+			}
+		}
+		if(!isPeak)
+			continue;
+
+		float alpha = cap->m_samples[i-1];
+		float beta = cap->m_samples[i];
+		float gamma = cap->m_samples[i+1];
+		if(!std::isfinite(alpha) || !std::isfinite(beta) || !std::isfinite(gamma))
+			continue;
+
+		float denominator = alpha - 2*beta + gamma;
+		float offset = 0;
+		if(std::isfinite(denominator) && (std::abs(denominator) > 1e-20f))
+			offset = std::clamp(0.5f * (alpha - gamma) / denominator, -1.0f, 1.0f);
+
+		int64_t peakLocation =
+			(i * cap->m_timescale) +
+			static_cast<int64_t>(round(offset * cap->m_timescale)) +
+			cap->m_triggerPhase;
+		float interpolatedMagnitude = beta - 0.25f * (alpha - gamma) * offset;
+
+		float halfMagnitudeTarget = interpolatedMagnitude - 3;
+		size_t halfMagnitudeLeft = i;
+		size_t halfMagnitudeRight = i;
+		for(size_t j=i; ; j--)
+		{
+			if(cap->m_samples[j] <= halfMagnitudeTarget)
+			{
+				halfMagnitudeLeft = j;
+				break;
+			}
+			if(j == 0)
+				break;
+		}
+		for(size_t j=i; j<nouts; j++)
+		{
+			if(cap->m_samples[j] <= halfMagnitudeTarget)
+			{
+				halfMagnitudeRight = j;
+				break;
+			}
+		}
+
+		float fwhm = (halfMagnitudeRight - halfMagnitudeLeft) * binSize;
+		peaks.emplace_back(peakLocation, interpolatedMagnitude, fwhm);
+		i += searchRadius - 1;
+	}
+
+	sort(peaks.rbegin(), peaks.rend(), less<Peak>());
+	m_peaks.clear();
+	size_t outputCount = min(static_cast<size_t>(maxPeaks), peaks.size());
+	m_peaks.insert(m_peaks.end(), peaks.begin(), peaks.begin() + outputCount);
 }
 
 void CZTFilter::Refresh(
@@ -182,12 +297,34 @@ void CZTFilter::Refresh(
 
 	size_t maxInputSamples = static_cast<size_t>(maxInputSamplesRaw);
 	size_t inputStep = max<size_t>(1, (npoints + maxInputSamples - 1) / maxInputSamples);
+	size_t requestedInputStep = inputStep;
+
+	// Preserve the complete requested band after complex downconversion. Keeping the post-decimation sample rate at
+	// least twice the bandwidth also leaves a transition band for the antialiasing low-pass filter.
+	size_t maxStepForBandwidth = 1;
+	if(bandwidth > 0)
+	{
+		double maxStepRaw = floor(sample_hz / (2 * bandwidth));
+		if(maxStepRaw >= 1)
+			maxStepForBandwidth = static_cast<size_t>(min(maxStepRaw, static_cast<double>(npoints)));
+	}
+	inputStep = min(inputStep, maxStepForBandwidth);
 	size_t samplesUsed = (npoints + inputStep - 1) / inputStep;
 	constexpr size_t maxFftLen = 4 * 1024 * 1024;
-	bool maxInputSamplesClamped = false;
+	bool maxInputSamplesClamped = (inputStep != requestedInputStep);
 	if(samplesUsed + 1 > maxFftLen)
 	{
-		inputStep = (npoints + maxFftLen - 2) / (maxFftLen - 1);
+		size_t workspaceStep = (npoints + maxFftLen - 2) / (maxFftLen - 1);
+		if(workspaceStep > maxStepForBandwidth)
+		{
+			AddErrorMessage(
+				"Invalid configuration",
+				"Input record is too large to decimate without aliasing at the requested CZT bandwidth");
+			SetData(nullptr, 0);
+			return;
+		}
+
+		inputStep = workspaceStep;
 		samplesUsed = (npoints + inputStep - 1) / inputStep;
 		maxInputSamplesClamped = true;
 	}
@@ -280,9 +417,44 @@ void CZTFilter::Refresh(
 	m_chirpProduct.resize(2 * fftlen);
 	m_chirpIfft.resize(2 * fftlen);
 
+	// Generate a unity-gain Hamming-windowed sinc low-pass filter for this decimation ratio. The cutoff is the new
+	// Nyquist frequency and the target band is kept inside half of that frequency by maxStepForBandwidth above.
+	if(m_cachedAntialiasInputStep != inputStep)
+	{
+		size_t kernelRadius = (inputStep > 1) ? (4 * inputStep) : 0;
+		size_t kernelSize = 2 * kernelRadius + 1;
+		m_antialiasKernel.PrepareForCpuAccess();
+		m_antialiasKernel.resize(kernelSize);
+
+		double coefficientSum = 0;
+		double cutoff = 0.5 / inputStep;
+		for(size_t i=0; i<kernelSize; i++)
+		{
+			int64_t delta = static_cast<int64_t>(i) - static_cast<int64_t>(kernelRadius);
+			double coefficient = 1;
+			if(kernelRadius > 0)
+			{
+				double ideal = (delta == 0) ?
+					(2 * cutoff) :
+					(sin(2 * M_PI * cutoff * delta) / (M_PI * delta));
+				double windowCoefficient = 0.54 + 0.46*cos(M_PI * delta / kernelRadius);
+				coefficient = ideal * windowCoefficient;
+			}
+
+			m_antialiasKernel[i] = coefficient;
+			coefficientSum += coefficient;
+		}
+
+		for(auto& coefficient : m_antialiasKernel)
+			coefficient /= coefficientSum;
+		m_antialiasKernel.MarkModifiedFromCpu();
+		m_cachedAntialiasInputStep = inputStep;
+	}
+
 	constexpr double two_pi = 2 * M_PI;
 	double effectiveSampleHz = sample_hz / inputStep;
-	double startPhaseStep = two_pi * fstart / effectiveSampleHz;
+	double mixerPhaseStep = two_pi * center / sample_hz;
+	double startPhaseStep = two_pi * (fstart - center) / effectiveSampleHz;
 	double theta = two_pi * bin_hz / effectiveSampleHz;
 
 	size_t kernelSpan = max(samplesUsed, nouts);
@@ -327,10 +499,13 @@ void CZTFilter::Refresh(
 	prepareArgs.inputStep = inputStep;
 	prepareArgs.inputLength = npoints;
 	prepareArgs.window = window;
+	prepareArgs.kernelRadius = static_cast<uint32_t>((m_antialiasKernel.size() - 1) / 2);
+	prepareArgs.mixerPhaseStep = mixerPhaseStep;
 	prepareArgs.startPhaseStep = startPhaseStep;
 	prepareArgs.theta = theta;
 	m_prepareInputPipeline.BindBufferNonblocking(0, din->m_samples, cmdBuf);
-	m_prepareInputPipeline.BindBufferNonblocking(1, m_chirpInput, cmdBuf, true);
+	m_prepareInputPipeline.BindBufferNonblocking(1, m_antialiasKernel, cmdBuf);
+	m_prepareInputPipeline.BindBufferNonblocking(2, m_chirpInput, cmdBuf, true);
 	m_prepareInputPipeline.Dispatch(cmdBuf, prepareArgs, GetComputeBlockCount(fftlen, 64));
 	m_prepareInputPipeline.AddComputeMemoryBarrier(cmdBuf);
 	m_chirpInput.MarkModifiedFromGpu();
@@ -370,6 +545,6 @@ void CZTFilter::Refresh(
 		m_cachedKernelTheta = theta;
 	}
 
-	// Peak count defaults to zero; users can enable peak search from filter parameters when needed.
-	FindPeaks(cap, cmdBuf, queue);
+	// Peak count defaults to zero; users can enable the CZT-specific endpoint-safe search when needed.
+	FindCztPeaks(cap);
 }

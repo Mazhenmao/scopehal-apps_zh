@@ -4,26 +4,29 @@
 
 \subsection{Key Concepts}
 
-ngscopeclient and libscopehal are based on a ``filter graph" architecture internally. The filter graph is a directed
-acyclic graph with a set of source nodes (waveforms captured from hardware, loaded from a saved session, or generated
-numerically) and sink nodes (waveform views, protocol analyzer views, and statistics) connected by edges representing
-data flow.
+ngscopeclient and libscopehal are based on a ``filter graph" architecture internally. The filter graph is composed of
+nodes (instrument channels, DSP blocks, protocol decodes, file outputs, etc.) connected by edges, which represent
+streams of data flowing from source to sink\footnote{Waveform views and the measurements window are internally handled
+as nodes in the graph as well, but this is typically not visible to users since they are not drawn in the graph view to
+avoid cluttering it.}. Dataflow is strictly unidirectional and loops or cycles are not allowed (there cannot be a path,
+directly or through other nodes, from any node's output to one of its inputs)\footnote{In computer science terms, this
+is a directed acyclic graph.}. Data streams may be of either waveform (many samples plotted against another quantity)
+or scalar (a single measurement with associated unit) type.
 
-A filter is simply an intermediate node in the graph, which takes input from zero or more waveform nodes and outputs a
-waveform which may be displayed, used as input to other filters, or both. A waveform is a series of data points which
-may represent voltages, digital samples, or arbitrarily complex protocol data structures.
+A filter is simply a node which does not correspond to a physical instrument input or output. It may generate data in
+some way (loading samples from a file or synthesizing a waveform parametrically), write data to a file or pass it to an
+outside helper program (e.g. streaming decoded Ethernet frames to Wireshark for higher level analysis), or transform
+one or more input streams in some way to create new data streams. There is no architectural distinction between math
+functions, measurements, and protocol decodes, and it is possible to chain them arbitrarily - as long as the input and
+output data types are compatible, any processing operation can be applied to anything.
 
-As a result, there is no internal distinction between math functions, measurements, and protocol decodes, and it is
-possible to chain them arbitrarily. Consider the following example:
-
-\begin{itemize}
-\item Two analog waveforms representing serial data and clock are acquired
-\item Each analog waveform is thresholded, producing a digital waveform
-\item The two digital waveforms are decoded as $I^2C$, producing a series of packets
-\item The $I^2C$ packets are decoded as writes to a serial DAC, producing an analog waveform
-\item A moving average filter is applied to the analog waveform
-\item A measurement filter finds the instantaneous frequency of each cycle of the DAC output
-\end{itemize}
+For example, a simple BFSK decoder can be made by applying the \hyperref[filter:frequency]{Frequency} filter to an IF
+or directly sampled RF waveform, after any necessary preselector filtering to exclude interference from other channels.
+This produces an analog waveform plotting the frequency of the signal over time. The
+\hyperref[filter:threshold]{Threshold} filter can then be used to recover the original digital data stream, which can
+then be fed to an arbitrary serial digital protocol decode block. But it's equally possible to, for example, lock the
+\hyperref[filter:cdrpll]{Clock Recovery (PLL)} filter to the frequency waveform and display an
+\hyperref[filter:eyepattern]{eye pattern} with Y axis units of frequency.
 
 In this document we use the term ``filter" consistently to avoid ambiguity.
 
@@ -35,8 +38,9 @@ A filter can take arbitrarily many inputs (vector or scalar values from the filt
 If the output signal is a multi-field type (as opposed to a single scalar, e.g. voltage, at each sample) the
 ``Output Signal" section will include a table describing how various types of output data are displayed.
 
-All filters with complex output use a standardized set of colors to display various types of data fields in a
-consistent manner. These colors are configurable under the \menustyle{Appearance / Decodes} preferences category.
+All filters with protocol output use a standardized set of colors to display various types of data fields in a
+consistent manner. These colors are configurable under the \menustyle{Appearance / Decodes} preferences category, but
+default colors are shown here.
 
 \begin{tabularx}{16cm}{llX}
 \thickhline
@@ -57,6 +61,54 @@ Error & Malformed/unreadable data & \cellcolor{error}\textcolor{white}{\#ff0000}
 Idle & Inter-frame gaps & \cellcolor{idle}\textcolor{white}{\#404040} \\
 \thinhline
 Preamble & Preamble/sync words & \cellcolor{preamble}\textcolor{white}{\#808080} \\
+\thickhline
+\end{tabularx}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\section{1-Wire}
+\label{filter:1wire}
+
+Decodes the Dallas Semiconductor 1-wire bus, commonly used for EEPROMs and sensors in cost / area optimized, low speed
+applications.
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/1wire.png}
+\caption{Example 1-wire decode}
+\label{filter_1wire}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-1wire.png}
+\caption{Example filter graph using decoding a 1-wire signal}
+\label{filter_graph_1wire}
+\end{figure}
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+data & Digital & Serial data input \\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+This filter outputs a single decoded data stream consisting of 1-wire sample objects.
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Stream name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+data & Sparse protocol & Output decode \\
 \thickhline
 \end{tabularx}
 
@@ -99,10 +151,7 @@ blocks, other than searching for skip ordered sets (beginning with 0xaa) and usi
 \thickhline
 \textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
 \thickhline
-data & Digital & Serial 128b/130b data line \\
-\thinhline
-clk & Digital & DDR bit clock, typically generated by use of the \hyperref[filter:cdrpll]{Clock Recovery
-(PLL)} filter on the input data.\\
+data & Sparse digital & Sampled and thresholded 128b/130b data \\
 \thickhline
 \end{tabularx}
 
@@ -135,6 +184,16 @@ Error & Block with type 2'b00 or 2'b11 & \cellcolor{error}\textcolor{white}{Erro
 \thickhline
 \end{tabularx}
 
+\subsection{Breaking Changes}
+
+This section lists major interface changes that may require projects to be updated.
+
+\begin{itemize}
+\item \textbf{v0.2:} This filter no longer needs the clock input that was required in v0.1.
+Instead, threshold the sampledData output of the \hyperref[filter:cdrpll]{Clock Recovery (PLL)} and pass this to the
+128b/130b decode, as shown in Fig. \ref{filter_graph_128b130b}.
+\end{itemize}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{2-Port Shunt Through}
@@ -151,8 +210,8 @@ networks, such as power distribution networks.
 \section{64b/66b}
 \label{filter:64b66b}
 
-Decodes the 64/66b line code used by \hyperref[filter:10gbaser]{10Gbase-R} and other serial protocols, as originally
-specified in IEEE 802.3 clause 49.2.
+Decodes the 64/66b line code used by \hyperref[filter:10gbaser]{10Gbase-R}, Aurora, JESD204C, and other serial
+protocols, as originally specified in IEEE 802.3 clause 49.2.
 
 64b/66b is a serial line code which divides transmitted data into 64-bit blocks and scrambles them with a LFSR, then
 appends a 2-bit type field (which is not scrambled) to each block for synchronization. Block synchronization depends on
@@ -183,10 +242,7 @@ this is not universal and some other protocols use these fields for different pu
 \thickhline
 \textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
 \thickhline
-data & Digital & Serial 64b/66b data line \\
-\thinhline
-clk & Digital & DDR bit clock, typically generated by use of the \hyperref[filter:cdrpll]{Clock Recovery
-(PLL)} filter on the input data.\\
+data & Sparse digital & Serial 64b/66b data line \\
 \thickhline
 \end{tabularx}
 
@@ -219,14 +275,24 @@ Error & Block with type 2'b00 or 2'b11 & \cellcolor{error}\textcolor{white}{Erro
 \thickhline
 \end{tabularx}
 
+\subsection{Breaking Changes}
+
+This section lists major interface changes that may require projects to be updated.
+
+\begin{itemize}
+\item \textbf{v0.2:} This filter no longer needs the clock input that was required in v0.1.
+Instead, threshold the sampledData output of the \hyperref[filter:cdrpll]{Clock Recovery (PLL)} and pass this to the
+64/66b decode, as shown in Fig. \ref{filter_graph_64b66b}.
+\end{itemize}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{8B/10B (IBM)}
 \label{filter:8b10b}
 
-Decodes the standard 8b/10b line code used by \hyperref[filter:sgmii]{SGMII}, \hyperref[filter:1000basex]{1000base-X},
-DisplayPort, JESD204A/B, \hyperref[filter:pcie2_logical]{PCIe gen 1/2}, SATA, USB 3.0, and many other common serial
-protocols.
+Decodes the standard 8b/10b line code, originally invented at IBM and now used by \hyperref[filter:sgmii]{SGMII},
+\hyperref[filter:1000basex]{1000base-X}, \hyperref[filter:dpmain]{DisplayPort}, JESD204A/B,
+\hyperref[filter:pcie2_logical]{PCIe gen 1/2}, SATA, USB 3.0, and many other common serial protocols.
 
 8b/10b is a dictionary based code which converts each byte of message data to a ten-bit code. In order to maintain DC
 balance and limit run length to a maximum of five identical bits in a row, all 8-bit input codes have one of:
@@ -238,6 +304,12 @@ balance and limit run length to a maximum of five identical bits in a row, all 8
 The transmitter maintains a ``running disparity" counter and chooses the appropriate coding for each symbol to ensure
 DC balance. There are twelve legal codes which are not needed for encoding data values; these are used to encode
 frame boundaries, idle/alignment sequences, and other control information.
+
+\textbf{NOTE} If an 8B/10B signal has its polarity inverted, e.g. by putting a differential probe on backwards or
+swapping the pair for routability and correcting in the SERDES, \emph{all Kx.x control characters will be unchanged}
+and simply flip disparity, while Dx.x data characters will be completely scrambled. If you are looking at a protocol
+decode that appears to be nonsense but has valid framing, try adding an \hyperref[filter:invert]{Invert} block before
+the 8B/10B decode.
 
 \begin{figure}[h]
 \centering
@@ -260,9 +332,6 @@ frame boundaries, idle/alignment sequences, and other control information.
 \textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
 \thickhline
 data & Digital & Serial 8b/10b data line \\
-\thinhline
-clk & Digital & DDR bit clock, typically generated by use of the \hyperref[filter:cdrpll]{Clock Recovery
-(PLL)} filter on the input data.\\
 \thickhline
 \end{tabularx}
 
@@ -307,6 +376,16 @@ Error & Malformed data & \cellcolor{error}\textcolor{white}{Error} & ERROR \\
 \thickhline
 \end{tabularx}
 
+\subsection{Breaking Changes}
+
+This section lists major interface changes that may require projects to be updated.
+
+\begin{itemize}
+\item \textbf{v0.2:} This filter no longer needs the clock input that was required in v0.1.
+Instead, threshold the sampledData output of the \hyperref[filter:cdrpll]{Clock Recovery (PLL)} and pass this to the
+8b/10b decode, as shown in Fig. \ref{filter_graph_8b10b}.
+\end{itemize}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{8B/10B (TMDS)}
@@ -347,9 +426,6 @@ the input signal rather than multiplying up the reference clock.}
 \textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
 \thickhline
 data & Digital & Serial TMDS data line \\
-\thinhline
-clk & Digital & DDR \emph{bit} clock, typically generated by use of the \hyperref[filter:cdrpll]{Clock Recovery
-(PLL)} filter on the input data. Note that this is 5x the rate of the pixel clock signal. \\
 \thickhline
 \end{tabularx}
 
@@ -391,6 +467,16 @@ Error & Malformed data & \cellcolor{error}\textcolor{white}{Error} & ERROR \\
 Guard band & HDMI data/video guard band & \cellcolor{preamble}\textcolor{white}{Preamble} & GB \\
 \thickhline
 \end{tabularx}
+
+\subsection{Breaking Changes}
+
+This section lists major interface changes that may require projects to be updated.
+
+\begin{itemize}
+\item \textbf{v0.2:} This filter no longer needs the clock input that was required in v0.1.
+Instead, threshold the sampledData output of the \hyperref[filter:cdrpll]{Clock Recovery (PLL)} and pass this to the
+TMDS decode, as shown in Fig. \ref{filter_graph_tmds}.
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
@@ -553,6 +639,100 @@ data & Analog & One sample per cycle of the input waveform containing the sum of
 \thickhline
 \end{tabularx}
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\section{ADL5205}
+\label{filter:adl5205}
+
+Decodes SPI data traffic to one half of an ADL5205 variable gain amplifier.
+
+TODO: Screenshot
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+spi & SPI bus & The SPI data bus \\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+This filter outputs one ADL5205 sample object for each write transaction, formatted as ``write: FA=2 dB, gain=8 dB".
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\section{APB}
+\label{filter:apb}
+
+Decodes the AMBA APB bus, commonly used for connecting low-speed peripherals such as timers and serial ports to CPU
+cores in microcontrollers and SoCs. APB is a parallel bus typically only used in on-chip applications, so this filter
+is normally used with an internal logic analyzer core recording on-die signals to RAM and then reading out via JTAG or
+other debug protocol, or for analyzing VCD dumps from RTL simulation.
+
+\textbf{NOTE}: The following APBv4/5 features are not yet supported by this decode:
+\begin{itemize}
+\item Byte write strobes
+\item Bus errors
+\item Address or data buses larger than 32 bits in size
+\item ID / user tag data
+\item Wakeup signaling
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\medimage{ng-images/filters/apb.png}
+\caption{Example APB decode}
+\label{filter_apb}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-apb.png}
+\caption{Example filter graph showing usage of APB decode}
+\label{filter_graph_apb}
+\end{figure}
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+penable & 1-bit digital & APB enable \\
+\thinhline
+psel & 1-bit digital & APB select \\
+\thinhline
+pready & 1-bit digital & APB ready \\
+\thinhline
+pwrite & 1-bit digital & APB write enable \\
+\thinhline
+pslverr & 1-bit digital & APB error indication (optional)\\
+\thinhline
+paddr & 1-32 bit digital & APB address \\
+\thinhline
+pwdata & 1-32 bit digital & APB write data \\
+\thinhline
+prdata & 1-32 bit digital & APB read data \\
+\thinhline
+pstrb & 1-4 bit digital & APB byte strobe (optional)\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+This filter outputs a time series of APB sample objects, each consisting of a read/write flag, an address, and a data
+value. Additional data will be added in the future once decoding of the full APBv5 protocol is implemented.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
@@ -629,33 +809,7 @@ For per cycle measurement, this filter outputs a waveform representing area of e
 crossings).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\pagebreak
-\section{ADL5205}
-\label{filter:adl5205}
-
-Decodes SPI data traffic to one half of an ADL5205 variable gain amplifier.
-
-TODO: Screenshot
-
-\subsection{Inputs}
-
-\begin{tabularx}{16cm}{llX}
-\thickhline
-\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
-\thickhline
-spi & SPI bus & The SPI data bus \\
-\thickhline
-\end{tabularx}
-
-\subsection{Parameters}
-
-This filter takes no parameters.
-
-\subsection{Output Signal}
-
-This filter outputs one ADL5205 sample object for each write transaction, formatted as ``write: FA=2 dB, gain=8 dB".
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\FloatBarrier
 \pagebreak
 \section{Autocorrelation}
 \label{filter:autocorrelation}
@@ -772,8 +926,9 @@ totalWaveforms & Scalar & Total number of integrated waveforms \\
 
 Calculates the -3 dB bandwidth of a network, given the insertion loss magnitude.
 
-The bandwidth is measured relative to a user-specified reference level; for example the bandwidth of a -20 dB
-attenuator can be measured by setting the reference level to -20 dB.
+The bandwidth is measured relative to a user-specified reference level (typically the insertion loss at DC or the low
+end of the passband); for example the bandwidth of a 20 dB attenuator can be measured by setting the reference level to
+-20 dB.
 
 \begin{figure}[h]
 \centering
@@ -1340,6 +1495,74 @@ This filter outputs an analog waveform with the same timebase as the input, clip
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
+\section{Clock Jitter (TIE)}
+
+Calculates the time interval error of a test data or clock signal with respect to an ideal ``golden" clock (typically
+obtained from the \hyperref[filter:cdrpll]{Clock Recovery (PLL)} block). The TIE can be either plotted directly to look
+for time-varying patterns in jitter (e.g. from transmit clock instability) or used as input to other filters to perform
+more complex jitter analysis.
+
+Each time the test signal crosses the threshold level (if analog) or toggles (if digital) the corresponding edge in the
+golden clock is located and the difference in time between the two is reported as the time interval error for that
+sample.
+
+\textbf{Notes:}
+\begin{itemize}
+\item If the PLL does not start in a fully locked state (e.g. if the test signal is slightly off the PLL's nominal
+frequency due to spread spectrum modulation) the TIE filter may report very large jitter values due to beating between
+the golden and recovered clocks, which can throw off jitter analysis. The ``Skip Start" parameter allows truncating the
+beginning of the dataset to avoid this issue.
+\item By convention, recovered clocks in ngscopeclient have 90\textdegree{} phasing so the recovered clock edges are
+centered in the data eye and can be directly used to sample the data. The TIE filter applies an internal
+-90\textdegree{} phase shift to compensate, which must be accounted for when using a golden clock not generated by the
+\hyperref[filter:cdrpll]{Clock Recovery (PLL)} block.
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/tie.png}
+\caption{Example of measuring TIE and jitter histogram of a 10.3125 Gbps Ethernet signal}
+\label{filter_tie}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-tie.png}
+\caption{Example filter graph showing usage of TIE filter to display a jitter histogram}
+\label{filter_graph_tie}
+\end{figure}
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+Clock & Analog or digital & Test signal\\
+\thinhline
+Golden & Sparse digital & Golden PLL reference output\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+Skip Start & Integer (s) & Ignore this much time after the start of the waveform before generating output\\
+\thinhline
+Threshold & Float (V) & Level to threshold analog inputs at. Ignored for digital inputs\\
+\thickhline
+\end{tabularx}
+
+\subsection{Output Signal}
+
+This filter outputs a sparse analog sample with one sample per level crossing or toggle of the test signal containing
+the calculated TIE value.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
 \section{Clock Recovery (D-PHY HS Mode)}
 
 Extracts a double-rate clock from a MIPI D-PHY clock+data stream, which is gated to only toggle when the data input
@@ -1353,19 +1576,25 @@ is in HS mode. This can be used for generating eye patterns of the HS-mode data.
 \label{filter:cdrpll}
 
 This filter uses a PLL to recover a clock from a serial NRZ data stream. The recovered clock is double-rate and phased
-90\textdegree with respect to the data, such that the data can be sampled directly by both edges of the PLL output
-clock.
+90\textdegree{} with respect to the data, such that the data can be sampled directly by both edges of the PLL output
+clock. Additionally, a sampled data stream is provided containing data values at each recovered clock edge which may be
+fed directly to various protocol decode blocks.
 
 When the optional clock gating input is low, the output does not toggle and any edges in the input signal are ignored.
 This is most commonly used as a squelch to disable decoding and eye processing in between bursts of data. As soon as
 the gate goes high, the PLL will instantly phase shift the internal NCO to align with the next transition in the input
 signal and then begin running closed-loop continuing from the previous NCO frequency value.
 
-This filter uses a single threshold suitable for NRZ inputs. Using either the upper or lower level is also sufficient
-for MLT-3 since the +1 to -1 crossing is disallowed, but attempting to do the same on a PAM signal will add
-data-dependent jitter (since the slew rate for, for example, a -2 to +2 transition is different than that for a -1 to
-+1 transition). For proper results on PAM signals, use the \hyperref[filter:pamedge]{PAM edge detector} filter to find
-level crossings and then apply the CDR to the detected transitions.
+With analog inputs, this filter uses a single threshold suitable for NRZ inputs. Using either the upper or lower eye
+midpoint as a threshold will \emph{work} on a MLT-3 signal (since the -1 to +1 transition is not allowed by the
+protocol) however high frequency jitter will increase slightly since the PLL is not able to track crossings of the
+lower eye in this configuration and will run open-loop a larger fraction of the time than normal.
+
+Using a single threshold for a PAM signal is not recommended and will add data-dependent jitter (since the slew rate
+for, for example, a -2 to +2 transition is different than that for a -1 to +1 transition), potentially severe enough to
+completely close the eye. For proper results on PAM signals, use the \hyperref[filter:pamedge]{PAM edge detector}
+filter to find level crossings and then apply the CDR to the detected transitions. Using the PAM edge detector will
+also give better tracking of MLT-3 although it is not strictly necessary in this case.
 
 The current implementation of this filter uses a simple bang-bang control loop which is reasonably fast and provides
 generally acceptable jitter transfer performance for most purposes (passing high frequency jitter but rejecting spread
@@ -1383,7 +1612,8 @@ will be supported as options.
 \begin{figure}[h]
 \centering
 \bigimage{ng-images/filters/graph-cdrpll.png}
-\caption{Example filter graph showing usage of CDR PLL filter}
+\caption{Example filter graph showing usage of CDR PLL filter with recovered clock used for eye pattern and sampled
+data for a protocol decode}
 \label{filter_cdrpll}
 \end{figure}
 
@@ -1417,7 +1647,8 @@ Threshold & Float & Decision threshold for the edge detector, in volts. Ignored 
 
 \subsection{Output Signal}
 
-This filter outputs an digital waveform with one sample per transition of the recovered clock.
+This filter outputs an digital waveform with one clock sample per transition of the recovered clock, and a sampled data
+waveform (analog or digital as appropriate) with one sample per transition of the recovered clock.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
@@ -1612,7 +1843,7 @@ This filter outputs a single scalar with a constant value.
 \section{Constellation}
 \label{filter:constellation}
 
-This filter takes I/Q streams and a double-rate recovered symbol clock and outputs a constellation diagram.
+This filter takes a pair of I/Q streams and outputs a constellation diagram.
 
 \begin{figure}[h]
 \centering
@@ -1625,7 +1856,7 @@ This filter takes I/Q streams and a double-rate recovered symbol clock and outpu
 \centering
 \bigimage{ng-images/filters/graph-constellation.png}
 \caption{Example filter graph showing usage of constellation filter on 2D-PAM3 data}
-\label{filter_complexspectrogram_graph}
+\label{filter_graph_constellation}
 \end{figure}
 
 \FloatBarrier
@@ -1636,11 +1867,9 @@ This filter takes I/Q streams and a double-rate recovered symbol clock and outpu
 \thickhline
 \textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
 \thickhline
-I & Analog & Real part of input signal\\
+I & Sparse analog & Real part of input signal\\
 \thinhline
-Q & Analog & Imaginary part of input signal\\
-\thinhline
-clk & Digital & Recovered symbol clock \\
+Q & Sparse analog & Imaginary part of input signal\\
 \thickhline
 \end{tabularx}
 
@@ -1654,7 +1883,7 @@ Center I & Float & Voltage for center of the constellation in I axis\\
 \thinhline
 Center Q & Float & Voltage for center of the constellation in Q axis\\
 \thinhline
-Modulation & Enum & Modulation to use for EVM calculations\\
+Modulation & Enum & Constellation shape to use for EVM calculations\\
 \thinhline
 Range & Float & Nominal full-scale range\\
 \thickhline
@@ -1677,18 +1906,41 @@ EVM normalized & Analog scalar & Normalized EVM in percent\\
 \thickhline
 \end{tabularx}
 
+\subsection{Breaking Changes}
+
+This section lists major interface changes that may require projects to be updated.
+
+\begin{itemize}
+\item \textbf{v0.2:} This filter no longer needs the clock input that was required in v0.1.
+Instead, threshold the sampledData output of the \hyperref[filter:cdrpll]{Clock Recovery (PLL)} and pass this to the
+constellation block, as shown in Fig. \ref{filter_graph_constellation}.
+\end{itemize}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Coupler De-Embed}
 \label{filter:couplerdbed}
 
-Given waveforms from both coupled ports of a dual directional coupler and the S-parameters of the coupler, de-embeds
-the coupler response in order to recover the forward and reverse waveforms.
+Given waveforms from both coupled ports of a dual directional coupler and the 4-port S-parameters of the coupler,
+de-embeds the coupler response in order to recover the forward and reverse waveforms.
 
 NOTE: The current implementation of this filter requires the \codestyle{VK\_KHR\_push\_descriptor} Vulkan extension. A
 fallback implementation for GPUs without this extension will be added at some point in the future.
 
-Both coupled-port waveforms must be the same sample rate, memory depth, and de-skewed relative to one another.
+Both coupled-port waveforms must be the same sample rate, memory depth, and phase aligned with respect to each other.
+Use of phase-matched cables or manual deskew in postprocessing is very important especially for higher harmonics: since
+the de-embed algorithm relies on subtracting a modified version of one waveform from the the other, any time shift will
+increase leakage between the ports and degrade the quality of the de-embed. If the phase error is large enough the
+de-embedded waveforms can even have \emph{more} leakage between paths than in the original signal, although with a
+reversed sign.
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-coupler-dbed.png}
+\caption{Example filter graph showing de-embed of differential signals traveling through Mini-Circuits ADCB-20-82+
+couplers}
+\label{filter_graph_coupler_dbed}
+\end{figure}
 
 This filter uses a multi-step algorithm to de-embed both the insertion loss of the coupled path and enhance the
 apparent directivity of the coupler:
@@ -1739,12 +1991,17 @@ reverseLeakAng & Analog & Angle response of reverse leakage path \\
 \thickhline
 \end{tabularx}
 
+\subsection{Output Signal}
+
+This filter outputs uniform analog waveforms containing waveforms de-embedded to the coupler's forward and reverse
+input ports.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{CSV Export}
 
-Saves waveform data to a comma-separated-value file.
+Saves waveform data to a comma-separated-value file which can be imported into a spreadsheet, external script, or
+another visualization tool.
 
 The Update Mode parameter specifies how and when the file is modified:
 \begin{itemize}
@@ -1756,6 +2013,13 @@ of the file.
 \item \textbf{Overwrite (manual):} When the ``Export" button in the filter properties box is clicked,
 the input waveforms replace the current contents of the file.
 \end{itemize}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-csv-export.png}
+\caption{Example filter graph showing usage of CSV export block}
+\label{filter_graph_csv_export}
+\end{figure}
 
 \subsection{Inputs}
 
@@ -1770,7 +2034,7 @@ arbitrary protocol type. 2D persistence maps are not supported.
 \thickhline
 File name & String & Path to the CSV file\\
 \thinhline
-Update mode & Enum & Specifies how and when to update the file)\\
+Update mode & Enum & Specifies how and when to update the file\\
 \thickhline
 \end{tabularx}
 
@@ -1778,21 +2042,177 @@ Update mode & Enum & Specifies how and when to update the file)\\
 
 This filter stores its output to a file and has no filter graph output ports.
 
+The CSV file will consist of a header line with name ``Time (s)" for the first column, and the names of the filter
+graph inputs for subsequent columns. There is no escaping of commas in the filter block names, so column names may be
+corrupted if a comma is present in a block name.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{CSV Import}
 
 Loads waveform data from a comma-separated-value file.
 
-(This filter description is a stub and will be expanded in the future)
+Lines starting with a \# are assumed to be comments, and not parsed as sample data. If Digilent WaveForms format header
+comments are detected at the start of the file, they are parsed to extract timestamps and other metadata. If
+non-numeric characters are found in the first non-comment row of the file, the fields are interpreted as channel names
+and propagated to the output streams of the filter.
+
+\begin{figure}[h]
+\centering
+\medimage{ng-images/filters/graph-csv-import.png}
+\caption{Example filter graph showing usage of CSV import block}
+\label{filter_graph_csv_import}
+\end{figure}
+
+\subsection{Inputs}
+
+This filter takes no inputs.
+
+\subsection{Parameters}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+CSV File & String & Path to the CSV file\\
+\thinhline
+X Axis Unit & Enum & Unit used for row timestamps\\
+\thinhline
+Y Axis Unit N & Enum & Unit used for Y axis values in column N\\
+\thickhline
+\end{tabularx}
+
+\subsection{Output Signal}
+
+This filter outputs one stream for each column in the CSV, other than the first which is assumed to be a timestamp.
+Timestamps must be monotonic (each sample's timestamp must be greater than the one before) but need not be evenly
+spaced.
+
+If all values in the first 10 non-header lines for a given column are ``0" or ``1", with no decimal point, the column
+is interpreted as digital and parsed as such. Otherwise, it is assumed to be analog. There is currently no way to
+override this detection heuristic, but it may be added in the future.
+
+After the import is complete, some statistics are computed to the intervals between timestamps to determine if the data
+is uniformly sampled. If the standard deviation of the intervals is greater than 2\% of the average interval, or if the
+maximum sample interval is more than 1.5 times the minimum interval, the data is assumed to be sampled irregularly and
+a sparse waveform is created. If not, the data is assumed to be uniformly sampled (with any variability in sample
+timestamps due to rounding error) and a uniform waveform is greated. There is currently no way to override this
+detection heuristic, but it may be added in the future.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\section{CTLE}
+
+Calculates S-parameters of a continuous-time linear equalizer with the specified pole/zero combination. As of now only
+two poles and one zero are supported, but higher order CTLE support may be implemented in the future.
+
+Typically, this filter will be chained with a \hyperref[filter:channelemu]{Channel Emulation} block to actually apply
+the equalizer to a time-domain signal.
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/ctle.png}
+\caption{Example usage of CTLE block, comparing eyes of a signal before and after equalization}
+\label{filter_ctle}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-ctle.png}
+\caption{Example filter graph showing usage of CTLE block, comparing eyes of a signal before and after equalization}
+\label{filter_graph_ctle}
+\end{figure}
+
+\subsection{Inputs}
+
+This filter takes no inputs.
+
+\subsection{Parameters}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+DC Gain & Float & Gain, in dB, of the equalizer at DC\\
+\thinhline
+End Frequency & Int & Upper end of the S-parameter sweep\\
+\thinhline
+Pole Frequency 1 & Int & Frequency of the first pole\\
+\thinhline
+Pole Frequency 2 & Int & Frequency of the second pole\\
+\thinhline
+Zero Frequency & Int & Frequency of the first zero\\
+\thickhline
+\end{tabularx}
+
+\subsection{Output Signal}
+
+This filter outputs log magnitude and phase angle values which can be passed to any other filter block that accepts
+an S-parameter input.
+
+\subsection{Breaking Changes}
+
+This section lists major interface changes that may require projects to be updated.
+
+\begin{itemize}
+\item \textbf{v0.2:} This filter now outputs S-parameters which must be passed to the
+\hyperref[filter:channelemu]{Channel Emulation}  filter to apply them to a time-domain signal. The original version
+of the filter performed the channel emulation internally.
+\end{itemize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Current Shunt}
+\label{filter:currentshunt}
 
 Converts a voltage waveform acquired across a known resistance into a current waveform.
 
 (This filter description is a stub and will be expanded in the future)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\section{DCD}
+\label{filter:dcd}
+
+Calculates the duty-cycle distortion for a serial data stream. This is the component of data-dependent jitter which is
+attributable to asymmetry between rising and falling edges.
+
+The DCD calculation involves examining the DDJ table and splitting the measurements up into two bins, one that ends in
+a rising edge and one ending in a falling. All of the DDJ measurements in each bin are averaged, giving one value for
+the average jitter of a rising edge and one for the jitter of a falling. The difference between the two gives the final
+DCD measurement.
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/dcd.png}
+\caption{Example usage of DCD block}
+\label{filter_dcd}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-dcd.png}
+\caption{Example filter graph showing usage of DCD block}
+\label{filter_graph_dcd}
+\end{figure}
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+DDJ & Protocol & Output of DDJ measurement\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+This filter outputs an analog scalar with the computed DCD measurement.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
@@ -1804,13 +2224,27 @@ Calculates the peak-to-peak data-dependent jitter for a serial data stream.
 This filter uses the non-repeating-pattern method, which allows DDJ to be computed for arbitrary waveforms rather than
 requiring a short, repeating PRBS. In this method, per-UI jitter (TIE) measurements are split across $2^n$ histogram
 bins, one for each possible combination of the preceding $n$ bits. The jitter samples for each bin are then averaged to
-remove the effects of other jitter, leaving only the DDJ.  The final DDJ value is reported as the difference between
-the minimum and maximum histogram bins.
+remove the effects of other (random and periodic) jitter, leaving only the DDJ.  The final DDJ value is reported as the
+difference between the minimum and maximum histogram bins.
 
 The current implementation uses a fixed window size of $n=8$ UI. If the channel has significant memory effects or
 reflections with delays of more than 8 UI, DDJ maybe underestimated.
 
 The current implementation only supports NRZ signals and cannot measure DDJ for MLT3 or PAM waveforms.
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/dcd.png}
+\caption{Example usage of DDJ block}
+\label{filter_ddj}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-dcd.png}
+\caption{Example filter graph showing usage of DDJ block}
+\label{filter_graph_ddj}
+\end{figure}
 
 \subsection{Inputs}
 
@@ -1820,9 +2254,7 @@ The current implementation only supports NRZ signals and cannot measure DDJ for 
 \thickhline
 TIE & Analog & TIE waveform computed by the \hyperref[filter:tie]{TIE} filter\\
 \thinhline
-Threshold & Digital & Thresholded digital sample values\\
-\thinhline
-Clock & Digital & Double rate, center aligned sampling clock for threshold values\\
+sampledThreshold & Digital & Thresholded digital sample values\\
 \thickhline
 \end{tabularx}
 
@@ -1837,13 +2269,63 @@ This filter outputs an analog waveform with a single sample containing the compu
 Additionally, the raw DDJ histogram is stored internally and may be accessed by other filters via the C++ API. There is
 currently no way to display the histogram content.
 
+\subsection{Breaking Changes}
+
+This section lists major interface changes that may require projects to be updated.
+
+\begin{itemize}
+\item \textbf{v0.2:} This filter no longer needs the clock input that was required in v0.1.
+Instead, threshold the sampledData output of the \hyperref[filter:cdrpll]{Clock Recovery (PLL)} and pass this to the
+sampledThreshold block, as shown in Fig. \ref{filter_graph_ddj}.
+\end{itemize}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{DDR1 Command Bus}
 
 Decodes the command bus for first-generation DDR SDRAM.
 
-(This filter description is a stub and will be expanded in the future)
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/ddr1.png}
+\caption{Example usage of DDR1 command bus decode}
+\label{filter_ddr1}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-ddr1.png}
+\caption{Example filter graph showing usage of DDR1 command bus decode}
+\label{filter_graph_ddj}
+\end{figure}
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+CLK & Digital & DDR clock\\
+\thinhline
+WE\# & Digital & DDR write enable\\
+\thinhline
+RAS\# & Digital & DDR row address strobe\\
+\thinhline
+CAS\# & Digital & DDR column address strobe\\
+\thinhline
+CS\# & Digital & DDR chip select\\
+\thinhline
+A10 & Digital & DDR address bit 10 (used as command input)\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+This filter outputs a stream of decoded DDR1 command events.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
@@ -1950,7 +2432,7 @@ capability.
 
 \begin{figure}[h]
 \centering
-\bigimage{ng-images/filters/graph-deskew.png}
+\medimage{ng-images/filters/graph-deskew.png}
 \caption{Example filter graph showing usage of deskew filter}
 \label{filter_deskew_graph}
 \end{figure}
@@ -1981,6 +2463,96 @@ Skew & Float & Time offset to shift the waveform\\
 
 This filter outputs an analog waveform with one sample for each sample in the input, phase shifted by the requested
 offset.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\section{Digital Constant}
+
+Outputs a constant digital value of configurable width.
+
+This filter is typically used either as a configuration strap to filters that take a digital scalar input (such as
+enabling or disabling some mode), or connected to a digital GPIO channel (either a physical pin on an I/O board, or an
+internal net connected to a debug IP block on an FPGA).
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-digital-constant.png}
+\caption{Example filter graph showing usage of digital to constant filter}
+\label{filter_digital_constant_graph}
+\end{figure}
+
+\subsection{Inputs}
+
+This filter takes no inputs.
+
+\subsection{Parameters}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+Value & Hex integer & The value to drive on the output\\
+\thinhline
+Width & Integer & Width of the output signal, in bits\\
+\thickhline
+\end{tabularx}
+
+\subsection{Output Signal}
+
+This filter outputs a digital scalar containing the requested value.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\section{Digital to Analog}
+
+Converts a digital value to an analog value using configurable units, gain, and offset. This is typically used to
+visualize data captured from FPGA debug IPs as digital samples.
+
+This filter will be extended to support both waveform and scalar input in the future, but currently only supports
+scalars.
+
+The output value is computed as (input - offset) * gain.
+
+The input may be interpreted as normalized (0x0 maps to an output of 0.0 before scaling, while a full-scale input
+regardless of bit width maps to an output of 1.0 before scaling) or non-normalized (an input of 0x20 maps to 32.0
+before scaling).
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-digital-constant.png}
+\caption{Example filter graph showing usage of digital to analog filter}
+\label{filter_digital_analog_graph}
+\end{figure}
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+din & Digital scalar & Value to convert\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+Gain & Float & Gain to multiply the input by\\
+\thinhline
+Mode & Enum & How to interpret the input data\\
+\thinhline
+Offset & Float & Constant offset to subtract from the input\\
+\thinhline
+Unit & Enum & Units to apply to the output data\\
+\thickhline
+\end{tabularx}
+
+\subsection{Output Signal}
+
+This filter outputs an analog scalar containing the scaled output value.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
@@ -2108,10 +2680,109 @@ This filter outputs an analog PAM-4 version of the provided digital input, sampl
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{DisplayPort - Aux Channel}
+\label{filter:dpaux}
 
-Decodes the Auxiliary Channel of DisplayPort
+Decodes the Auxiliary Channel of DisplayPort.
 
-(This filter description is a stub and will be expanded in the future)
+This filter supports decoding both analog captures of the raw differential signal (via a differential probe or two
+single-ended inputs subtracted), and digital captures after thresholding.
+
+Analog inputs are assumed to be differential and centered at zero, so if you are probing the output of a differential
+receiver with an analog probe the signal must be thresholded before passing to this block. This configuration is shown
+in Fig. \ref{filter_dpaux} and Fig. \ref{filter_dpaux_graph}.
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/dpaux.png}
+\caption{Example of decoding DisplayPort aux channel}
+\label{filter_dpaux}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-dpaux.png}
+\caption{Example filter graph showing usage of DisplayPort aux channel decode}
+\label{filter_dpaux_graph}
+\end{figure}
+
+\FloatBarrier
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+aux & Analog or digital & Auxiliary channel data\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+This filter outputs a time series of DisplayPort protocol events containing accesses to both native registers and
+tunneled I2C traffic.
+
+A second output stream provides access to the tunneled I2C data which can, for example, be passed to the
+\hyperref[filter:i2ceeprom]{I2C EEPROM} protocol decode.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\pagebreak
+\section{DisplayPort - Main Link}
+\label{filter:dpmain}
+
+Decodes the Main Link of DisplayPort
+
+This filter is a work in progress and does not support all features of the protocol yet. Notably missing features:
+
+\begin{itemize}
+\item 2 and 4 lane configurations
+\item MST mode
+\item 128b/132b line coding and UHBR bit rates
+\item FEC
+\item Display Stream Compression
+\item Color depths other than RGB24
+\item Decoding blanking interval data (currently only video scanlines are decoded)
+\end{itemize}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/dpmain.png}
+\caption{Example of decoding DisplayPort main channel}
+\label{filter_dpmain}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-dpmain.png}
+\caption{Example filter graph showing usage of DisplayPort main channel decode}
+\label{filter_dpmain_graph}
+\end{figure}
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+data & 8B/10B & PHY layer symbols to decode\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+This filter outputs a time series of DisplayPort protocol events containing pixel data.
+
+As with all other video protocol decodes in ngscopeclient, scanlines are decoded to packets as both image data and hex
+byte values. Pixel data on the timeline is decoded as HTML-style \#RRGGBB color codes and drawn in the appropriate
+color.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
@@ -2919,6 +3590,7 @@ Applies a finite-impulse-response filter to a signal.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Frequency}
+\label{filter:frequency}
 
 Measures the frequency of each cycle in a waveform.
 
@@ -3097,6 +3769,7 @@ Decodes the Phillips $I^2C$ bus protocol.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{$I^2C$ EEPROM}
+\label{filter:i2ceeprom}
 
 Decodes common $I^2C$ EEPROM memory devices
 
@@ -4241,6 +4914,7 @@ Converts an analog voltage measurement of a thermal diode to a temperature value
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Threshold}
+\label{filter:threshold}
 
 Converts an analog waveform to digital by thresholding at a constant level (no hysteresis).
 
@@ -4270,15 +4944,6 @@ Threshold & Float & Decision threshold \\
 
 This filter outputs an digital waveform with one sample for each sample in the input, which is true if the
 corresponding input sample is above the threshold and false if less than or equal.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\pagebreak
-\section{TIE}
-
-Calculates the time interval error of a data or clock signal with respect to an ideal ``golden" clock (typically
-obtained from a CDR PLL).
-
-(This filter description is a stub and will be expanded in the future)
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak

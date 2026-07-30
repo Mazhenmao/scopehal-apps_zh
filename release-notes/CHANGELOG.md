@@ -64,6 +64,7 @@ This is a running list of significant bug fixes and new features since the last 
 * Filters: Added AMBA APB protocol decoder
 * Filters: Added digital-to-analog filter to convert a digital scalar value (e.g. from a VIO) to an analog value
 * Filters: Added Ethernet clause 73 (base-KX copper backplane) autonegotiation decoder (https://github.com/ngscopeclient/scopehal/pull/1074)
+* Filters: Added initial version of DisplayPort main link protocol decode (https://github.com/ngscopeclient/scopehal/issues/756). Work in progress, only supports a single RGB24 lane using the 8b/10b line code at RBR/HBR/HBR2/HBR3 bit rates; 128/132b, multi lane, and other color spaces are not yet supported.
 * Filters: Invert now works on digital signals as well as analog (https://github.com/ngscopeclient/scopehal/issues/1088)
 * Filters: 100baseT1 now has configurable decision thresholds for better decoding of weak signals
 * Filters: CDR PLL now outputs the input signal sampled by the recovered clock in a second data stream (https://github.com/ngscopeclient/scopehal/issues/991)
@@ -108,6 +109,8 @@ NOTE: This section only list changes which are potentially breaking to an *end u
   * PRBS Checker
 * The clock output of the I/Q Demux filter was removed as it was redundant.
 * The FSK Decoder filter was removed as it basically did the same thing as the Threshold filter
+* The CTLE filter no longer performs the equalization operation itself, it instead calculates S-parameters which must
+be applied with the Channel Emulation filter
 
 ## Bugs fixed since v0.1.1
 

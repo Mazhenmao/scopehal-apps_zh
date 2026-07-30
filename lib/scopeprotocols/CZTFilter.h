@@ -28,6 +28,8 @@ struct CZTPrepareInputArgs
 	uint32_t inputStep;
 	uint32_t inputLength;
 	uint32_t window;
+	uint32_t kernelRadius;
+	float mixerPhaseStep;
 	float startPhaseStep;
 	float theta;
 };
@@ -65,6 +67,7 @@ public:
 protected:
 	float GetWindowCoefficient(WindowFunction window, size_t i, size_t npoints) const;
 	float GetWindowGainCorrection(WindowFunction window) const;
+	void FindCztPeaks(UniformAnalogWaveform* cap);
 
 	FilterParameter& m_centerFrequency;
 	FilterParameter& m_bandwidth;
@@ -78,6 +81,7 @@ protected:
 	AcceleratorBuffer<float> m_chirpKernelFft;
 	AcceleratorBuffer<float> m_chirpProduct;
 	AcceleratorBuffer<float> m_chirpIfft;
+	AcceleratorBuffer<float> m_antialiasKernel;
 
 	ComputePipeline m_prepareInputPipeline;
 	ComputePipeline m_complexMultiplyPipeline;
@@ -91,6 +95,9 @@ protected:
 	size_t m_cachedKernelFftLen = 0;
 	size_t m_cachedKernelSpan = 0;
 	double m_cachedKernelTheta = 0;
+
+	///@brief Cache state for the windowed-sinc antialiasing kernel used before input decimation
+	size_t m_cachedAntialiasInputStep = 0;
 };
 
 #endif

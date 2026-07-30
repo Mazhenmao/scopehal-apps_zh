@@ -461,11 +461,11 @@ void PreferenceManager::InitializeDefaults()
 
 		auto& toolbar = appearance.AddCategory("Toolbar", "工具栏");
 			toolbar.AddPreference(
-				Preference::Enum("icon_size", 24)
-					.Label("Icon Size")
-					.Description("Toolbar icon size, in pixels")
-					.EnumValue("24x24", 24)
-					.EnumValue("48x48", 48)
+				Preference::Enum("toolbar_height", 2)
+					.Label("Toolbar Height")
+					.Description("Toolbar height, as a multiple of the font size")
+					.EnumValue("2x", 2)
+					.EnumValue("4x", 4)
 				);
 			toolbar.AddPreference(
 				Preference::Enum("icon_theme", ICON_THEME_DARK)

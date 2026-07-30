@@ -45,5 +45,6 @@ void main()
 	float im = (pr * s) + (pi * c);
 	float power = max((re*re + im*im) * powerScale, 1.17549435e-38);
 
-	dout[k] = 10 * log(power) / log(10);
+	// power is expressed in watts; convert to dBm to match FFTFilter's output scale.
+	dout[k] = (10 * log(power) / log(10)) + 30;
 }

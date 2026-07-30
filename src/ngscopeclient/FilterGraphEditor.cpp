@@ -1824,14 +1824,28 @@ void FilterGraphEditor::OutputPortTooltip(StreamDescriptor stream)
 			{
 				auto srate = stream.GetXAxisUnits().PrettyPrint(data->m_timescale);
 				auto ssamples = Unit(Unit::UNIT_SAMPLEDEPTH).PrettyPrint(data->size());
-				if(dynamic_cast<DensityFunctionWaveform*>(data))
-					ImGui::Text("二维密度图");
+				auto sxunit = stream.GetXAxisUnits().ToString();
+				auto syunit = stream.GetYAxisUnits().ToString();
+				auto sunit = syunit + " vs " + sxunit;
+				auto dplot = dynamic_cast<DensityFunctionWaveform*>(data);
+				auto size = Unit(Unit::UNIT_BYTES).PrettyPrint(data->GetMemoryBytes());
+				if(dplot)
+					ImGui::Text("二维密度图, %zu x %zu pixels", dplot->GetWidth(), dplot->GetHeight());
 				else if(dynamic_cast<UniformAnalogWaveform*>(data))
-					ImGui::Text("均匀采样模拟数据，%s，间隔 %s", ssamples.c_str(), srate.c_str());
-				else if(dynamic_cast<UniformDigitalWaveform*>(data))
-					ImGui::Text("均匀采样数字数据，%s，间隔 %s", ssamples.c_str(), srate.c_str());
+				{
+					ImGui::Text("均匀采样模拟数据, %s\n%s at %s 间隔, %s",
+						sunit.c_str(), ssamples.c_str(), srate.c_str(), size.c_str());
+				}
 				else if(dynamic_cast<SparseAnalogWaveform*>(data))
-					ImGui::Text("稀疏采样模拟数据，%s，分辨率 %s", ssamples.c_str(), srate.c_str());
+				{
+					ImGui::Text("稀疏采样模拟数据, %s\n%s at %s 分辨率, %s",
+						sunit.c_str(), ssamples.c_str(), srate.c_str(), size.c_str());
+				}
+				else if(dynamic_cast<UniformDigitalWaveform*>(data))
+				{
+					ImGui::Text("均匀采样数字数据, %s at %s 间隔",
+						ssamples.c_str(), srate.c_str());
+				}
 				else if(dynamic_cast<SparseDigitalWaveform*>(data))
 					ImGui::Text("稀疏采样数字数据，%s，分辨率 %s", ssamples.c_str(), srate.c_str());
 				else if(dynamic_cast<UniformWaveformBase*>(data))
@@ -2576,7 +2590,7 @@ void FilterGraphEditor::FilterSubmenu(StreamDescriptor stream, const string& nam
 				//If measurement, don't add trends by default
 				uint32_t flags = MainWindow::ADD_PLOT;
 				if(cat == Filter::CAT_MEASUREMENT )
-					flags = 0;
+					flags = MainWindow::ADD_MEASURE;
 				auto f = m_parent->CreateFilter(fname, flags, nullptr, stream);
 
 				//Get relative mouse position
@@ -2740,12 +2754,18 @@ bool FilterGraphEditor::DeleteFilter(Filter* node)
  */
 bool FilterGraphEditor::OnFilterDeleted(Filter* node, bool hasRenderRef)
 {
-	LogTrace("Deleting filter %s (rc=%zu)\n", node->GetDisplayName().c_str(), node->GetRefCount());
+	LogTrace("Deleting filter %s (%p, rc=%zu)\n",
+		node->GetDisplayName().c_str(), (void*) node, node->GetRefCount());
 	LogIndenter li;
 
 	//Ref the node so it doesn't self-delete too soon
 	node->AddRef();
 	LogTrace("Added temporary ref, rc=%zu\n", node->GetRefCount());
+
+	//See if it's a packet decoder
+	auto pd = dynamic_cast<PacketDecoder*>(node);
+	if(pd)
+		m_session->RemovePacketFilter(pd);
 
 	//Find sinks from each source stream, and break the links
 	auto nstreams = node->GetStreamCount();
