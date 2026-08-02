@@ -334,6 +334,7 @@ bool StreamBrowserDialog::renderCombo(
 	ImGui::PopStyleColor();
 	if(useColorForText)
 		ImGui::PopStyleColor();
+
 	return changed;
 }
 
@@ -1527,6 +1528,7 @@ void StreamBrowserDialog::renderChannelNode(
 	auto psuchan = dynamic_cast<PowerSupplyChannel *>(channel);
 	auto awgchan = dynamic_cast<FunctionGeneratorChannel *>(channel);
 	auto dmmchan = dynamic_cast<MultimeterChannel *>(channel);
+	auto vioout = dynamic_cast<VIOOutputChannel*>(channel);
 	bool renderProps = false;
 	if (scopechan)
 	{
@@ -1621,7 +1623,7 @@ void StreamBrowserDialog::renderChannelNode(
 	if (scopechan)
 	{
 		// bool chanEnabled = scopechan->IsEnabled();
-		
+
 		//"trigger" badge on trigger inputs to show they're not displayable channels
 		if(scopechan->GetType(0) == Stream::STREAM_TYPE_TRIGGER)
 			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.instrument_disabled_badge_color")), "TRIG ONLY", "TRIG","--", nullptr);
@@ -1642,7 +1644,7 @@ void StreamBrowserDialog::renderChannelNode(
 					scope->EnableChannel(channelIndex);
 			}
 			//renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.instrument_disabled_badge_color")), "DISABLED", "DISA","--", nullptr);
-		} 
+		}
 		*/
 
 		//Download in progress
@@ -1665,6 +1667,16 @@ void StreamBrowserDialog::renderChannelNode(
 				}
 				*/
 			}
+		}
+	}
+	else if(vioout)
+	{
+		//If this is a VIO output channel that has no input connected, and is 1 bit wide, show a toggle
+		if( (vioout->GetInput(0).m_channel == nullptr) && (vioout->GetWidth() == 1) )
+		{
+			bool active = (vioout->GetInternalValue() != 0);
+			if(renderOnOffToggle("###active", true, active, "0", "1"))
+				vioout->SetInternalValue(active);
 		}
 	}
 	else if(psu)

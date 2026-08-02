@@ -2787,23 +2787,114 @@ color.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Divide}
+\label{filter:divide}
 
-Divides one waveform by another.
+This filter adds two inputs. Either input may be a vector (waveform) or scalar.
 
-(This filter description is a stub and will be expanded in the future)
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/divide.png}
+\caption{Example usage of dividing a waveform by a constant}
+\label{filter_add}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\medimage{ng-images/filters/graph-divide.png}
+\caption{Example filter graph dividing a waveform by a constant}
+\label{filter_graph_add}
+\end{figure}
+\FloatBarrier
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+a & Analog waveform or scalar & Dividend\\
+\thinhline
+b & Analog waveform or scalar & Divisor\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+If both inputs are vectors, this filter outputs a waveform containing the pairwise quotient; i.e. sample $i$ of the output
+is $a[i] / b[i]$. No resampling is performed on the inputs so incorrect or unexpected results may occur if they do not
+share the same timebase. Both inputs must be the same type (both sparse or both uniform), mixing sparse and uniform
+(even if the sample timestamps are the same) is not allowed.
+
+If both inputs are scalars, this filter outputs $a / b$.
+
+If one input is a vector and the other is a scalar, this filter outputs the sum  of the scalar and each element of the
+waveform, i.e. sample $i$ of the output is $a / b[i]$ for the scalar + vector case and $a[i] / b$ for the vector +
+scalar.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Downconvert}
+\label{filter:downconvert}
 
-Performs digital downconversion by mixing a directly sampled RF signal with a two-phase local oscillator, then outputs
-the downconverted signal. No LO rejection filtering or decimation is performed.
+Performs digital downconversion by mixing a directly sampled RF signal with two phases of a local oscillator, then
+outputs the quadrature mix products. No LO rejection filtering or decimation is performed in the current version of the
+filter so these must be performed using external blocks.\footnote{In the future, as we build out a more complete RF
+toolbox in ngscopeclient, we may merge some of these functions into the downconvert block to improve performance and
+ease setup. Expect the interface to this block to change in future versions.}
 
-(This filter description is a stub and will be expanded in the future)
+The optional LOFrequency scalar input can be used to dynamically control the LO from another filter block and, if
+connected, overrides the LO Frequency parameter.\footnote{This is also likely not to be the final interface of the
+block; we are exploring various ways to unify parameters and scalar inputs and intend to merge them in some way in
+the future.}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/downconvert.png}
+\caption{Example usage of downconverting a 2.437 GHz Wi-Fi signal to zero IF and displaying a spectrogram}
+\label{filter_downconvert}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-downconvert.png}
+\caption{Example filter graph downconverting a 2.437 GHz Wi-Fi signal to zero IF, decimating and filtering, and
+displaying a spectrogram}
+\label{filter_graph_downconvert}
+\end{figure}
+\FloatBarrier
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+RF & Analog waveform & Directly sampled RF waveform\\
+\thinhline
+LOFrequency & Analog scalar & Optional LO frequency override\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+LO Frequency & Int & Local oscillator frequency\\
+\thickhline
+\end{tabularx}
+
+\subsection{Output Signal}
+
+This filter outputs two analog waveforms containing the I/Q mix products.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Downsample}
+\label{filter:downsample}
 
 Optionally low-pass filters a signal to prevent aliasing, then decimates by an integer factor.
 
@@ -2852,6 +2943,7 @@ This filter outputs a decimated version of the input.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{DRAM Clocks}
+\label{filter:dramclocks}
 
 Given a DRAM command bus and a DQS strobe, produce separate gated DQ clock streams for read and write bursts.
 
@@ -2860,6 +2952,7 @@ Given a DRAM command bus and a DQS strobe, produce separate gated DQ clock strea
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{DRAM Trcd}
+\label{filter:dramtrcd}
 
 Calculates $T_{rcd}$ (RAS-to-CAS delay) for each newly opened row in a DRAM command bus stream.
 
@@ -2868,6 +2961,7 @@ Calculates $T_{rcd}$ (RAS-to-CAS delay) for each newly opened row in a DRAM comm
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{DRAM Trfc}
+\label{filter:dramtrfc}
 
 Calculates $T_{rfc}$ (refresh-to-refresh delay) for each refresh operation in a DRAM command bus stream.
 
@@ -2876,6 +2970,7 @@ Calculates $T_{rfc}$ (refresh-to-refresh delay) for each refresh operation in a 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Duty Cycle}
+\label{filter:dutycycle}
 
 Calculates the duty cycle of a bimodal waveform. The duty cycle is defined as the percentage of time spent in the high
 state divided by the period.
@@ -2973,6 +3068,7 @@ The output is a sequence of DVI scan lines including RGB pixel values.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Emphasis}
+\label{filter:emphasis}
 
 Adds pre/de emphasis to a signal by convolving it with a tapped delay line filter. This introduces a small phase shift.
 
@@ -3023,6 +3119,7 @@ The output is an analog signal with the requested amount of emphasis applied.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Emphasis Removal}
+\label{filter:emphasisremoval}
 
 Removes pre/de emphasis from a signal by convolving it with a tapped delay line filter. This introduces a small phase
 shift.
@@ -3034,14 +3131,14 @@ emphasis can increase the eye opening in the digitized signal and make interpret
 \centering
 \bigimage{ng-images/filters/emphasis-removal.png}
 \caption{Example of applying 6 dB of de-emphasis to a 1.25 Gbps 8B/10B signal then removing it}
-\label{filter_emphasis}
+\label{filter_emphasisremoval}
 \end{figure}
 
 \begin{figure}[h]
 \centering
 \bigimage{ng-images/filters/graph-emphasis-removal.png}
 \caption{Example filter graph showing usage of emphasis removal filter}
-\label{filter_emphasis}
+\label{filter_graph_emphasisremoval}
 \end{figure}
 
 \FloatBarrier
@@ -3085,8 +3182,24 @@ whose true value is midway between two ADC codes will randomly fluctuate between
 average equal to the true value.
 
 Each half bit of resolution reduces the bandwidth by an additional factor of two beyond the Nyquist limit. For example,
-a 1.5 bit resolution improvement reduces the bandwith to Fnyquist / 8. The filter properties dialog displays the
-calculated -3 dB bandwidth based on the current input sample rate.
+a 1.5 bit resolution improvement reduces the bandwith to $F_{nyquist} / 8$, or 1/16 the sampling frequency. The filter
+properties dialog displays the calculated -3 dB bandwidth based on the current input sample rate.
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/eres.png}
+\caption{Example showing a squarewave with 1 and 2 bits of enhanced resolution}
+\label{filter_eres}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\medimage{ng-images/filters/graph-eres.png}
+\caption{Example filter graph showing usage of enhanced resolution filter}
+\label{filter_graph_eres}
+\end{figure}
+
+\FloatBarrier
 
 \subsection{Inputs}
 
@@ -3105,42 +3218,213 @@ in & Analog & Input signal\\
 \textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
 \thickhline
 Bits & Enum & Number of additional bits of resolution to add\\
+\thinhline
+Cutoff Frequency & Int & Calculated -3 dB cutoff of the filter\\
 \thickhline
 \end{tabularx}
+
+\subsection{Output Signal}
+
+The output is an analog signal containing the filtered version of the input.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Envelope}
 \label{filter:envelope}
 
-Finds the minimum and maximum of each sample in the input over time, and outputs them as separate streams.
+Finds the minimum and maximum of each sample in the input over time, and outputs them as separate streams. In other
+words, sample N of the output is the min/max of the Nth sample of all waveforms processed by the filter.
 
-(This filter description is a stub and will be expanded in the future)
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/envelope.png}
+\caption{Example showing envelope of a signal}
+\label{filter_envelope}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\medimage{ng-images/filters/graph-envelope.png}
+\caption{Example filter graph showing usage of envelope filter}
+\label{filter_graph_envelope}
+\end{figure}
+
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+in & Analog & Input signal\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+The output is two analog signals called ``min" and ``max", containing the lower and upper envelope boundaries of the
+signal.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Ethernet - 10baseT}
+\label{filter:10baset}
 
 Decodes the 10base-T Ethernet PCS/PMA as specified in IEEE 802.3-2018 clause 14.
 
-(This filter description is a stub and will be expanded in the future)
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/10baset.png}
+\caption{Example showing decode of a 10baseT signal}
+\label{filter_10baset}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-10baset.png}
+\caption{Example filter graph showing usage of 10baseT decode}
+\label{filter_graph_10baset}
+\end{figure}
+
+\FloatBarrier
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+din & Analog & Input signal\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+This filter takes no parameters.
+
+\subsection{Output Signal}
+
+This filter outputs a stream of Ethernet sample objects which may be passed to upper layer decodes or exported to a
+PCAPNG file.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Ethernet - 100baseT1}
+\label{filter:100baset1}
 
 Decodes the 100base-T1 single-pair / automotive Ethernet PMA/PCS, as specified in IEEE 802.3-2018 clause 96.
 
-(This filter description is a stub and will be expanded in the future)
+Due to the bidirectional nature of 100baseT1 signaling, it is \emph{not} possible to decode this protocol by simply
+placing probes on the differential pair. A dedicated test fixture with two dual directional couplers must be used, and
+there is typically enough crosstalk between the forward and reverse coupled path that the
+\hyperref[filter:couplerdbed]{Coupler De-Embed} filter (which requires connections to both the forward and reverse
+coupled ports of both differential legs) must be used to improve directivity.
+
+Additionally, the 100baseT1 PHY uses 2D-PAM3 signaling which must be demuxed into separate I and Q channels by the
+\hyperref[filter:iqdemux]{IQ Demux} block before decoding.
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/100baset1.png}
+\caption{Example showing decode of a 100baseT1 signal}
+\label{filter_100baset1}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-100baset1.png}
+\caption{Example filter graph showing usage of 100baseT1 decode}
+\label{filter_graph_100baset1}
+\end{figure}
+
+\FloatBarrier
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+i & Analog & Input signal, I channel\\
+\thinhline
+q & Analog & Input signal, Q channel\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+Scrambler Polynomial & Enum & Select the correct LFSR polynomial depending on which side of the link is being decoded\\
+\thinhline
+Threshold I+ & Float & Decision threshold between 0 and +1 states on the I channel\\
+\thinhline
+Threshold I- & Float & Decision threshold between -1 and 0 states on the I channel\\
+\thinhline
+Threshold Q+ & Float & Decision threshold between 0 and +1 states on the Q channel\\
+\thinhline
+Threshold Q- & Float & Decision threshold between -1 and 0 states on the Q channel\\
+\thickhline
+\end{tabularx}
+
+\subsection{Output Signal}
+
+This filter outputs a stream of Ethernet sample objects which may be passed to upper layer decodes or exported to a
+PCAPNG file.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{Ethernet - 100baseT1 Link Training}
+\label{filter:100baset1-training}
 
 Decodes the link training stage of 100base-T1 single-pair / automotive Ethernet, as specified in IEEE
-802.3-2018 clause 96.
+802.3-2018 clause 96. As with the \hyperref[filter:100baset1]{100baseT1} decode, this filter requires special fixturing
+to acquire the necessary signals for a decode.
 
-(This filter description is a stub and will be expanded in the future)
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/100baset1-training.png}
+\caption{Example showing decode of a 100baseT1 training signal}
+\label{filter_100baset1_training}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\bigimage{ng-images/filters/graph-100baset1-training.png}
+\caption{Example filter graph showing usage of 100baseT1 training decode}
+\label{filter_graph_100baset1_training}
+\end{figure}
+
+\FloatBarrier
+\subsection{Inputs}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Signal name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+i & Analog & Input signal, I channel\\
+\thinhline
+q & Analog & Input signal, Q channel\\
+\thickhline
+\end{tabularx}
+
+\subsection{Parameters}
+
+\begin{tabularx}{16cm}{llX}
+\thickhline
+\textbf{Parameter name} & \textbf{Type} & \textbf{Description} \\
+\thickhline
+Scrambler Polynomial & Enum & Select the correct LFSR polynomial depending on which side of the link is being decoded\\
+\thickhline
+\end{tabularx}
+
+\subsection{Output Signal}
+
+This filter outputs a stream of decode state values indicating whether the link is in SEND\_Z, SEND\_I, or SEND\_N
+state.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
@@ -3869,6 +4153,7 @@ Internet Protocol version 4
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \pagebreak
 \section{IQ Demux}
+\label{filter:iqdemux}
 
 Given a sampled data waveform containing consecutively sampled I and Q values, output separate
 sampled I and Q waveforms and a half-rate clock.

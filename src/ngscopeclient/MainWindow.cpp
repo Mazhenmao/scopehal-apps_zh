@@ -558,6 +558,10 @@ void MainWindow::DoRender(vk::raii::CommandBuffer& /*cmdBuf*/)
  */
 void MainWindow::ToneMapAllWaveforms(vk::raii::CommandBuffer& cmdbuf)
 {
+	#ifdef HAVE_NVTX
+		nvtx3::scoped_range range("ToneMapAllWaveforms");
+	#endif
+
 	double start = GetTime();
 
 	lock_guard<mutex> lock(m_session.GetRasterizedWaveformMutex());
@@ -584,6 +588,8 @@ void MainWindow::RenderWaveformTextures(
 	vk::raii::CommandBuffer& cmdbuf,
 	vector<shared_ptr<InputDescriptor> >& channels)
 {
+	NamedDebugRange shaderRange(cmdbuf, "MainWindow::RenderWaveformTextures");
+
 	bool clear = m_clearPersistence.exchange(false);
 	vector<shared_ptr<WaveformGroup>> groups;
 	{

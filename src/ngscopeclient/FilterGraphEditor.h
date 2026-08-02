@@ -168,8 +168,6 @@ public:
 	FilterGraphErrorWindow& GetErrorWindow()
 	{ return m_errorWindow; }
 
-	bool DeleteFilter(Filter* node);
-
 protected:
 	friend class FilterGraphGroup;
 
@@ -198,7 +196,7 @@ protected:
 	void HandleLinkCreationRequests(Filter*& fReconfigure);
 	bool HandleDeletionRequests(Filter*& fReconfigure);
 	bool OnNodeDeleted(FlowGraphNode* node);
-	bool OnFilterDeleted(Filter* node, bool hasRenderRef);
+	bool OnFilterDeleted(Filter* node);
 	void HandleBackgroundContextMenu();
 	void DoAddMenu();
 	std::vector<ax::NodeEditor::NodeId> GetSelectedNodeIDs();

@@ -2732,7 +2732,7 @@ bool FilterGraphEditor::OnNodeDeleted(FlowGraphNode* node)
 
 	auto f = dynamic_cast<Filter*>(node);
 	if(f)
-		return OnFilterDeleted(f, true);
+		return OnFilterDeleted(f);
 
 	//If we get here we don't know what to do
 	LogTrace("Unrecognized node type, can't delete\n");
@@ -2740,19 +2740,11 @@ bool FilterGraphEditor::OnNodeDeleted(FlowGraphNode* node)
 }
 
 /**
-	@brief Delete a filter using the same cleanup path as the filter graph delete command
- */
-bool FilterGraphEditor::DeleteFilter(Filter* node)
-{
-	return OnFilterDeleted(node, false);
-}
-
-/**
 	@brief Handle deletion requests for filters in particular
 
 	@return True if successfully deleted, false if not
  */
-bool FilterGraphEditor::OnFilterDeleted(Filter* node, bool hasRenderRef)
+bool FilterGraphEditor::OnFilterDeleted(Filter* node)
 {
 	LogTrace("Deleting filter %s (%p, rc=%zu)\n",
 		node->GetDisplayName().c_str(), (void*) node, node->GetRefCount());
