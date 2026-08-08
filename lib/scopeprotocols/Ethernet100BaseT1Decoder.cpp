@@ -192,6 +192,8 @@ void Ethernet100BaseT1Decoder::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_p
 		#endif
 
 		cmdBuf.begin({});
+		{
+			NamedDebugRange debugRange(cmdBuf, "Symbol decode");
 
 			m_pam3DecodeComputePipeline->Bind(cmdBuf);
 
@@ -204,24 +206,32 @@ void Ethernet100BaseT1Decoder::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_p
 			}
 
 			//Decode I channel
-			m_pam3DecodeComputePipeline->BindBufferNonblocking(0, din_i->m_samples, cmdBuf);
-			m_pam3DecodeComputePipeline->BindBufferNonblocking(1, m_pointsI, cmdBuf, true);
-			m_pam3DecodeComputePipeline->DispatchNoRebind(
-				cmdBuf,
-				cfgI,
-				min(compute_block_count, 32768u),
-				compute_block_count / 32768 + 1);
-			m_pointsI.MarkModifiedFromGpu();
+			{
+				NamedDebugRange shaderRange(cmdBuf, "I channel");
+
+				m_pam3DecodeComputePipeline->BindBufferNonblocking(0, din_i->m_samples, cmdBuf);
+				m_pam3DecodeComputePipeline->BindBufferNonblocking(1, m_pointsI, cmdBuf, true);
+				m_pam3DecodeComputePipeline->DispatchNoRebind(
+					cmdBuf,
+					cfgI,
+					min(compute_block_count, 32768u),
+					compute_block_count / 32768 + 1);
+				m_pointsI.MarkModifiedFromGpu();
+			}
 
 			//Decode Q channel
-			m_pam3DecodeComputePipeline->BindBufferNonblocking(0, din_q->m_samples, cmdBuf);
-			m_pam3DecodeComputePipeline->BindBufferNonblocking(1, m_pointsQ, cmdBuf, true);
-			m_pam3DecodeComputePipeline->DispatchNoRebind(
-				cmdBuf,
-				cfgQ,
-				min(compute_block_count, 32768u),
-				compute_block_count / 32768 + 1);
-			m_pointsQ.MarkModifiedFromGpu();
+			{
+				NamedDebugRange shaderRange(cmdBuf, "Q channel");
+
+				m_pam3DecodeComputePipeline->BindBufferNonblocking(0, din_q->m_samples, cmdBuf);
+				m_pam3DecodeComputePipeline->BindBufferNonblocking(1, m_pointsQ, cmdBuf, true);
+				m_pam3DecodeComputePipeline->DispatchNoRebind(
+					cmdBuf,
+					cfgQ,
+					min(compute_block_count, 32768u),
+					compute_block_count / 32768 + 1);
+				m_pointsQ.MarkModifiedFromGpu();
+			}
 
 			//Copy points to CPU if needed for software decoding
 			if(!g_hasShaderInt64)
@@ -229,7 +239,7 @@ void Ethernet100BaseT1Decoder::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_p
 				m_pointsI.PrepareForCpuAccessNonblocking(cmdBuf);
 				m_pointsQ.PrepareForCpuAccessNonblocking(cmdBuf);
 			}
-
+		}
 		cmdBuf.end();
 		queue->SubmitAndBlock(cmdBuf);
 	}
@@ -296,28 +306,32 @@ void Ethernet100BaseT1Decoder::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_p
 				nvtx3::scoped_range nrange2("Descramble");
 			#endif
 
-			//Allocate scratch space
-			tmp_vstarts->resize(cfg.maxOutputPerThread * nthreads);
-			tmp_vscramblers->resize(cfg.maxOutputPerThread * nthreads);
+			{
+				NamedDebugRange shaderRange(cmdBuf, "Descramble");
 
-			//Run the shader
-			m_descrambleComputePipeline->BindBufferNonblocking(0, m_pointsI, cmdBuf);
-			m_descrambleComputePipeline->BindBufferNonblocking(1, m_pointsQ, cmdBuf);
-			m_descrambleComputePipeline->BindBufferNonblocking(2, *tmp_vstarts, cmdBuf, true);
-			m_descrambleComputePipeline->BindBufferNonblocking(3, *tmp_vscramblers, cmdBuf, true);
+				//Allocate scratch space
+				tmp_vstarts->resize(cfg.maxOutputPerThread * nthreads);
+				tmp_vscramblers->resize(cfg.maxOutputPerThread * nthreads);
 
-			m_descrambleComputePipeline->Dispatch(
-				cmdBuf,
-				cfg,
-				min(compute_block_count, 32768u),
-				compute_block_count / 32768 + 1);
+				//Run the shader
+				m_descrambleComputePipeline->BindBufferNonblocking(0, m_pointsI, cmdBuf);
+				m_descrambleComputePipeline->BindBufferNonblocking(1, m_pointsQ, cmdBuf);
+				m_descrambleComputePipeline->BindBufferNonblocking(2, *tmp_vstarts, cmdBuf, true);
+				m_descrambleComputePipeline->BindBufferNonblocking(3, *tmp_vscramblers, cmdBuf, true);
 
-			tmp_vstarts->MarkModifiedFromGpu();
-			tmp_vscramblers->MarkModifiedFromGpu();
+				m_descrambleComputePipeline->Dispatch(
+					cmdBuf,
+					cfg,
+					min(compute_block_count, 32768u),
+					compute_block_count / 32768 + 1);
 
-			//Grab the output
-			tmp_vstarts->PrepareForCpuAccessNonblocking(cmdBuf);
-			tmp_vscramblers->PrepareForCpuAccessNonblocking(cmdBuf);
+				tmp_vstarts->MarkModifiedFromGpu();
+				tmp_vscramblers->MarkModifiedFromGpu();
+
+				//Grab the output
+				tmp_vstarts->PrepareForCpuAccessNonblocking(cmdBuf);
+				tmp_vscramblers->PrepareForCpuAccessNonblocking(cmdBuf);
+			}
 
 			cmdBuf.end();
 			queue->SubmitAndBlock(cmdBuf);
@@ -343,6 +357,14 @@ void Ethernet100BaseT1Decoder::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_p
 				size_t numEntries = pstart[outbase];
 				if(numEntries != 0)
 				{
+					if(numEntries > cfg.maxOutputPerThread)
+					{
+						LogError("GPU reported implausible number of packets %zu, should be <= %u\n",
+							numEntries,
+							cfg.maxOutputPerThread);
+						continue;
+					}
+
 					for(size_t j=0; j<numEntries; j++)
 					{
 						packetStarts->push_back(pstart[outbase + j + 1]);
@@ -378,36 +400,41 @@ void Ethernet100BaseT1Decoder::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_p
 			gpuBytes->resize(bufsize);
 
 			cmdBuf.begin({});
-			BaseT1DecodeConstants dcfg;
-			dcfg.npackets = npackets;
-			dcfg.maxPacketBytes = maxPacketBytes;
-			dcfg.inputLength = ilen;
-			dcfg.masterMode = masterMode;
 
-			m_decodeComputePipeline->BindBufferNonblocking(0, m_pointsI, cmdBuf);
-			m_decodeComputePipeline->BindBufferNonblocking(1, m_pointsQ, cmdBuf);
-			m_decodeComputePipeline->BindBufferNonblocking(2, *packetStarts, cmdBuf);
-			m_decodeComputePipeline->BindBufferNonblocking(3, *packetScramblers, cmdBuf);
-			m_decodeComputePipeline->BindBufferNonblocking(4, *gpuBytes, cmdBuf, true);
-			m_decodeComputePipeline->BindBufferNonblocking(5, *gpuStarts, cmdBuf, true);
-			m_decodeComputePipeline->BindBufferNonblocking(6, *gpuEnds, cmdBuf, true);
-			m_decodeComputePipeline->BindBufferNonblocking(7, din_i->m_offsets, cmdBuf);
-			m_decodeComputePipeline->BindBufferNonblocking(8, din_i->m_durations, cmdBuf);
+			{
+				NamedDebugRange shaderRange(cmdBuf, "Decode");
 
-			auto decodeBlockCount = GetComputeBlockCount(npackets, 32);
-			m_decodeComputePipeline->Dispatch(
-				cmdBuf,
-				dcfg,
-				min(decodeBlockCount, 32768u),
-				decodeBlockCount / 32768 + 1);
+				BaseT1DecodeConstants dcfg;
+				dcfg.npackets = npackets;
+				dcfg.maxPacketBytes = maxPacketBytes;
+				dcfg.inputLength = ilen;
+				dcfg.masterMode = masterMode;
 
-			gpuStarts->MarkModifiedFromGpu();
-			gpuEnds->MarkModifiedFromGpu();
-			gpuBytes->MarkModifiedFromGpu();
+				m_decodeComputePipeline->BindBufferNonblocking(0, m_pointsI, cmdBuf);
+				m_decodeComputePipeline->BindBufferNonblocking(1, m_pointsQ, cmdBuf);
+				m_decodeComputePipeline->BindBufferNonblocking(2, *packetStarts, cmdBuf);
+				m_decodeComputePipeline->BindBufferNonblocking(3, *packetScramblers, cmdBuf);
+				m_decodeComputePipeline->BindBufferNonblocking(4, *gpuBytes, cmdBuf, true);
+				m_decodeComputePipeline->BindBufferNonblocking(5, *gpuStarts, cmdBuf, true);
+				m_decodeComputePipeline->BindBufferNonblocking(6, *gpuEnds, cmdBuf, true);
+				m_decodeComputePipeline->BindBufferNonblocking(7, din_i->m_offsets, cmdBuf);
+				m_decodeComputePipeline->BindBufferNonblocking(8, din_i->m_durations, cmdBuf);
 
-			gpuStarts->PrepareForCpuAccessNonblocking(cmdBuf);
-			gpuEnds->PrepareForCpuAccessNonblocking(cmdBuf);
-			gpuBytes->PrepareForCpuAccessNonblocking(cmdBuf);
+				auto decodeBlockCount = GetComputeBlockCount(npackets, 32);
+				m_decodeComputePipeline->Dispatch(
+					cmdBuf,
+					dcfg,
+					min(decodeBlockCount, 32768u),
+					decodeBlockCount / 32768 + 1);
+
+				gpuStarts->MarkModifiedFromGpu();
+				gpuEnds->MarkModifiedFromGpu();
+				gpuBytes->MarkModifiedFromGpu();
+
+				gpuStarts->PrepareForCpuAccessNonblocking(cmdBuf);
+				gpuEnds->PrepareForCpuAccessNonblocking(cmdBuf);
+				gpuBytes->PrepareForCpuAccessNonblocking(cmdBuf);
+			}
 
 			cmdBuf.end();
 			queue->SubmitAndBlock(cmdBuf);
@@ -425,6 +452,13 @@ void Ethernet100BaseT1Decoder::Refresh(vk::raii::CommandBuffer& cmdBuf, shared_p
 			uint32_t length = (*gpuStarts)[base];
 			if(length == 0)
 				continue;
+
+			//Sanity check
+			if(length > maxPacketBytes)
+			{
+				LogError("Got implausible frame length %u (should not be more than %zu)\n", length, maxPacketBytes);
+				continue;
+			}
 
 			bytes.resize(length);
 			starts.resize(length);

@@ -5,6 +5,7 @@ This is a running list of significant bug fixes and new features since the last 
 ## New features since v0.1.1
 
 * Core: added official support and binary release for Debian aarch64
+* Core: Improvements to filter graph scheduler to more efficiently batch workloads going to the GPU.
 * Core: Changed rate limiting sleep in InstrumentThread loop from 10ms to 1ms to avoid bogging down high performance instruments like the ThunderScope
 * Core: Scopesession loading now uses multithreaded IO for significant performance gains especially when many channels and deep history are involved
 * Core: Significant rewrite of Vulkan queue allocation logic to reduce unnecessary locking and mutex contention on GPUs without a lot of Vulkan queues (most non-NVIDIA platforms)
@@ -74,6 +75,7 @@ This is a running list of significant bug fixes and new features since the last 
 * Filters: Peak detector for FFT etc now does quadratic interpolation for sub-sample peak fitting
 * Filters: Horizontal bathtub curve now works properly with MLT-3 / PAM-3 eyes as well as NRZ. No PAM-4 or higher support yet.
 * Filters: PcapNG export now has an additional mode selector for use with named pipes, allowing live streaming of PcapNG formatted data to WireShark
+* Filters: Un-bitrotted ParallelBus and RGMII decodes now that we have proper parallel data bus support again
 * GUI: Filter palette now uses case insensitive sorting rather than putting all capital letters before lowercase
 * GUI: Added performance counters for CPU/GPU copies to better identify bottlenecks
 * GUI: enabled mouseover BER measurements on MLT-3 / PAM-3 eyes as well as NRZ. No PAM-4 or higher support yet.
@@ -87,6 +89,7 @@ This is a running list of significant bug fixes and new features since the last 
 * GUI: Properties dialogs don't auto-spawn when filters (other than import filters) are created, to avoid unnecessary clutter
 * GUI: Removed hard-to-find persistence settings dialog and just made persistence a slider on the toolbar
 * GUI: Redraw of toolbar artwork to improve readability and add icons for auto/force trigger (https://github.com/ngscopeclient/scopehal-apps/issues/791)
+* GUI: Improved cursor hit-testing logic to be more intuitive (https://github.com/ngscopeclient/scopehal-apps/issues/965)
 * Build: Added reproducible tarball to CI/release (https://github.com/ngscopeclient/scopehal-apps/pull/911)
 
 ## Breaking changes since v0.1.1
@@ -138,6 +141,7 @@ be applied with the Channel Emulation filter
 * GUI: crash when autoscaling an empty waveform (https://github.com/ngscopeclient/scopehal-apps/issues/978)
 * GUI: newly added measurement filters would not refresh until the next trigger (https://github.com/ngscopeclient/scopehal-apps/issues/997)
 * Session files: Windows build could not load session files containing sample rates or memory depths in excess of 2^32
+* MacOS: fixed too-big app icon (https://github.com/ngscopeclient/scopehal-apps/issues/982)
 
 ## Other changes since v0.1.1
 

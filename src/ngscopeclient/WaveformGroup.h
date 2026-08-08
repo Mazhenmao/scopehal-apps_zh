@@ -49,7 +49,7 @@ public:
 	void Clear();
 
 	bool Render();
-	void ToneMapAllWaveforms(vk::raii::CommandBuffer& cmdbuf);
+	void ToneMapAllWaveforms(vk::raii::CommandBuffer& cmdbuf, std::vector<vk::ImageMemoryBarrier>& barriers);
 	void ReferenceWaveformTextures();
 
 	void RenderWaveformTextures(
@@ -150,6 +150,21 @@ public:
 
 	bool IsDraggingTrigger()
 	{ return m_dragState == DRAG_STATE_TRIGGER; }
+
+	bool IsDraggingXCursor()
+	{ return (m_dragState == DRAG_STATE_X_CURSOR0) || (m_dragState == DRAG_STATE_X_CURSOR1); }
+
+	bool IsDraggingMarker()
+	{ return (m_dragState == DRAG_STATE_MARKER); }
+
+	bool IsDraggingSomething()
+	{ return (m_dragState != DRAG_STATE_NONE); }
+
+	bool IsMouseOverXCursor(int iCursor);
+	bool IsMouseOverYCursorInChild(bool ignoreCursorsPlacedThisFrame);
+
+	bool IsMouseOverAnyXCursor()
+	{ return IsMouseOverXCursor(0) || IsMouseOverXCursor(1); }
 
 	void AutofitHorizontal(float width);
 

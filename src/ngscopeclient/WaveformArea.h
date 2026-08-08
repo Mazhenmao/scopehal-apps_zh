@@ -472,7 +472,7 @@ public:
 		std::vector<std::shared_ptr<InputDescriptor> >& channels,
 		bool clearPersistence);
 	void ReferenceWaveformTextures();
-	void ToneMapAllWaveforms(vk::raii::CommandBuffer& cmdbuf);
+	void ToneMapAllWaveforms(vk::raii::CommandBuffer& cmdbuf, std::vector<vk::ImageMemoryBarrier>& barriers);
 
 	size_t GetStreamCount()
 	{ return m_inputs.size(); }
@@ -520,6 +520,14 @@ public:
 	virtual YAML::Node SerializeConfiguration(IDTable& table) override;
 	void LoadConfiguration(YAML::Node& node);
 
+	bool IsMouseOverYCursor(int iCursor, bool ignoreCursorsPlacedThisFrame);
+
+	bool IsMouseOverAnyYCursor(bool ignoreCursorsPlacedThisFrame)
+	{
+		return IsMouseOverYCursor(0, ignoreCursorsPlacedThisFrame) ||
+			IsMouseOverYCursor(1, ignoreCursorsPlacedThisFrame);
+	}
+
 protected:
 	void OnStreamAdded(StreamDescriptor desc);
 
@@ -559,11 +567,26 @@ protected:
 		std::string str,
 		ImU32 color);
 	void MakePathSignalBody(ImDrawList* list, float xstart, float xend, float ybot, float ymid, float ytop);
-	void ToneMapAnalogOrDigitalWaveform(std::shared_ptr<DisplayedChannel> channel, vk::raii::CommandBuffer& cmdbuf);
-	void ToneMapEyeWaveform(std::shared_ptr<DisplayedChannel> channel, vk::raii::CommandBuffer& cmdbuf);
-	void ToneMapConstellationWaveform(std::shared_ptr<DisplayedChannel> channel, vk::raii::CommandBuffer& cmdbuf);
-	void ToneMapWaterfallWaveform(std::shared_ptr<DisplayedChannel> channel, vk::raii::CommandBuffer& cmdbuf);
-	void ToneMapSpectrogramWaveform(std::shared_ptr<DisplayedChannel> channel, vk::raii::CommandBuffer& cmdbuf);
+	void ToneMapAnalogOrDigitalWaveform(
+		std::shared_ptr<DisplayedChannel> channel,
+		vk::raii::CommandBuffer& cmdbuf,
+		std::vector<vk::ImageMemoryBarrier>& barriers);
+	void ToneMapEyeWaveform(
+		std::shared_ptr<DisplayedChannel> channel,
+		vk::raii::CommandBuffer& cmdbuf,
+		std::vector<vk::ImageMemoryBarrier>& barriers);
+	void ToneMapConstellationWaveform(
+		std::shared_ptr<DisplayedChannel> channel,
+		vk::raii::CommandBuffer& cmdbuf,
+		std::vector<vk::ImageMemoryBarrier>& barriers);
+	void ToneMapWaterfallWaveform(
+		std::shared_ptr<DisplayedChannel> channel,
+		vk::raii::CommandBuffer& cmdbuf,
+		std::vector<vk::ImageMemoryBarrier>& barriers);
+	void ToneMapSpectrogramWaveform(
+		std::shared_ptr<DisplayedChannel> channel,
+		vk::raii::CommandBuffer& cmdbuf,
+		std::vector<vk::ImageMemoryBarrier>& barriers);
 	void RasterizeAnalogOrDigitalWaveform(
 		std::shared_ptr<DisplayedChannel> channel,
 		vk::raii::CommandBuffer& cmdbuf,
@@ -718,6 +741,9 @@ protected:
 	float m_yAxisCursorPositions[2];
 
 	void DoCursor(int iCursor, DragState state);
+
+	///@brief True if the Y axis cursors were just placed in the current frame
+	bool m_cursorPlacedThisFrame;
 };
 
 typedef std::pair<WaveformArea*, size_t> DragDescriptor;
