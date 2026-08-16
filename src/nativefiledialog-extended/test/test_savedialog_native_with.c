@@ -23,23 +23,33 @@ int main(void) {
 
 #ifdef _WIN32
     const wchar_t* defaultPath = L"Untitled.c";
+    const nfdnchar_t* title = L"Save your source file";
+    const nfdnchar_t* acceptLabel = L"Save it";
+    const nfdnchar_t* cancelLabel = L"Never mind";
 #else
     const char* defaultPath = "Untitled.c";
+    const nfdnchar_t* title = "Save your source file";
+    const nfdnchar_t* acceptLabel = "Save it";
+    const nfdnchar_t* cancelLabel = "Never mind";
 #endif
 
     // show the dialog
-    nfdsavedialognargs_t args = {0};
+    nfdsavedialogargs_t args = {0};
     args.filterList = filterItem;
     args.filterCount = 2;
     args.defaultName = defaultPath;
-    nfdresult_t result = NFD_SaveDialogN_With(&savePath, &args);
+    // customize the window title and button labels (leave any of these unset to use the OS default)
+    args.title = title;
+    args.acceptLabel = acceptLabel;
+    args.cancelLabel = cancelLabel;
+    nfdresult_t result = NFD_SaveDialog_With(&savePath, &args);
     if (result == NFD_OKAY) {
         puts("Success!");
 #ifdef _WIN32
 #ifdef _MSC_VER
         _putws(savePath);
 #else
-        fputws(savePath, stdin);
+        fputws(savePath, stdout);
 #endif
 #else
         puts(savePath);

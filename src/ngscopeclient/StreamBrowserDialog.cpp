@@ -1870,6 +1870,7 @@ void StreamBrowserDialog::renderChannelProperties(
 		scopechan->SetAttenuation(scopeState->m_committedAttenuation[channelIndex]);
 		scopeState->m_needsUpdate[channelIndex] = true;
 	}
+
 	//Only show coupling box if the instrument has configurable coupling
 	//Special case: LeCroy scopes return "Ring*" prefix for passive probes that still allow AC/DC coupling
 	string probeName = scopeState->m_probeName[channelIndex];
@@ -1892,6 +1893,7 @@ void StreamBrowserDialog::renderChannelProperties(
 		}
 		HelpMarker("Coupling configuration for the input");
 	}
+
 	//Bandwidth limiters (only show if more than one value available)
 	if(scopeState->m_bandwidthLimitNames[channelIndex].size() > 1)
 	{
@@ -1912,6 +1914,7 @@ void StreamBrowserDialog::renderChannelProperties(
 		}
 		HelpMarker("Hardware bandwidth limiter setting");
 	}
+
 	//If the probe supports inversion, show a checkbox for it
 	if(scope->CanInvert(channelIndex))
 	{
@@ -1969,7 +1972,12 @@ void StreamBrowserDialog::renderChannelProperties(
    @param renderName true if the name of the stream should be rendred as a selectable item
    @param renderProps true if a properties block should be rendered for this stream
  */
-void StreamBrowserDialog::renderStreamNode(shared_ptr<Instrument> instrument, InstrumentChannel* channel, size_t streamIndex, bool renderName, bool renderProps)
+void StreamBrowserDialog::renderStreamNode(
+	shared_ptr<Instrument> instrument,
+	InstrumentChannel* channel,
+	size_t streamIndex,
+	bool renderName,
+	bool renderProps)
 {
 	auto scope = std::dynamic_pointer_cast<Oscilloscope>(instrument);
 	auto scopechan = dynamic_cast<OscilloscopeChannel *>(channel);
@@ -2033,19 +2041,47 @@ void StreamBrowserDialog::renderStreamNode(shared_ptr<Instrument> instrument, In
 				switch (type)
 				{
 					case Stream::STREAM_TYPE_ANALOG:
+						if(!renderName)
 						{
-							if(!renderName)
-							{	// No streams => display channel properties here
-								renderChannelProperties(scope,scopechan,channelIndex,scopeState);
+							// No streams => display channel properties here
+							renderChannelProperties(scope,scopechan,channelIndex,scopeState);
+						}
+						{
+							//Check if the offset changed under us
+							auto actualOffset = scopechan->GetOffset(streamIndex);
+							if(scopeState->m_committedOffset[channelIndex][streamIndex] != actualOffset)
+							{
+								scopeState->m_committedOffset[channelIndex][streamIndex] = actualOffset;
+								scopeState->m_strOffset[channelIndex][streamIndex] = unit.PrettyPrint(actualOffset);
 							}
-							if(renderEditablePropertyWithExplicitApply(0,"垂直偏移",scopeState->m_strOffset[channelIndex][streamIndex],scopeState->m_committedOffset[channelIndex][streamIndex],unit))
+
+							//Ditto for range
+							auto actualRange = scopechan->GetVoltageRange(streamIndex);
+							if(scopeState->m_committedRange[channelIndex][streamIndex] != actualRange)
+							{
+								scopeState->m_committedRange[channelIndex][streamIndex] = actualRange;
+								scopeState->m_strRange[channelIndex][streamIndex] = unit.PrettyPrint(actualRange);
+							}
+
+							if(renderEditablePropertyWithExplicitApply(
+								0,
+								"偏移",
+								scopeState->m_strOffset[channelIndex][streamIndex],
+								scopeState->m_committedOffset[channelIndex][streamIndex],
+								unit))
 							{	// Update offset
-								scopechan->SetOffset(scopeState->m_committedOffset[channelIndex][streamIndex],streamIndex);
+								scopechan->SetOffset(
+									scopeState->m_committedOffset[channelIndex][streamIndex], streamIndex);
 								scopeState->m_needsUpdate[channelIndex] = true;
 							}
-							if(renderEditablePropertyWithExplicitApply(0,"垂直量程",scopeState->m_strRange[channelIndex][streamIndex],scopeState->m_committedRange[channelIndex][streamIndex],unit))
+							if(renderEditablePropertyWithExplicitApply(
+								0,
+								"垂直量程",
+								scopeState->m_strRange[channelIndex][streamIndex],
+								scopeState->m_committedRange[channelIndex][streamIndex],unit))
 							{	// Update offset
-								scopechan->SetVoltageRange(scopeState->m_committedRange[channelIndex][streamIndex],streamIndex);
+								scopechan->SetVoltageRange(
+									scopeState->m_committedRange[channelIndex][streamIndex],streamIndex);
 								scopeState->m_needsUpdate[channelIndex] = true;
 							}
 						}
@@ -2055,15 +2091,21 @@ void StreamBrowserDialog::renderStreamNode(shared_ptr<Instrument> instrument, In
 						{
 							if(scope->IsDigitalThresholdConfigurable())
 							{
-								if(renderEditableProperty(0,"Threshold",scopeState->m_strDigitalThreshold[channelIndex],scopeState->m_committedDigitalThreshold[channelIndex],unit))
+								if(renderEditableProperty(
+									0,
+									"Threshold",
+									scopeState->m_strDigitalThreshold[channelIndex],
+									scopeState->m_committedDigitalThreshold[channelIndex],unit))
 								{	// Update offset
-									scopechan->SetDigitalThreshold(scopeState->m_committedDigitalThreshold[channelIndex]);
+									scopechan->SetDigitalThreshold(
+										scopeState->m_committedDigitalThreshold[channelIndex]);
 									scopeState->m_needsUpdate[channelIndex] = true;
 								}
 							}
 							else
 							{
-								auto threshold_txt = unit.PrettyPrint(scope->GetDigitalThreshold(scopechan->GetIndex()));
+								auto threshold_txt = unit.PrettyPrint(
+									scope->GetDigitalThreshold(scopechan->GetIndex()));
 								renderReadOnlyProperty(0,"Threshold", threshold_txt);
 							}
 							break;

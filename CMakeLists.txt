@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(ngscopeclient VERSION 0.1.1)
+project(ngscopeclient VERSION 0.2)
 include_directories(cmake) #WORKAROUND needed for find_package(Vulkan) for Vulkan SDK
 enable_language(CXX)
 
@@ -87,7 +87,7 @@ if(Git_FOUND OR NGSCOPECLIENT_PACKAGE_VERSION)
 
 else()
 	set(NGSCOPECLIENT_VERSION "unknown")
-	set(MSI_VERSION "0.1")
+	set(MSI_VERSION "0.2")
 	message("Git not detected, scopehal-apps version unknown")
 endif()
 
@@ -139,7 +139,7 @@ endif()
 
 # Compiler warnings specific to GCC or Clang
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 13)
-	add_compile_options(-Woverloaded-virtual=1)
+	add_compile_options($<$<COMPILE_LANG_AND_ID:CXX,GNU>:-Woverloaded-virtual=1>)
 elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Woverloaded-virtual -Wpointer-sign -Wno-gnu-zero-variadic-macro-arguments -Wno-unknown-warning-option)
 endif()
@@ -171,6 +171,7 @@ endif()
 
 # Package detection
 find_package(PkgConfig MODULE REQUIRED)
+find_package(ZLIB REQUIRED)
 
 # yaml-cpp is used in scopehal and ngscopeclient
 find_package(yaml-cpp REQUIRED)

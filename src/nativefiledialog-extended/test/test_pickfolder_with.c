@@ -14,8 +14,12 @@ int main(void) {
     nfdchar_t* outPath;
 
     // show the dialog
-    nfdpickfolderu8args_t args = {0};
-    nfdresult_t result = NFD_PickFolderU8_With(&outPath, &args);
+    nfdpickfolderargs_t args = {0};
+    // customize the window title and button labels (leave any of these unset to use the OS default)
+    args.title = "Choose a project folder";
+    args.acceptLabel = "Use this folder";
+    args.cancelLabel = "Never mind";
+    nfdresult_t result = NFD_PickFolder_With(&outPath, &args);
     if (result == NFD_OKAY) {
         puts("Success!");
         puts(outPath);

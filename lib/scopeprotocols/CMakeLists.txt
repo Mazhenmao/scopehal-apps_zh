@@ -219,6 +219,7 @@ add_library(scopeprotocols SHARED
 
 target_link_libraries(scopeprotocols
 	scopehal
+	ZLIB::ZLIB
 	)
 
 target_include_directories(scopeprotocols
