@@ -172,12 +172,18 @@ add_custom_target(
 	COMMENT "Copying markdown files..."
 	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/ngscopeclient/md ${CMAKE_BINARY_DIR}/src/ngscopeclient/md)
 
+add_custom_target(
+	ngprotobake
+	COMMENT "Copying protocol baking shaders..."
+	COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/lib/scopeprotocols/shaderfusion ${CMAKE_BINARY_DIR}/src/ngscopeclient/shaderfusion)
+
 add_dependencies(ngscopeclient
 	ngfonts
 	ngicons
 	ngmasks
 	ngmd
 	ngrendershaders
+	ngprotobake
 	ngprotoshaders
 	nghalshaders
 	ngchannels
@@ -251,6 +257,8 @@ install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/ngscopeclient/shaders
 	DESTINATION share/ngscopeclient)
 install(DIRECTORY ${CMAKE_SOURCE_DIR}/src/ngscopeclient/md
 	DESTINATION share/ngscopeclient)
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/lib/scopeprotocols/shaderfusion
+	DESTINATION share/ngscopeclient)
 
 if(LINUX)
 	install(FILES ${CMAKE_SOURCE_DIR}/src/ngscopeclient/icons/16x16/app-icon.png
@@ -272,12 +280,24 @@ endif()
 if(APPLE)
 	set(APPS "\${CMAKE_INSTALL_PREFIX}/bin/ngscopeclient")
 	set(DIRS "\${CMAKE_INSTALL_PREFIX}/lib")
+	set(FRAMEWORKS "\${CMAKE_INSTALL_PREFIX}/Frameworks")
+	execute_process(
+		COMMAND brew --prefix molten-vk
+		RESULT_VARIABLE MOLTEN_VK_RESULT
+		OUTPUT_VARIABLE MOLTEN_VK_OUTPUT
+		ERROR_QUIET
+		OUTPUT_STRIP_TRAILING_WHITESPACE
+	)
+	if(NOT MOLTEN_VK_RESULT EQUAL 0)
+		message(FATAL_ERROR "failed to find Homebrew prefix for molten-vk")
+	endif()
 	# https://vulkan.lunarg.com/doc/view/1.3.275.0/mac/getting_started.html#application-bundle-structure-on-macos
 	install(FILES "${CMAKE_SOURCE_DIR}/src/ngscopeclient/macos/MoltenVK_icd.json"
 		DESTINATION bin/vulkan/icd.d/)
+	install(FILES "${MOLTEN_VK_OUTPUT}/lib/libMoltenVK.dylib" DESTINATION lib)
 	install(CODE "
 		include(BundleUtilities)
-		fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")
+		fixup_bundle(\"${APPS}\" \"${DIRS}/libMoltenVK.dylib\" \"${DIRS}\")
 		include(\"${CMAKE_SOURCE_DIR}/src/ngscopeclient/macos/signing.cmake\")
 		")
 endif()

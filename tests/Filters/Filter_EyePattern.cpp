@@ -55,7 +55,9 @@ TEST_CASE("Filter_EyePattern")
 	filter->AddRef();
 
 	//Create a queue and command buffer
-	shared_ptr<QueueHandle> queue(g_vkQueueManager->GetComputeQueue("Filter_EyePattern.queue"));
+	shared_ptr<QueueHandle> queue(g_vkQueueManager->GetQueueFromPool(
+		QueueManager::QUEUE_POOL_FILTER,
+		"Filter_EyePattern.queue"));
 	vk::CommandPoolCreateInfo poolInfo(
 		vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 		queue->GetQueue()->m_family );
@@ -186,6 +188,9 @@ TEST_CASE("Filter_EyePattern")
 	g_scope->GetOscilloscopeChannel(4)->Detach(0);
 
 	filter->Release();
+
+	//Clear scratch buffers before we shut down
+	ScratchBufferManager::clear();
 }
 
 ///@brief Helper function not called if the test passes, but may be useful for troubleshooting if it fails

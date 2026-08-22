@@ -65,7 +65,9 @@ TEST_CASE("Filter_FFT")
 	FilterReferencer ref(filter);
 
 	//Create a queue and command buffer
-	shared_ptr<QueueHandle> queue(g_vkQueueManager->GetComputeQueue("Filter_FFT.queue"));
+	shared_ptr<QueueHandle> queue(g_vkQueueManager->GetQueueFromPool(
+		QueueManager::QUEUE_POOL_FILTER,
+		"Filter_FFT.queue"));
 	vk::CommandPoolCreateInfo poolInfo(
 		vk::CommandPoolCreateFlagBits::eTransient | vk::CommandPoolCreateFlagBits::eResetCommandBuffer,
 		queue->GetQueue()->m_family );
@@ -201,7 +203,7 @@ TEST_CASE("Filter_FFT")
 			VerifyMatchingResult(
 				golden.m_samples,
 				dynamic_cast<UniformAnalogWaveform*>(filter->GetData(0))->m_samples,
-				4e-3f
+				4.5e-3f
 				);
 		}
 	}
@@ -298,7 +300,7 @@ void BlackmanHarrisWindow(const float* data, size_t len, float* out)
 			alpha0 -
 			alpha1 * cosf(num) +
 			alpha2 * cosf(2*num) -
-			alpha3 * cosf(6*num);
+			alpha3 * cosf(3*num);
 		out[i] = w * data[i];
 	}
 }

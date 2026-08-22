@@ -133,6 +133,12 @@ void UpsampleFilter::Refresh(vk::raii::CommandBuffer& cmdBuf, [[maybe_unused]] s
 		SetData(nullptr, 0);
 		return;
 	}
+	if(kernel > 128)
+	{
+		AddErrorMessage("Invalid configuration", "Calculated filter kernel size is too large, try upsampling by a smaller amount");
+		SetData(nullptr, 0);
+		return;
+	}
 
 	//Create the interpolation filter
 	//If upsampling factor and window size have not changed, keep the same filter coefficients
@@ -177,7 +183,6 @@ void UpsampleFilter::Refresh(vk::raii::CommandBuffer& cmdBuf, [[maybe_unused]] s
 
 		const uint32_t compute_block_count = GetComputeBlockCount(len, 64);
 		m_computePipeline.Dispatch(cmdBuf, args,
-			upsample_factor,
 			min(compute_block_count, 32768u),
 			compute_block_count / 32768 + 1);
 	}
