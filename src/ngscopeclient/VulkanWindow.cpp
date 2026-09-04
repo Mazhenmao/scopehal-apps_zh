@@ -163,8 +163,8 @@ VulkanWindow::VulkanWindow(const string& title, shared_ptr<QueueHandle> queue, b
 	}
 
 	//Prepare window creation
-	int workAreaXPosition, workAreaYPosition, workAreaWidth, workAreaHeigth;
-	int windowXPosition = 0, windowYPosition = 0, windowWidth = 0, windowHeigth = 0;
+	int workAreaXPosition, workAreaYPosition, workAreaWidth, workAreaHeight;
+	int windowXPosition = 0, windowYPosition = 0, windowWidth = 0, windowHeight = 0;
 	bool restoreWindowPosition = false;
 	bool fullscreen = false;
 	if(windowed)
@@ -174,14 +174,14 @@ VulkanWindow::VulkanWindow(const string& title, shared_ptr<QueueHandle> queue, b
 	else
 	{	// Get primary monitor's content area for default sizing
 		GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-		glfwGetMonitorWorkarea(monitor, &workAreaXPosition, &workAreaYPosition, &workAreaWidth, &workAreaHeigth);
-		LogTrace("Workarea position and size: %d %d %d %d\n", workAreaXPosition, workAreaYPosition, workAreaWidth, workAreaHeigth);
+		glfwGetMonitorWorkarea(monitor, &workAreaXPosition, &workAreaYPosition, &workAreaWidth, &workAreaHeight);
+		LogTrace("Workarea position and size: %d %d %d %d\n", workAreaXPosition, workAreaYPosition, workAreaWidth, workAreaHeight);
 		windowWidth = workAreaWidth;
-		windowHeigth = workAreaHeigth;
+		windowHeight = workAreaHeight;
 		if(restored)
 		{	// Restore window size and position from preferences
 			int windowWidthPref = preferences.GetInt("Appearance.Startup.startup_size_width");
-			int windowHeigthPref = preferences.GetInt("Appearance.Startup.startup_size_heigth");
+			int windowHeightPref = preferences.GetInt("Appearance.Startup.startup_size_heigth");
 			int	windowXPositionPref = preferences.GetInt("Appearance.Startup.startup_pos_x");
 			int windowYPositionPref = preferences.GetInt("Appearance.Startup.startup_pos_y");
 			string monitorName = preferences.GetString("Appearance.Startup.monitor_name");
@@ -189,13 +189,13 @@ VulkanWindow::VulkanWindow(const string& title, shared_ptr<QueueHandle> queue, b
 			int monitorHeight = preferences.GetInt("Appearance.Startup.monitor_heigth");
 			fullscreen = preferences.GetBool("Appearance.Startup.startup_fullscreen");
 			maximized = preferences.GetBool("Appearance.Startup.startup_maximized");
-			if(windowWidthPref != 0 && windowHeigthPref != 0 && IsPositionValid(monitorName, monitorWidth, monitorHeight, windowXPositionPref, windowYPositionPref))
+			if(windowWidthPref != 0 && windowHeightPref != 0 && IsPositionValid(monitorName, monitorWidth, monitorHeight, windowXPositionPref, windowYPositionPref))
 			{	// We have stored position and size: use them
 				windowWidth = windowWidthPref;
-				windowHeigth = windowHeigthPref;
+				windowHeight = windowHeightPref;
 				windowXPosition = windowXPositionPref;
 				windowYPosition = windowYPositionPref;
-				LogTrace("Preferences startup position and size: %d %d %d %d\n", windowXPosition, windowYPosition, windowWidthPref, windowHeigthPref);
+				LogTrace("Preferences startup position and size: %d %d %d %d\n", windowXPosition, windowYPosition, windowWidthPref, windowHeightPref);
 				restoreWindowPosition = true;
 			}
 			else
@@ -205,14 +205,14 @@ VulkanWindow::VulkanWindow(const string& title, shared_ptr<QueueHandle> queue, b
 			if(fullscreen)
 			{	// Save prefs for when we get out of fullscreen mode
 				m_width = windowWidthPref;
-				m_height = windowHeigthPref;
+				m_height = windowHeightPref;
 				m_windowedX = windowXPositionPref;
 				m_windowedY = windowYPositionPref;
 			}
 		}
 		// Create the window with calculated size on default monitor, we will reposition it after if needed
-		LogTrace("Creating window with size: %d %d and maximized = %d\n", windowWidth, windowHeigth, maximized);
-		m_window = glfwCreateWindow(windowWidth, windowHeigth, title.c_str(), nullptr, nullptr);
+		LogTrace("Creating window with size: %d %d and maximized = %d\n", windowWidth, windowHeight, maximized);
+		m_window = glfwCreateWindow(windowWidth, windowHeight, title.c_str(), nullptr, nullptr);
 	}
 	if(!m_window)
 	{
@@ -228,14 +228,14 @@ VulkanWindow::VulkanWindow(const string& title, shared_ptr<QueueHandle> queue, b
 			LogTrace("Window frame size: %d %d %d %d\n", top, left, right, bottom);
 			windowXPosition = 0;
 			windowYPosition = top;
-			windowHeigth -= top;
+			windowHeight -= top;
 		}
-		LogTrace("Resizing window with postion and size: %d %d %d %d\n", windowXPosition, windowYPosition, windowWidth, windowHeigth);
+		LogTrace("Resizing window with postion and size: %d %d %d %d\n", windowXPosition, windowYPosition, windowWidth, windowHeight);
 		// Actually set the window position and size with calculated values
-		glfwSetWindowMonitor(m_window, nullptr, windowXPosition, windowYPosition, windowWidth, windowHeigth, GLFW_DONT_CARE);
+		glfwSetWindowMonitor(m_window, nullptr, windowXPosition, windowYPosition, windowWidth, windowHeight, GLFW_DONT_CARE);
 		if(maximized) glfwMaximizeWindow(m_window);
 		m_width = windowWidth;
-		m_height = windowHeigth;
+		m_height = windowHeight;
 	}
 	if(fullscreen)
 	{
@@ -684,25 +684,29 @@ void VulkanWindow::Render()
 		//Start render pass
 		auto& cmdBuf = *m_cmdBuffers[m_frameIndex];
 		cmdBuf.begin(vk::CommandBufferBeginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit));
-		vk::ClearValue clearValue;
-		vk::ClearColorValue clearColor;
-		clearColor.setFloat32({0.1f, 0.1f, 0.1f, 1.0f});
-		clearValue.setColor(clearColor);
-		vk::RenderPassBeginInfo passInfo(
-			**m_renderPass,
-			**m_framebuffers[m_frameIndex],
-			vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_width, m_height)),
-			clearValue);
-		cmdBuf.beginRenderPass(passInfo, vk::SubpassContents::eInline);
 
-		//Draw GUI
-		ImGui_ImplVulkan_RenderDrawData(main_draw_data, *cmdBuf);
+		{
+			NamedDebugRange shaderRange(cmdBuf, "VulkanWindow::Render");
 
-		//Draw waveform data etc
-		DoRender(cmdBuf);
+			vk::ClearValue clearValue;
+			vk::ClearColorValue clearColor;
+			clearColor.setFloat32({0.1f, 0.1f, 0.1f, 1.0f});
+			clearValue.setColor(clearColor);
+			vk::RenderPassBeginInfo passInfo(
+				**m_renderPass,
+				**m_framebuffers[m_frameIndex],
+				vk::Rect2D(vk::Offset2D(0, 0), vk::Extent2D(m_width, m_height)),
+				clearValue);
+			cmdBuf.beginRenderPass(passInfo, vk::SubpassContents::eInline);
 
-		//Finish up and submit
-		cmdBuf.endRenderPass();
+			//Draw GUI
+			ImGui_ImplVulkan_RenderDrawData(main_draw_data, *cmdBuf);
+
+			//Draw waveform data etc
+			DoRender(cmdBuf);
+
+			cmdBuf.endRenderPass();
+		}
 		cmdBuf.end();
 
 		vk::PipelineStageFlags flags(vk::PipelineStageFlagBits::eColorAttachmentOutput);
@@ -909,7 +913,7 @@ void VulkanWindow::SaveWindowPositionAndSize()
 	glfwGetWindowPos(m_window, &x, &y);
 	PreferenceManager& preferences = PreferenceManager::GetPreferences();
 	preferences.GetPreference("Appearance.Startup.startup_size_width").SetInt(m_width);
-	preferences.GetPreference("Appearance.Startup.startup_size_heigth").SetInt(m_height);
+	preferences.GetPreference("Appearance.Startup.startup_size_height").SetInt(m_height);
 	preferences.GetPreference("Appearance.Startup.startup_pos_x").SetInt(x);
 	preferences.GetPreference("Appearance.Startup.startup_pos_y").SetInt(y);
 	preferences.GetPreference("Appearance.Startup.startup_fullscreen").SetBool(m_fullscreen);
@@ -924,7 +928,7 @@ void VulkanWindow::SaveWindowPositionAndSize()
 		glfwGetMonitorWorkarea(currentMonitor,&x,&y,&monitorWidth,&monitorHeight);
 	}
 	preferences.GetPreference("Appearance.Startup.monitor_width").SetInt(monitorWidth);
-	preferences.GetPreference("Appearance.Startup.monitor_heigth").SetInt(monitorHeight);
+	preferences.GetPreference("Appearance.Startup.monitor_height").SetInt(monitorHeight);
 	preferences.GetPreference("Appearance.Startup.monitor_name").SetString(monitorName);
 }
 

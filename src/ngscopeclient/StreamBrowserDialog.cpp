@@ -179,13 +179,28 @@ void StreamBrowserDialog::renderInstrumentBadge(std::shared_ptr<Instrument> inst
 				* for trigger" or "currently
 				* capturing samples post-trigger",
 				* "ARMED" is unambiguous */
-			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.trigger_armed_badge_color")), "ARMED", "A", NULL);
+			renderBadge(
+				prefs.GetColor("Appearance.Stream Browser.trigger_armed_badge_color"),
+				"ARMED",
+				"A",
+				nullptr);
 			break;
 		case StreamBrowserDialog::BADGE_STOPPED:
-			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.trigger_stopped_badge_color")), "STOPPED", "STOP", "S", NULL);
+			renderBadge(
+				prefs.GetColor("Appearance.Stream Browser.trigger_stopped_badge_color"),
+				"STOPPED",
+				"STOP",
+				"S",
+				nullptr);
 			break;
 		case StreamBrowserDialog::BADGE_TRIGGERED:
-			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.trigger_triggered_badge_color")), "TRIGGERED", "TRIG'D", "T'D", "T", NULL);
+			renderBadge(
+				prefs.GetColor("Appearance.Stream Browser.trigger_triggered_badge_color"),
+				"TRIGGERED",
+				"TRIG'D",
+				"T'D",
+				"T",
+				nullptr);
 			break;
 		case StreamBrowserDialog::BADGE_BUSY:
 			/* prefer language "BUSY" to "WAIT":
@@ -193,10 +208,18 @@ void StreamBrowserDialog::renderInstrumentBadge(std::shared_ptr<Instrument> inst
 				* trigger", "BUSY" means "I am
 				* doing something internally and am
 				* not ready for some reason" */
-			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.trigger_busy_badge_color")), "BUSY", "B", NULL);
+			renderBadge(
+				prefs.GetColor("Appearance.Stream Browser.trigger_busy_badge_color"),
+				"BUSY",
+				"B",
+				nullptr);
 			break;
 		case StreamBrowserDialog::BADGE_AUTO:
-			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.trigger_auto_badge_color")), "AUTO", "A", NULL);
+			renderBadge(
+				prefs.GetColor("Appearance.Stream Browser.trigger_auto_badge_color"),
+				"AUTO",
+				"A",
+				nullptr);
 			break;
 		default:
 			break;
@@ -209,14 +232,15 @@ void StreamBrowserDialog::renderInstrumentBadge(std::shared_ptr<Instrument> inst
 	@param color the color of the badge
 	@param ... a null terminated list of labels form the largest to the smallest to use as a badge label according to the available space
 */
-void StreamBrowserDialog::renderBadge(ImVec4 color, ... /* labels, ending in NULL */)
+void StreamBrowserDialog::renderBadge(ImU32 color, ... /* labels, ending in nullptr */)
 {
 	va_list ap;
 	va_start(ap, color);
 
 	while (const char *label = va_arg(ap, const char *))
 	{
-		float xsz = ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemSpacing.x + ImGui::GetStyle().FramePadding.x * 2;
+		float xsz = ImGui::CalcTextSize(label).x + ImGui::GetStyle().ItemSpacing.x +
+			ImGui::GetStyle().FramePadding.x * 2;
 		if ((m_badgeXCur - xsz) < m_badgeXMin)
 			continue;
 
@@ -224,8 +248,9 @@ void StreamBrowserDialog::renderBadge(ImVec4 color, ... /* labels, ending in NUL
 		m_badgeXCur -= xsz - ImGui::GetStyle().ItemSpacing.x;
 		ImGui::SameLine(m_badgeXCur);
 		ImGui::PushStyleColor(ImGuiCol_Button, color);
+		ImGui::PushStyleColor(ImGuiCol_Text, GetTextColor(color));
 		SmallDisabledButton(label);
-		ImGui::PopStyleColor();
+		ImGui::PopStyleColor(2);
 		break;
 	}
 	va_end(ap);
@@ -1018,7 +1043,13 @@ void StreamBrowserDialog::renderInstrumentNode(shared_ptr<Instrument> instrument
 	if (scope)
 	{
 		if (scope->IsOffline())
-			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.instrument_offline_badge_color")), "OFFLINE", "OFFL", NULL);
+		{
+			renderBadge(
+				prefs.GetColor("Appearance.Stream Browser.instrument_offline_badge_color"),
+				"OFFLINE",
+				"OFFL",
+				nullptr);
+		}
 		else
 		{
 			Oscilloscope::TriggerMode mode = state ? state->m_lastTriggerState : Oscilloscope::TRIGGER_MODE_STOP;
@@ -1052,7 +1083,13 @@ void StreamBrowserDialog::renderInstrumentNode(shared_ptr<Instrument> instrument
 	if (psu)
 	{
 		if (psu->IsOffline())
-			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.instrument_offline_badge_color")), "OFFLINE", "OFFL", NULL);
+		{
+			renderBadge(
+				prefs.GetColor("Appearance.Stream Browser.instrument_offline_badge_color"),
+				"OFFLINE",
+				"OFFL",
+				nullptr);
+		}
 		else
 		{
 			//Get the state
@@ -1131,10 +1168,14 @@ void StreamBrowserDialog::renderInstrumentNode(shared_ptr<Instrument> instrument
 
 			for(size_t i = 0; i<channelCount; i++)
 			{
-				if(scope->IsChannelEnabled(i))
-					lastEnabledChannelIndex = i;
 				auto scopechan = scope->GetChannel(i);
 				auto streamType = scopechan->GetType(0);
+
+				if(scope->IsChannelEnabled(i) && streamType != Stream::STREAM_TYPE_TRIGGER)
+					// This is used for tracking elapsed time for waveform download for the GUI
+					// In this sense a trigger channel is not real / not downloaded.
+					lastEnabledChannelIndex = i;
+
 				if(streamType != Stream::STREAM_TYPE_DIGITAL)
 				{
 					if(streamType ==  Stream::STREAM_TYPE_ANALOG)
@@ -1394,7 +1435,10 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 		}
 		ImGui::EndDisabled();
 		HelpMarker(
-		 "合并多通道模数转换器，使部分通道获得更高采样率。\n部分仪器无独立的交错采样开关，可用采样率会随启用通道的不同而变化。"
+			"将多个通道的ADC组合起来，以在部分通道上获得更高的采样率。\n"
+			"\n"
+			"有些仪器没有明确的交错开关，但提供可用的采样率。 "
+			"可能因启用的频道不同而有所差异。"
 			);
 	}
 
@@ -1420,7 +1464,9 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 		}
 
 		HelpMarker(
-		 "Switch the acquisition system between real time (continuous capture of consecutive samples\nand equivalent time (undersampling with a narrow sample-and-hold to build up a high resolution\nview of a repetitive signal over many acquisitions)"
+			"在实时（连续采集连续样本）和等时采样\n"
+			"（通过窄带采样与保持，多次采集以构建重复信号的高分辨率图像）\n"
+			"之间切换采集系统。)"
 			);
 	}
 
@@ -1440,7 +1486,8 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 		refresh = true;
 	}
 	HelpMarker(
-	 "调整模数转换器采样率。\n注：部分仪器的可选采样率会随启用通道变化。"
+		"调整模数转换器采样率。\n\n"
+		"注：部分仪器的可选采样率会随启用通道变化。"
 		);
 
 	//Memory depth
@@ -1459,7 +1506,8 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 		refresh = true;
 	}
 	HelpMarker(
-	 "设置每次触发所采集的采样点数。\n注：部分仪器的最大存储深度会随启用通道数量变化。"
+		"设置每次触发所采集的采样点数。\n\n"
+		"注：部分仪器的最大存储深度会随启用通道数量变化。"
 		);
 
 	//Global ADC mode switch
@@ -1486,9 +1534,10 @@ void StreamBrowserDialog::DoTimebaseSettings(shared_ptr<Oscilloscope> scope)
 			ImGui::EndDisabled();
 
 		HelpMarker(
-			"模数转换器(ADC)工作模式\n\n"
-			"部分仪器支持多种 ADC 工作模式。这类模式通常需要在采样位深和采样率之间进行权衡。"
-			"可用的模式会随当前采样速率、已启用的通道数量发生变化。"
+			"模数转换器的工作模式。\n\n"
+			"某些仪器允许ADC以多种模式运行，"
+			"通常在比特深度和采样率之间进行权衡。"
+			"可用的模式可能因当前采样率以及所使用的通道而异。"
 			);
 	}
 
@@ -1554,7 +1603,10 @@ void StreamBrowserDialog::renderChannelNode(
 	bool hasChildren = !singleStream || renderProps;
 
 	if (channel->m_displaycolor != "")
-		ImGui::PushStyleColor(ImGuiCol_Text, ColorFromString(channel->m_displaycolor));
+	{
+		auto channelColor = ColorFromString(channel->m_displaycolor);
+		ImGui::PushStyleColor(ImGuiCol_Text, channelColor);
+	}
 
 	int flags = 0;
 	if(!hasChildren)
@@ -1566,7 +1618,7 @@ void StreamBrowserDialog::renderChannelNode(
 		channel->GetDisplayName().c_str(),
 		flags);
 	if (channel->m_displaycolor != "")
-		ImGui::PopStyleColor();
+		ImGui::PopStyleColor(1);
 
 	//Open properties dialog on double click
 	if(ImGui::IsItemHovered())
@@ -1626,7 +1678,14 @@ void StreamBrowserDialog::renderChannelNode(
 
 		//"trigger" badge on trigger inputs to show they're not displayable channels
 		if(scopechan->GetType(0) == Stream::STREAM_TYPE_TRIGGER)
-			renderBadge(ImGui::ColorConvertU32ToFloat4(prefs.GetColor("Appearance.Stream Browser.instrument_disabled_badge_color")), "TRIG ONLY", "TRIG","--", nullptr);
+		{
+			renderBadge(
+				prefs.GetColor("Appearance.Stream Browser.instrument_disabled_badge_color"),
+				"TRIG ONLY",
+				"TRIG",
+				"--",
+				nullptr);
+		}
 		/* Currently, enable/disable state is coupled to node reference counting, so we can't let the user manually enable/disable channels
 		// Scope channel
 		else if (!chanEnabled)
@@ -1955,9 +2014,10 @@ void StreamBrowserDialog::renderChannelProperties(
 			ImGui::EndDisabled();
 
 		HelpMarker(
-			"模数转换器(ADC)工作模式\n\n"
-			"部分仪器支持多种 ADC 工作模式。这类模式通常需要在采样位深和采样率之间进行权衡。"
-			"可用的模式会随当前采样速率、已启用的通道数量发生变化。"
+			"模数转换器的工作模式。\n\n"
+			"某些仪器允许ADC以多种模式运行，"
+			"通常在比特深度和采样率之间进行权衡。"
+			"可用的模式可能因当前采样率以及所使用的通道而异。"
 			);
 	}
 
@@ -2133,16 +2193,36 @@ void StreamBrowserDialog::renderFilterNode(Filter* filter)
 	bool singleStream = filter->GetStreamCount() == 1;
 
 	if (filter->m_displaycolor != "")
-		ImGui::PushStyleColor(ImGuiCol_Text, ColorFromString(filter->m_displaycolor));
+	{
+		auto color = ColorFromString(filter->m_displaycolor);
+		ImGui::PushStyleColor(ImGuiCol_Text, color);
+
+		//Check if we have bad contrast with ImGuiCol_WindowBg
+		auto wbg = ImGui::GetColorU32(ImGuiCol_WindowBg);
+		bool colorIsDark = IsColorDark(color);
+		bool windowIsDark = IsColorDark(wbg);
+
+		//darken background of light-on-light
+		if(!colorIsDark && !windowIsDark)
+			ImGui::PushStyleColor(ImGuiCol_Header, ColorFromString("#000000c0"));
+
+		//transparent background otherwise
+		else
+			ImGui::PushStyleColor(ImGuiCol_Header, ColorFromString("#00000000"));
+	}
 
 	//Don't expand filters with a single stream by default
 	int flags = ImGuiTreeNodeFlags_OpenOnArrow;
 	if(!singleStream)
 		flags |= ImGuiTreeNodeFlags_DefaultOpen;
 
+	//Force the node to think it's selected so the background color renders
+	//(https://github.com/ocornut/imgui/issues/9185)
+	flags |= ImGuiTreeNodeFlags_Selected;
+
 	bool open = ImGui::TreeNodeEx(filter->GetDisplayName().c_str(), flags);
 	if (filter->m_displaycolor != "")
-		ImGui::PopStyleColor();
+		ImGui::PopStyleColor(2);
 
 	//Open properties dialog on double click
 	if(ImGui::IsItemHovered())

@@ -168,10 +168,28 @@ public:
 	{ return m_childPackets[pack]; }
 
 	const std::map<TimePoint, std::vector<Packet*> >& GetFilteredPackets()
-	{ return m_filteredPackets; }
+	{
+		if(m_filterExpression == nullptr)
+			return m_packets;
+		else
+			return m_filteredPackets;
+	}
+
+	const std::map<Packet*, std::vector<Packet*> >& GetFilteredChildPackets()
+	{
+		if(m_filterExpression == nullptr)
+			return m_childPackets;
+		else
+			return m_filteredChildPackets;
+	}
 
 	const std::vector<Packet*>& GetFilteredChildPackets(Packet* pack)
-	{ return m_filteredChildPackets[pack]; }
+	{
+		if(m_filterExpression == nullptr)
+			return m_childPackets[pack];
+		else
+			return m_filteredChildPackets[pack];
+	}
 
 	/**
 		@brief Sets the current filter expression

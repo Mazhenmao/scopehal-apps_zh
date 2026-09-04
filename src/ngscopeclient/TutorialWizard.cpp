@@ -62,7 +62,7 @@ TutorialWizard::TutorialWizard(Session* session, MainWindow* parent)
 	//DEBUG: automatically jump ahead a bit
 	//m_step = TUTORIAL_06_FILTER_GRAPH;
 
-	m_continueEnabled = false;
+	m_continueEnabled = true;
 }
 
 TutorialWizard::~TutorialWizard()
@@ -110,7 +110,7 @@ bool TutorialWizard::DoRender()
 	//TODO: is this necessary? will it break things? For now turn it off
 	/*
 	ImGui::BeginDisabled(m_step == TUTORIAL_00_INTRO);
-		if(ImGui::Button("<< 上一步"))
+		if(ImGui::Button("<< Back"))
 			m_step --;
 	ImGui::EndDisabled();
 	ImGui::SameLine();
@@ -121,13 +121,13 @@ bool TutorialWizard::DoRender()
 	auto buttonStartPos = ImGui::GetCursorScreenPos();
 	if(m_step == (m_markdownText.size()-1) )
 	{
-		if(ImGui::Button("完成"))
+		if(ImGui::Button("Finish"))
 			return false;
 	}
 	else
 	{
 		ImGui::BeginDisabled(!m_continueEnabled);
-			if(ImGui::Button("继续 >>"))
+			if(ImGui::Button("Continue >>"))
 				AdvanceToNextStep();
 		ImGui::EndDisabled();
 	}
@@ -228,8 +228,6 @@ void TutorialWizard::MakePathSpeechBubble(
 	float radius,
 	float leftOverhang)
 {
-	(void)dirTip;
-
 	auto size = ImGui::GetFontSize();
 	auto tailWidth = size;
 	auto rightOverhang = textsize.x - leftOverhang;

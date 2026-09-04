@@ -82,9 +82,12 @@ void PacketManager::RefreshRows()
 	m_refreshPending = false;
 	m_rows.clear();
 
+	auto& filteredPackets = GetFilteredPackets();
+	auto& filteredChildren = GetFilteredChildPackets();
+
 	//Make a list of waveform timestamps and make sure we display them in order
 	vector<TimePoint> times;
-	for(auto& it : m_filteredPackets)
+	for(auto& it : filteredPackets)
 		times.push_back(it.first);
 	std::sort(times.begin(), times.end());
 	LogTrace("%zu times\n", times.size());
@@ -105,7 +108,11 @@ void PacketManager::RefreshRows()
 	//Process packets from each waveform
 	for(auto wavetime : times)
 	{
-		auto& wpackets = m_filteredPackets[wavetime];
+		auto wit = filteredPackets.find(wavetime);
+		if(wit == filteredPackets.end())
+			continue;
+
+		const auto& wpackets = wit->second;
 
 		//Get markers for this waveform, if any
 		auto& markers = m_session.GetMarkers(wavetime);
@@ -133,9 +140,6 @@ void PacketManager::RefreshRows()
 				imarker ++;
 			}
 
-			//See if we have child packets
-			auto children = m_filteredChildPackets[pack];
-
 			//Add an entry for the top level
 			RowData dat(wavetime, pack);
 			lastoff = pack->m_offset;
@@ -157,7 +161,11 @@ void PacketManager::RefreshRows()
 
 			if(IsChildOpen(pack))
 			{
-				for(auto child : children)
+				//See if we have child packets
+				auto cit = filteredChildren.find(pack);
+				if(cit == filteredChildren.end())
+					continue;
+				for(auto& child : cit->second)
 				{
 					//Add an entry for the top level
 					RowData cdat(wavetime, child);
@@ -296,30 +304,28 @@ void PacketManager::Update()
  */
 void PacketManager::FilterPackets()
 {
-	//If we do NOT have a filter, early out: just copy stuff
+	//Start out by clearing output, then we can re-add the ones that match if applicable
+	m_filteredPackets.clear();
+	m_filteredChildPackets.clear();
+
+	//If we do NOT have a filter, early out (but still refresh the set of rows being displayed)
 	if(m_filterExpression == nullptr)
 	{
-		m_filteredPackets = m_packets;
-		m_filteredChildPackets = m_childPackets;
-
-		//but still refresh the set of rows being displayed
 		m_refreshPending = true;
 		return;
 	}
 
-	//We have a filter! Start out by clearing output, then we can re-add the ones that match
-	m_filteredPackets.clear();
-	m_filteredChildPackets.clear();
-
 	//Check all top level packets against the filter
-	for(auto it : m_packets)
+	for(auto& it : m_packets)
 	{
 		auto timestamp = it.first;
 		auto& packets = it.second;
+
 		for(auto p : packets)
 		{
 			//If no children, just check the top level packet for a match
-			if(m_childPackets[p].empty())
+			auto cit = m_childPackets.find(p);
+			if(cit == m_childPackets.end())
 			{
 				if(m_filterExpression->Match(p))
 					m_filteredPackets[timestamp].push_back(p);
@@ -330,11 +336,12 @@ void PacketManager::FilterPackets()
 			else
 			{
 				bool anyChildMatched = false;
-				for(auto c : m_childPackets[p])
+				auto& fp = m_filteredChildPackets[p];
+				for(auto c : cit->second)
 				{
 					if(m_filterExpression->Match(c))
 					{
-						m_filteredChildPackets[p].push_back(c);
+						fp.push_back(c);
 						anyChildMatched = true;
 					}
 				}

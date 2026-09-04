@@ -169,6 +169,7 @@ public:
 	{ return m_errorWindow; }
 
 protected:
+
 	friend class FilterGraphGroup;
 
 	std::map<std::shared_ptr<Instrument>, std::vector<InstrumentChannel*> > GetAllVisibleChannels();
@@ -197,7 +198,7 @@ protected:
 	bool HandleDeletionRequests(Filter*& fReconfigure);
 	bool OnNodeDeleted(FlowGraphNode* node);
 	bool OnFilterDeleted(Filter* node);
-	void HandleBackgroundContextMenu();
+	void HandleBackgroundContextMenu(bool windowHovered);
 	void DoAddMenu();
 	std::vector<ax::NodeEditor::NodeId> GetSelectedNodeIDs();
 	bool IsGraphNodeActive(ax::NodeEditor::NodeId id);

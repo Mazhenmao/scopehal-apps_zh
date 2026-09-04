@@ -414,6 +414,39 @@ bool RectContains(ImVec2 posA, ImVec2 sizeA, ImVec2 posB, ImVec2 sizeB)
 	if( (brB.y < posA.y) || (brB.y >= brA.y) )
 		return false;
 
-	//Contianed if we get here
+	//Contained if we get here
 	return true;
+}
+
+/**
+	@brief Given a background color, choose white or black text to get better contrast
+ */
+ImU32 GetTextColor(ImU32 bgColor)
+{
+	//If not dark background, use black text
+	if(IsColorDark(bgColor) == false)
+		return ColorFromString("#000000");
+
+	//if below, use white
+	else
+		return ColorFromString("#ffffff");
+}
+
+/**
+	@brief Checks if a color is broadly "light" or "dark" using NTSC weighted luminance
+ */
+bool IsColorDark(ImU32 bgColor)
+{
+	float r = (bgColor >> IM_COL32_R_SHIFT) & 0xff;
+	float g = (bgColor >> IM_COL32_G_SHIFT) & 0xff;
+	float b = (bgColor >> IM_COL32_B_SHIFT) & 0xff;
+
+	//Get NTSC luminance from 0 to 255
+	float y = 0.2126*r + 0.7152*g + 0.0722*b;
+
+	//If more than half brightness, it's light
+	if(y > 128)
+		return false;
+	else
+		return true;
 }

@@ -445,6 +445,50 @@ bool FilterGraphEditor::DoRender()
 	auto editorMax = ImVec2(editorMin.x + editorAvail.x, editorMin.y + editorAvail.y);
 	ax::NodeEditor::Begin("Filter Graph", ImVec2(0, 0));
 
+	//Update theme colors from preferences
+	auto& prefs = m_session->GetPreferences();
+	auto& style = ax::NodeEditor::GetStyle();
+	style.Colors[ax::NodeEditor::StyleColor_Bg] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.background_color"));
+	style.Colors[ax::NodeEditor::StyleColor_Grid] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.grid_color"));
+	style.Colors[ax::NodeEditor::StyleColor_NodeBg] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.node_bg_color"));
+	style.Colors[ax::NodeEditor::StyleColor_NodeBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.node_border_color"));
+	style.Colors[ax::NodeEditor::StyleColor_HovNodeBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.node_border_hovered_color"));
+	style.Colors[ax::NodeEditor::StyleColor_SelNodeBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.node_border_selected_color"));
+	style.Colors[ax::NodeEditor::StyleColor_NodeSelRect] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.node_select_rect"));
+	style.Colors[ax::NodeEditor::StyleColor_NodeSelRectBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.node_select_border"));
+	style.Colors[ax::NodeEditor::StyleColor_HovLinkBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.edge_hovered_border"));
+	style.Colors[ax::NodeEditor::StyleColor_SelLinkBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.edge_selected_border"));
+	style.Colors[ax::NodeEditor::StyleColor_HighlightLinkBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.edge_highlight_border"));
+	style.Colors[ax::NodeEditor::StyleColor_LinkSelRect] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.edge_select_rect"));
+	style.Colors[ax::NodeEditor::StyleColor_LinkSelRectBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.edge_select_border"));
+	style.Colors[ax::NodeEditor::StyleColor_PinRect] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.pin_rect"));
+	style.Colors[ax::NodeEditor::StyleColor_PinRectBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.pin_rect_border"));
+	style.Colors[ax::NodeEditor::StyleColor_Flow] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.edge_flow"));
+	style.Colors[ax::NodeEditor::StyleColor_FlowMarker] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.edge_flow_marker"));
+	style.Colors[ax::NodeEditor::StyleColor_GroupBg] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.group_bg"));
+	style.Colors[ax::NodeEditor::StyleColor_GroupBorder] =
+		ImColor(prefs.GetColor("Appearance.Filter Graph.group_border"));
+
+	ImVec4 linkColor = ImColor(prefs.GetColor("Appearance.Filter Graph.edge_color"));
+
 	// NodeEditor seems to handle DPI scaling on its own
 	// so turn off global scaling to avoid double scaling
 	SetCanvasManagedDPI();
@@ -594,7 +638,7 @@ bool FilterGraphEditor::DoRender()
 				auto dstid = GetSinkPinForLink(stream, pair<FlowGraphNode*, size_t>(f, i));
 				auto linkid = GetID(pair<ax::NodeEditor::PinId, ax::NodeEditor::PinId>(srcid, dstid));
 				freshLinks.emplace(linkid);
-				ax::NodeEditor::Link(linkid, srcid, dstid);
+				ax::NodeEditor::Link(linkid, srcid, dstid, linkColor);
 			}
 		}
 	}
@@ -615,7 +659,7 @@ bool FilterGraphEditor::DoRender()
 					auto dstid = GetID(pair<FlowGraphNode*, size_t>(trig, i));
 					auto linkid = GetID(pair<ax::NodeEditor::PinId, ax::NodeEditor::PinId>(srcid, dstid));
 					freshLinks.emplace(linkid);
-					ax::NodeEditor::Link(linkid, srcid, dstid);
+					ax::NodeEditor::Link(linkid, srcid, dstid, linkColor);
 				}
 			}
 		}
@@ -643,7 +687,7 @@ bool FilterGraphEditor::DoRender()
 	{
 		HandleDoubleClicks();
 		triggerChanged = HandleNodeProperties();
-		HandleBackgroundContextMenu();
+	    HandleBackgroundContextMenu(windowHovered);
 	}
 
 	//Done with canvas stuff
@@ -1658,6 +1702,9 @@ void FilterGraphEditor::DoNodeForGroupOutputs(shared_ptr<FilterGraphGroup> group
  */
 void FilterGraphEditor::DoInternalLinksForGroup(shared_ptr<FilterGraphGroup> group)
 {
+	auto& prefs = m_session->GetPreferences();
+	ImVec4 linkColor = ImColor(prefs.GetColor("Appearance.Filter Graph.edge_color"));
+
 	//Add links from node outputs to the hierarchical port node
 	for(auto it : group->m_hierOutputInternalMap)
 	{
@@ -1675,7 +1722,7 @@ void FilterGraphEditor::DoInternalLinksForGroup(shared_ptr<FilterGraphGroup> gro
 			group->m_hierOutputLinkMap.emplace(fromstream, lid);
 		}
 
-		ax::NodeEditor::Link(lid, fromPin, toPin);
+		ax::NodeEditor::Link(lid, fromPin, toPin, linkColor);
 	}
 
 	//And then again for the inputs
@@ -1695,7 +1742,7 @@ void FilterGraphEditor::DoInternalLinksForGroup(shared_ptr<FilterGraphGroup> gro
 			group->m_hierInputLinkMap.emplace(toport, lid);
 		}
 
-		ax::NodeEditor::Link(lid, fromPin, toPin);
+		ax::NodeEditor::Link(lid, fromPin, toPin, linkColor);
 	}
 }
 
@@ -2807,11 +2854,10 @@ void FilterGraphEditor::DoNodeForTrigger(Trigger* trig)
 {
 	//TODO: special color for triggers?
 	//Or use a preference?
-	auto& prefs = m_session->GetPreferences();
 	auto tsize = ImGui::GetFontSize();
 	auto color = ColorFromString("#808080");
 	auto id = GetID(trig);
-	auto headercolor = prefs.GetColor("Appearance.Filter Graph.header_text_color");
+	auto headercolor = GetTextColor(color);
 	auto headerfont = m_parent->GetFontPref("Appearance.Filter Graph.header_font");
 	float rounding = ax::NodeEditor::GetStyle().NodeRounding;
 
@@ -2922,7 +2968,7 @@ void FilterGraphEditor::DoNodeForChannel(
 
 	//Get some configuration / style settings
 	auto color = ColorFromString(displaycolor);
-	auto headercolor = prefs.GetColor("Appearance.Filter Graph.header_text_color");
+	auto headercolor = GetTextColor(color);
 	auto headerfont = m_parent->GetFontPref("Appearance.Filter Graph.header_font");
 	auto textfont = m_parent->GetFontPref("Appearance.Filter Graph.icon_caption_font");
 	ImGui::PushFont(textfont.first, textfont.second);
@@ -3484,9 +3530,9 @@ bool FilterGraphEditor::HandleNodeProperties()
 /**
 	@brief Show add menu when background is right clicked
  */
-void FilterGraphEditor::HandleBackgroundContextMenu()
+void FilterGraphEditor::HandleBackgroundContextMenu(bool windowHovered)
 {
-	if(ax::NodeEditor::ShowBackgroundContextMenu())
+	if(ax::NodeEditor::ShowBackgroundContextMenu() && windowHovered)
 	{
 		ax::NodeEditor::Suspend();
 			m_createMousePos = ImGui::GetMousePos();

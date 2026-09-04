@@ -95,6 +95,9 @@ public:
         return this->GetPreference(path).GetEnum<E>();
     }
 
+    static GuiTheme GetTheme()
+    { return m_instance.GetEnum<GuiTheme>("Appearance.General.theme"); }
+
 private:
     // Internal helpers
     void DeterminePath();

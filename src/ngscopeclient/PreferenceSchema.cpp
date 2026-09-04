@@ -2,7 +2,7 @@
 *                                                                                                                      *
 * ngscopeclient                                                                                                        *
 *                                                                                                                      *
-* Copyright (c) 2012-2026 Andrew D. Zonenberg                                                                          *
+* Copyright (c) 2012-2026 Andrew D. Zonenberg and contributors                                                         *
 * All rights reserved.                                                                                                 *
 *                                                                                                                      *
 * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the     *
@@ -35,25 +35,29 @@ PreferenceManager PreferenceManager::m_instance;
 
 void PreferenceManager::InitializeDefaults()
 {
+	//Make sure search paths are valid before we try finding fonts
+	//(this can get called from global constructors before DriverStaticInit is called)
+	InitializeSearchPaths();
+
 	auto& appearance = this->m_treeRoot.AddCategory("Appearance", "外观");
 
 		auto& consts = appearance.AddCategory("Constellations", "星座图");
 			consts.AddPreference(
-				Preference::Color("point_color", ColorFromString("#ff0000ff"))
+				Preference::ThemedColor("point_color", ColorFromString("#ff0000ff"), ColorFromString("#ff0000ff"))
 				.Label("点颜色")
 				.Description("标称星座点的颜色"));
 
 		auto& cursors = appearance.AddCategory("Cursors", "光标");
 			cursors.AddPreference(
-				Preference::Color("cursor_1_color", ColorFromString("#ffff00"))
+				Preference::ThemedColor("cursor_1_color", ColorFromString("#808000"), ColorFromString("#ffff00"))
 				.Label("光标 #1 颜色")
 				.Description("左侧或顶部光标的颜色"));
 			cursors.AddPreference(
-				Preference::Color("cursor_2_color", ColorFromString("#ff8000"))
+				Preference::ThemedColor("cursor_2_color", ColorFromString("#ff8000"), ColorFromString("#ff8000"))
 				.Label("光标 #2 颜色")
 				.Description("右侧或底部光标的颜色"));
 			cursors.AddPreference(
-				Preference::Color("cursor_fill_color", ColorFromString("#ffff0040"))
+				Preference::ThemedColor("cursor_fill_color", ColorFromString("#ffff0040"), ColorFromString("#ffff0040"))
 				.Label("光标填充颜色")
 				.Description("两个光标之间填充区域的颜色"));
 			/*cursors.AddPreference(
@@ -65,11 +69,11 @@ void PreferenceManager::InitializeDefaults()
 				.Label("标签字体")
 				.Description("光标标签使用的字体"));
 			cursors.AddPreference(
-				Preference::Color("marker_color", ColorFromString("#ff00a0"))
+				Preference::ThemedColor("marker_color", ColorFromString("#ff00a0"), ColorFromString("#ff00a0"))
 				.Label("标记颜色")
 				.Description("标记的颜色"));
 			cursors.AddPreference(
-				Preference::Color("hover_color", ColorFromString("#ffffff80"))
+				Preference::ThemedColor("hover_color", ColorFromString("#00000080"), ColorFromString("#ffffff80"))
 				.Label("悬停颜色")
 				.Description("鼠标悬停数据包指示器的颜色"));
 
@@ -113,15 +117,15 @@ void PreferenceManager::InitializeDefaults()
 
 		auto& eye = appearance.AddCategory("Eye Patterns", "眼图");
 			eye.AddPreference(
-				Preference::Color("border_color_pass", ColorFromString("#00ff00ff"))
+				Preference::ThemedColor("border_color_pass", ColorFromString("#00ff00ff"), ColorFromString("#00ff00ff"))
 				.Label("边框颜色（通过）")
 				.Description("没有违规或违规可接受时，绘制模板多边形边框的颜色"));
 			eye.AddPreference(
-				Preference::Color("border_color_fail", ColorFromString("#ff0000ff"))
+				Preference::ThemedColor("border_color_fail", ColorFromString("#ff0000ff"), ColorFromString("#ff0000ff"))
 				.Label("边框颜色（失败）")
 				.Description("存在不可接受违规时，绘制模板多边形边框的颜色"));
 			eye.AddPreference(
-				Preference::Color("mask_color", ColorFromString("#0000ff80"))
+				Preference::ThemedColor("mask_color", ColorFromString("#0000ff80"), ColorFromString("#0000ff80"))
 				.Label("模板颜色")
 				.Description("绘制模板叠加层的颜色"));
 
@@ -129,10 +133,15 @@ void PreferenceManager::InitializeDefaults()
 			file.AddPreference(
 				Preference::Enum("dialogmode", BROWSER_NATIVE)
 					.Label("非全屏对话框样式")
-					.Description("选择非全屏模式下加载和保存文件时使用的文件浏览器。\n\nngscopeclient 处于全屏模式时无法使用原生文件浏览器，\n因此全屏时始终使用 ImGui 浏览器。")
-					.EnumValue("ImGui", BROWSER_IMGUI)
-					.EnumValue("Native", BROWSER_NATIVE)
-					.EnumValue("KDialog", BROWSER_KDIALOG)
+					.Description(
+						"选择非全屏模式下，用于文件加载与保存的文件浏览器。\n\n"
+
+						"ngscopeclient 处于全屏模式时无法使用系统原生文件浏览器，\n"
+						"因此全屏状态下将始终使用 ImGui 内置文件浏览器。"
+						)
+					.EnumValue("ImGui", "ImGui", BROWSER_IMGUI)
+					.EnumValue("Native", "原生", BROWSER_NATIVE)
+					.EnumValue("KDialog", "KDialog", BROWSER_KDIALOG)
 				);
 
 		auto& graph = appearance.AddCategory("Filter Graph", "滤波器图");
@@ -141,19 +150,96 @@ void PreferenceManager::InitializeDefaults()
 				.Label("标题字体")
 				.Description("滤波器/通道名称的字体"));
 			graph.AddPreference(
-				Preference::Color("header_text_color", ColorFromString("#000000"))
-				.Label("标题文本颜色")
-				.Description("滤波器/通道名称的颜色"));
+				Preference::ThemedColor("background_color", ColorFromString("#c0c0c0c8"), ColorFromString("#3c3c46c8"))
+				.Label("背景颜色")
+				.Description("滤波器图形画布颜色"));
 			graph.AddPreference(
-				Preference::Color("valid_link_color", ColorFromString("#00ff00"))
+				Preference::ThemedColor("grid_color", ColorFromString("#78787828"), ColorFromString("#78787828"))
+				.Label("网格颜色")
+				.Description("滤波器图形画布上网格线的颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("node_bg_color", ColorFromString("#a0a0a0c8"), ColorFromString("#202020c8"))
+				.Label("节点背景颜色")
+				.Description("框图节点颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("node_border_color", ColorFromString("#00000060"), ColorFromString("#ffffff60"))
+				.Label("节点边框颜色")
+				.Description("框图节点轮廓颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("node_border_hovered_color", ColorFromString("#0d81ffff"), ColorFromString("#50b0ffff"))
+				.Label("悬停节点边框颜色")
+				.Description("鼠标悬停时框图节点的轮廓颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("node_border_selected_color", ColorFromString("#ff9d04ff"), ColorFromString("#ffb032ff"))
+				.Label("选中节点边框颜色")
+				.Description("节点被选中时框图节点的轮廓颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("node_select_rect", ColorFromString("#0582ff40"), ColorFromString("#0582ff40"))
+				.Label("节点选择框填充颜色")
+				.Description("选择框的填充颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("node_select_border", ColorFromString("#0582ff80"), ColorFromString("#0582ff80"))
+				.Label("节点选择框边框")
+				.Description("选择框的边框颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("edge_select_rect", ColorFromString("#0582ff40"), ColorFromString("#0582ff40"))
+				.Label("连线选择框填充颜色")
+				.Description("选择框的填充颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("edge_select_border", ColorFromString("#0582ff80"), ColorFromString("#0582ff80"))
+				.Label("连线选择框边框")
+				.Description("选择框的边框颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("edge_hovered_border", ColorFromString("#32b0ffff"), ColorFromString("#32b0ffff"))
+				.Label("悬停连线外框")
+				.Description("鼠标悬停时框图连线的轮廓颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("edge_selected_border", ColorFromString("#ffb032ff"), ColorFromString("#ffb032ff"))
+				.Label("选中连线外框")
+				.Description("连线被选中时框图连线的轮廓颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("edge_highlight_border", ColorFromString("#cc6900ff"), ColorFromString("#cc6900ff"))
+				.Label("高亮连线外框")
+				.Description("连线被高亮时框图连线的轮廓颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("pin_rect", ColorFromString("#0280D164"), ColorFromString("#3cb4ff64"))
+				.Label("端口矩形底色")
+				.Description("被高亮的节点端口背景矩形颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("pin_rect_border", ColorFromString("#3cb4ff80"), ColorFromString("#3cb4ff80"))
+				.Label("端口矩形边框")
+				.Description("被高亮的节点端口轮廓颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("edge_flow", ColorFromString("#ff8040ff"), ColorFromString("#ff8040ff"))
+				.Label("连线流动光效颜色")
+				.Description("连线上数据流流动光晕的颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("edge_flow_marker", ColorFromString("#ff8040ff"), ColorFromString("#ff8040ff"))
+				.Label("连线流动标记颜色")
+				.Description("连线上数据流流动标记点的颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("edge_color", ColorFromString("#000000ff"), ColorFromString("#ffffffff"))
+				.Label("连线颜色")
+				.Description("框图连线的颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("group_bg", ColorFromString("#00000030"), ColorFromString("#000000a0"))
+				.Label("分组背景")
+				.Description("节点分组背景矩形的颜色"));
+			graph.AddPreference(
+				Preference::ThemedColor("group_border", ColorFromString("#00000020"), ColorFromString("#ffffff20"))
+				.Label("分组边框")
+				.Description("节点分组的边框颜色"));
+
+			graph.AddPreference(
+				Preference::ThemedColor("valid_link_color", ColorFromString("#00ff00"), ColorFromString("#00ff00"))
 				.Label("有效连接颜色")
 				.Description("表示潜在连接路径有效的颜色"));
 			graph.AddPreference(
-				Preference::Color("invalid_link_color", ColorFromString("#ff0000"))
+				Preference::ThemedColor("invalid_link_color", ColorFromString("#ff0000"), ColorFromString("#ff0000"))
 				.Label("无效连接颜色")
 				.Description("表示潜在连接路径无效的颜色"));
 			graph.AddPreference(
-				Preference::Color("infobubble_color", ColorFromString("#404040"))
+				Preference::ThemedColor("infobubble_color", ColorFromString("#a0a0a0"), ColorFromString("#404040"))
 				.Label("信息气泡颜色")
 				.Description("图表节点上方信息气泡的颜色"));
 			graph.AddPreference(
@@ -161,39 +247,39 @@ void PreferenceManager::InitializeDefaults()
 				.Label("图标字体")
 				.Description("图标标题的字体"));
 			graph.AddPreference(
-				Preference::Color("icon_caption_color", ColorFromString("#ffffff"))
+				Preference::ThemedColor("icon_caption_color", ColorFromString("#000000"), ColorFromString("#ffffff"))
 				.Label("图标颜色")
 				.Description("图标标题颜色"));
 
 			graph.AddPreference(
-				Preference::Color("error_outline_color", ColorFromString("#ff0000"))
+				Preference::ThemedColor("error_outline_color", ColorFromString("#ff0000"), ColorFromString("#ff0000"))
 				.Label("错误轮廓颜色")
 				.Description("带错误图节点的轮廓颜色"));
 			graph.AddPreference(
-				Preference::Color("warning_outline_color", ColorFromString("#ffff00"))
+				Preference::ThemedColor("warning_outline_color", ColorFromString("#ffff00"), ColorFromString("#ffff00"))
 				.Label("警告轮廓颜色")
 				.Description("含警告图节点轮廓颜色"));
 			graph.AddPreference(
-				Preference::Color("notice_outline_color", ColorFromString("#00ff00"))
+				Preference::ThemedColor("notice_outline_color", ColorFromString("#00ff00"), ColorFromString("#00ff00"))
 				.Label("提示轮廓颜色")
 				.Description("含提示信息图节点轮廓颜色"));
 			graph.AddPreference(
-					Preference::Color("verbose_outline_color", ColorFromString("#a0a0ff"))
+					Preference::ThemedColor("verbose_outline_color", ColorFromString("#a0a0ff"), ColorFromString("#a0a0ff"))
 					.Label("详细轮廓颜色r")
 					.Description("用于以详细消息勾勒图节点的颜色"));
 			graph.AddPreference(
-					Preference::Color("debug_outline_color", ColorFromString("#a0a0a0"))
+					Preference::ThemedColor("debug_outline_color", ColorFromString("#a0a0a0"), ColorFromString("#a0a0a0"))
 					.Label("调试轮廓颜色")
 					.Description("用于高亮显示调试消息的图节点颜色"));
 
 		auto& ahelp = appearance.AddCategory("Help", "帮助");
 			ahelp.AddPreference(
-				Preference::Color("bubble_outline_color", ColorFromString("#00ff00"))
+				Preference::ThemedColor("bubble_outline_color", ColorFromString("#00ff00"), ColorFromString("#00ff00"))
 				.Label("气泡轮廓颜色")
 				.Description("教程气泡轮廓的颜色"));
 
 			ahelp.AddPreference(
-				Preference::Color("bubble_fill_color", ColorFromString("#202020e0"))
+				Preference::ThemedColor("bubble_fill_color", ColorFromString("#e0e0e0e0"), ColorFromString("#202020e0"))
 				.Label("气泡填充颜色")
 				.Description("教程气泡填充的颜色"));
 
@@ -201,9 +287,14 @@ void PreferenceManager::InitializeDefaults()
 			stream.AddPreference(
 				Preference::Enum("numeric_value_display", NUMERIC_DISPLAY_MONO_FONT)
 					.Label("数值显示")
-					.Description("选择 DMM 和 PSU 节点的数值显示方式。\n- 控制台字体：使用“常规”偏好设置中定义的控制台字体（等宽）。\n- 7 段数码管：使用 7 段数码管样式显示。\n- 默认字体：使用“常规”偏好设置中定义的默认字体（比例字体）。\n")
+					.Description(
+						"选择数字万用表 (DMM) 与电源单元 (PSU) 节点的数值显示方式\n"
+						"- 控制台字体：使用常规首选项中定义的控制台字体（等宽字体）。\n"
+						"- 七段数码管：使用七段数码管样式显示。\n"
+						"- 默认字体：使用常规首选项中定义的默认字体（比例字体）。\n"
+						)
 					.EnumValue("Console font", "控制台字体", NUMERIC_DISPLAY_MONO_FONT)
-					.EnumValue("7 segment", "7 段数码管", NUMERIC_DISPLAY_7SEGMENT)
+					.EnumValue("7 segment", "七段数码管字体", NUMERIC_DISPLAY_7SEGMENT)
 					.EnumValue("Default font", "默认字体", NUMERIC_DISPLAY_DEFAULT_FONT)
 				);
 			stream.AddPreference(
@@ -215,87 +306,87 @@ void PreferenceManager::InitializeDefaults()
 				.Label("仪器徽章保持时间（秒）")
 				.Description("仪器徽章保持显示的持续时间（用于防止闪烁）。"));
 			stream.AddPreference(
-				Preference::Color("download_wait_badge_color", ColorFromString("#CC4C4C"))
+				Preference::ThemedColor("download_wait_badge_color", ColorFromString("#CC4C4C"), ColorFromString("#CC4C4C"))
 				.Label("下载等待徽章颜色")
 				.Description("下载“等待”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("download_progress_badge_color", ColorFromString("#B3B44D"))
+				Preference::ThemedColor("download_progress_badge_color", ColorFromString("#B3B44D"), ColorFromString("#B3B44D"))
 				.Label("下载进度徽章颜色")
 				.Description("下载“进行中”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("download_finished_badge_color", ColorFromString("#4CCC4C"))
+				Preference::ThemedColor("download_finished_badge_color", ColorFromString("#4CCC4C"), ColorFromString("#4CCC4C"))
 				.Label("下载完成徽章颜色")
 				.Description("下载“已完成”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("download_active_badge_color", ColorFromString("#4CCC4C"))
+				Preference::ThemedColor("download_active_badge_color", ColorFromString("#4CCC4C"), ColorFromString("#4CCC4C"))
 				.Label("下载活动徽章颜色")
 				.Description("下载“活动”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("trigger_armed_badge_color", ColorFromString("#4CCC4C"))
+				Preference::ThemedColor("trigger_armed_badge_color", ColorFromString("#4CCC4C"), ColorFromString("#4CCC4C"))
 				.Label("触发已就绪徽章颜色")
 				.Description("触发“已就绪”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("trigger_stopped_badge_color", ColorFromString("#CC4C4C"))
+				Preference::ThemedColor("trigger_stopped_badge_color", ColorFromString("#CC4C4C"), ColorFromString("#CC4C4C"))
 				.Label("触发已停止徽章颜色")
 				.Description("触发“已停止”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("trigger_triggered_badge_color", ColorFromString("#B3B44D"))
+				Preference::ThemedColor("trigger_triggered_badge_color", ColorFromString("#B3B44D"), ColorFromString("#B3B44D"))
 				.Label("已触发徽章颜色")
 				.Description("触发“已触发”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("trigger_busy_badge_color", ColorFromString("#CC4C4C"))
+				Preference::ThemedColor("trigger_busy_badge_color", ColorFromString("#CC4C4C"), ColorFromString("#CC4C4C"))
 				.Label("触发忙碌徽章颜色")
 				.Description("触发“忙碌”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("trigger_auto_badge_color", ColorFromString("#4CCC4C"))
+				Preference::ThemedColor("trigger_auto_badge_color", ColorFromString("#4CCC4C"), ColorFromString("#4CCC4C"))
 				.Label("自动触发徽章颜色")
 				.Description("触发“自动”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("instrument_disabled_badge_color", ColorFromString("#666666"))
+				Preference::ThemedColor("instrument_disabled_badge_color", ColorFromString("#666666"), ColorFromString("#666666"))
 				.Label("仪器已禁用徽章颜色")
 				.Description("仪器“已禁用”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("instrument_offline_badge_color", ColorFromString("#CC4C4C"))
+				Preference::ThemedColor("instrument_offline_badge_color", ColorFromString("#CC4C4C"), ColorFromString("#CC4C4C"))
 				.Label("仪器离线徽章颜色")
 				.Description("仪器“离线”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("instrument_on_badge_color", ColorFromString("#4CCC4C"))
+				Preference::ThemedColor("instrument_on_badge_color", ColorFromString("#4CCC4C"), ColorFromString("#4CCC4C"))
 				.Label("仪器开启徽章颜色")
 				.Description("仪器“开启”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("instrument_partial_badge_color", ColorFromString("#E2CD23FF"))
+				Preference::ThemedColor("instrument_partial_badge_color", ColorFromString("#E2CD23FF"), ColorFromString("#E2CD23FF"))
 				.Label("仪器部分开启徽章颜色")
 				.Description("仪器“部分开启”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("instrument_off_badge_color", ColorFromString("#808000ff"))
+				Preference::ThemedColor("instrument_off_badge_color", ColorFromString("#EBEB00FF"), ColorFromString("#808000ff"))
 				.Label("仪器关闭徽章颜色")
 				.Description("仪器“关闭”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("psu_cv_badge_color", ColorFromString("#4CCC4C"))
+				Preference::ThemedColor("psu_cv_badge_color", ColorFromString("#4CCC4C"), ColorFromString("#4CCC4C"))
 				.Label("PSU CV 徽章颜色")
 				.Description("PSU “CV”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("psu_cc_badge_color", ColorFromString("#CC4C4C"))
+				Preference::ThemedColor("psu_cc_badge_color", ColorFromString("#CC4C4C"), ColorFromString("#CC4C4C"))
 				.Label("PSU CC 徽章颜色")
 				.Description("PSU “CC”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("psu_set_label_color", ColorFromString("#FFFF00"))
+				Preference::ThemedColor("psu_set_label_color", ColorFromString("#FFFF00"), ColorFromString("#FFFF00"))
 				.Label("PSU 设定标签颜色")
 				.Description("PSU “设定”标签的颜色"));
 			stream.AddPreference(
-				Preference::Color("psu_meas_label_color", ColorFromString("#00C100"))
+				Preference::ThemedColor("psu_meas_label_color", ColorFromString("#00C100"), ColorFromString("#00C100"))
 				.Label("PSU 测量标签颜色")
 				.Description("PSU “测量”标签的颜色"));
 			stream.AddPreference(
-				Preference::Color("psu_7_segment_color", ColorFromString("#B2FFFF"))
+				Preference::ThemedColor("psu_7_segment_color", ColorFromString("#B2FFFF"), ColorFromString("#B2FFFF"))
 				.Label("PSU 7 段数码管显示颜色")
 				.Description("PSU 7 段数码管样式显示的颜色"));
 			stream.AddPreference(
-				Preference::Color("awg_hiz_badge_color", ColorFromString("#666600"))
+				Preference::ThemedColor("awg_hiz_badge_color", ColorFromString("#666600"), ColorFromString("#666600"))
 				.Label("函数发生器 HI-Z 徽章颜色")
 				.Description("函数发生器“HI-Z”徽章的颜色"));
 			stream.AddPreference(
-				Preference::Color("awg_50ohms_badge_color", ColorFromString("#B54C85"))
+				Preference::ThemedColor("awg_50ohms_badge_color", ColorFromString("#B54C85"), ColorFromString("#B54C85"))
 				.Label("函数发生器 50 欧姆徽章颜色")
 				.Description("函数发生器“50Ohm”徽章的颜色"));
 
@@ -321,25 +412,25 @@ void PreferenceManager::InitializeDefaults()
 				.Label("控制台字体")
 				.Description("SCPI 控制台、日志查看器以及流浏览器中 PSU/DMM 数值使用的字体"));
 			general.AddPreference(
-				Preference::Color("apply_button_color", ColorFromString("#4CCC4C"))
+				Preference::ThemedColor("apply_button_color", ColorFromString("#4CCC4C"), ColorFromString("#4CCC4C"))
 				.Label("应用按钮颜色")
 				.Description("应用数值按钮的颜色"));
 
 		auto& graphs = appearance.AddCategory("Graphs", "图表");
 			graphs.AddPreference(
-				Preference::Color("bottom_color", ColorFromString("#000000ff"))
+				Preference::ThemedColor("bottom_color", ColorFromString("#e0e0e0ff"), ColorFromString("#000000ff"))
 				.Label("背景底部颜色")
 				.Description("波形图背景渐变底部的颜色"));
 			graphs.AddPreference(
-				Preference::Color("top_color", ColorFromString("#202020ff"))
+				Preference::ThemedColor("top_color", ColorFromString("#ffffffff"), ColorFromString("#202020ff"))
 				.Label("背景顶部颜色")
 				.Description("波形图背景渐变顶部的颜色"));
 			graphs.AddPreference(
-				Preference::Color("grid_centerline_color", ColorFromString("#c0c0c0ff"))
+				Preference::ThemedColor("grid_centerline_color", ColorFromString("#c0c0c0ff"), ColorFromString("#c0c0c0ff"))
 				.Label("网格中心线颜色")
 				.Description("Y=0 网格线的颜色"));
 			graphs.AddPreference(
-				Preference::Color("grid_color", ColorFromString("#c0c0c040"))
+				Preference::ThemedColor("grid_color", ColorFromString("#c0c0c040"), ColorFromString("#c0c0c040"))
 				.Label("网格颜色")
 				.Description("网格线的颜色"));
 			graphs.AddPreference(
@@ -351,7 +442,7 @@ void PreferenceManager::InitializeDefaults()
 				.Label("网格线宽度")
 				.Description("网格线宽度"));
 			graphs.AddPreference(
-				Preference::Color("y_axis_text_color", ColorFromString("#ffffffff"))
+				Preference::ThemedColor("y_axis_text_color", ColorFromString("#000000ff"), ColorFromString("#ffffffff"))
 				.Label("Y 轴文本颜色")
 				.Description("Y 轴文本的颜色"));
 			graphs.AddPreference(
@@ -361,12 +452,12 @@ void PreferenceManager::InitializeDefaults()
 
 		auto& logs = appearance.AddCategory("Log Viewer", "日志查看器");
 			logs.AddPreference(
-				Preference::Color("error_color", ColorFromString("#800000"))
+				Preference::ThemedColor("error_color", ColorFromString("#c00000"), ColorFromString("#800000"))
 				.Label("错误颜色")
 				.Description("错误级别日志消息的背景颜色"));
 
 			logs.AddPreference(
-				Preference::Color("warning_color", ColorFromString("#404000"))
+				Preference::ThemedColor("warning_color", ColorFromString("#c0c000"), ColorFromString("#404000"))
 				.Label("警告颜色")
 				.Description("警告级别日志消息的背景颜色"));
 
@@ -393,7 +484,7 @@ void PreferenceManager::InitializeDefaults()
 				.Label("轮廓颜色")
 				.Description("峰值标签轮廓的颜色"));*/
 			peaks.AddPreference(
-				Preference::Color("peak_text_color", ColorFromString("#ffffff"))
+				Preference::ThemedColor("peak_text_color", ColorFromString("#000000"), ColorFromString("#ffffff"))
 				.Label("文本颜色")
 				.Description("峰值标签文本的颜色"));
 			/*peaks.AddPreference(
@@ -443,15 +534,15 @@ void PreferenceManager::InitializeDefaults()
 
 		auto& timeline = appearance.AddCategory("Timeline", "时间线");
 			timeline.AddPreference(
-				Preference::Color("axis_color", ColorFromString("#ffffff"))
+				Preference::ThemedColor("axis_color", ColorFromString("#000000"), ColorFromString("#ffffff"))
 				.Label("坐标轴颜色")
 				.Description("X 轴线和刻度线的颜色"));
 			timeline.AddPreference(
-				Preference::Color("text_color", ColorFromString("#ffffff"))
+				Preference::ThemedColor("text_color", ColorFromString("#000000"), ColorFromString("#ffffff"))
 				.Label("文本颜色")
 				.Description("X 轴文本标签的颜色"));
 			timeline.AddPreference(
-				Preference::Color("trigger_bar_color", ColorFromString("#ffffff40"))
+				Preference::ThemedColor("trigger_bar_color", ColorFromString("#00000040"), ColorFromString("#ffffff40"))
 				.Label("触发条颜色")
 				.Description("拖动触发位置时显示的垂直位置线颜色"));
 			timeline.AddPreference(
@@ -462,15 +553,15 @@ void PreferenceManager::InitializeDefaults()
 		auto& toolbar = appearance.AddCategory("Toolbar", "工具栏");
 			toolbar.AddPreference(
 				Preference::Enum("toolbar_height", 2)
-					.Label("Toolbar Height")
-					.Description("Toolbar height, as a multiple of the font size")
+					.Label("工具栏高度")
+					.Description("工具栏高度，以字体大小的倍数为单位")
 					.EnumValue("2x", 2)
 					.EnumValue("4x", 4)
 				);
 			toolbar.AddPreference(
 				Preference::Enum("icon_theme", ICON_THEME_DARK)
-					.Label("Icon Theme")
-					.Description("Toolbar theme")
+					.Label("图标主题")
+					.Description("工具栏主题")
 					.EnumValue("Dark", ICON_THEME_DARK)
 					.EnumValue("Light", ICON_THEME_LIGHT)
 				);
@@ -478,18 +569,34 @@ void PreferenceManager::InitializeDefaults()
 		auto& windows = appearance.AddCategory("Windowing", "窗口");
 			windows.AddPreference(
 				Preference::Enum("viewport_mode", VIEWPORT_ENABLE)
-					.Label("视口模式")
-					.Description("指定 GUI 库是否允许创建多个顶层窗口，\n或者强制所有子窗口（菜单、对话框、工具提示等）保持在\n应用程序窗口边界内。\n\n默认使用多窗口模式；如果 Linux 平铺窗口管理器出现问题，\n使用单窗口模式可能体验更好。\n\n更改此设置后，需要重启 ngscopeclient 才会生效。")
+					.Label("视窗模式")
+					.Description(
+						"指定 GUI 库是否允许创建多个顶层窗口,\n"
+						"或是强制所有子窗口（菜单、对话框、工具提示等）都限制在\n"
+						"应用程序窗口的边界之内。\n"
+						"\n"
+						"默认采用多窗口模式，但如果你在使用 Linux 平铺式窗口管理器时遇到问题，\n"
+						"切换为单窗口模式可能会获得更好的使用体验。\n"
+						"\n"
+						"修改此项设置后，需要重启 ngscopeclient 才会生效。"
+						)
 					.EnumValue("Multi window", "多窗口", VIEWPORT_ENABLE)
 					.EnumValue("Single window", "单窗口", VIEWPORT_DISABLE)
 				);
 			windows.AddPreference(
 				Preference::Enum("startup_mode", STARTUP_MODE_WINDOWED)
 					.Label("窗口启动模式")
-					.Description("指定 Ngscopeclient 启动时窗口的打开方式。\n\n默认是窗口模式：应用程序以固定的 1280x720 窗口启动。\n其他选项包括：\n - 最大化：窗口在主屏幕上最大化，\n - 上次状态：恢复到上次的位置和大小。\n")
-					.EnumValue("Windowed", "窗口模式", STARTUP_MODE_WINDOWED)
-					.EnumValue("Maximized", "最大化", STARTUP_MODE_MAXIMIZED)
-					.EnumValue("Last State", "上次状态", STARTUP_MODE_LAST_STATE)
+					.Description(
+						"指定 ngscopeclient 启动时窗口的打开方式。\n"
+						"\n"
+						"默认为窗口模式：程序以固定 1280×720 大小的窗口启动。\n"
+						"其他可选选项：\n"
+						" - 最大化：窗口在主显示器上最大化显示\n"
+						" - 上次状态：恢复为上一次退出时的窗口位置与尺寸\n"
+						)
+					.EnumValue("Windowed", STARTUP_MODE_WINDOWED)
+					.EnumValue("Maximized", STARTUP_MODE_MAXIMIZED)
+					.EnumValue("Last State", STARTUP_MODE_LAST_STATE)
 				);
 		auto& windowStartup = appearance.AddCategory("Startup", "启动");
 			windowStartup.AddPreference(Preference::Bool("startup_fullscreen", false).Invisible());
@@ -497,54 +604,89 @@ void PreferenceManager::InitializeDefaults()
 			windowStartup.AddPreference(Preference::Int ("startup_pos_x", 0).Invisible());
 			windowStartup.AddPreference(Preference::Int ("startup_pos_y", 0).Invisible());
 			windowStartup.AddPreference(Preference::Int ("startup_size_width", 0).Invisible());
-			windowStartup.AddPreference(Preference::Int ("startup_size_heigth", 0).Invisible());
+			windowStartup.AddPreference(Preference::Int ("startup_size_height", 0).Invisible());
 			windowStartup.AddPreference(Preference::String ("monitor_name", "").Invisible());
 			windowStartup.AddPreference(Preference::Int ("monitor_width", 0).Invisible());
-			windowStartup.AddPreference(Preference::Int ("monitor_heigth", 0).Invisible());
+			windowStartup.AddPreference(Preference::Int ("monitor_height", 0).Invisible());
 
 	auto& drivers = this->m_treeRoot.AddCategory("Drivers", "驱动");
 		auto& dgeneral = drivers.AddCategory("General", "常规");
 			dgeneral.AddPreference(
 				Preference::Enum("headless_startup", HEADLESS_STARTUP_C1_ONLY)
-				.Label("无屏示波器默认状态")
-				.Description("选择连接到 PC 且没有前面板显示的示波器默认启用的通道集合。")
-				.EnumValue("All non-MSO channels", "所有非 MSO 通道", HEADLESS_STARTUP_ALL_NON_MSO)
-				.EnumValue("Channel 1 only", "仅通道 1", HEADLESS_STARTUP_C1_ONLY) );
+				.Label("无界面示波器默认状态")
+				.Description(
+				"选择连接至 PC、且自身不带前面板显示屏的示波器，\n"
+				"默认启用的通道集合。"
+				)
+				.EnumValue("All non-MSO channels", HEADLESS_STARTUP_ALL_NON_MSO)
+				.EnumValue("Channel 1 only", HEADLESS_STARTUP_C1_ONLY) );
 
 		auto& rigol = drivers.AddCategory("Rigol DHO", "Rigol DHO");
 			rigol.AddPreference(
 				Preference::Enum("data_width", WIDTH_AUTO)
 					.Label("数据宽度")
-					.Description("从仪器下载采样数据时使用的数据宽度。\n\n即使仪器具有 12 位 ADC，使用 8 位而不是 16 位数据格式也可以获得更快的波形刷新率。\n\n如果更重视数据精度而不是刷新率，请选择 16 位模式。\n\n更改此设置会在下次打开仪器连接时生效；活动会话的传输格式不会更新。")
-					.EnumValue("Auto", "自动", WIDTH_AUTO)
-					.EnumValue("8 bits", "8 位", WIDTH_8_BITS)
-					.EnumValue("16 bits", "16 位", WIDTH_16_BITS)
+					.Description(
+					"从仪器下载采样数据时使用的数据位宽。\n\n"
+					"即便仪器搭载 12 位 ADC，选用 8 位而非 16 位数据格式，"
+					"可以获得更快的波形刷新速率。\n\n"
+					"如果希望优先保证数据精度，而非刷新速度，请选择 16 位模式。\n\n"
+					"该设置将在下次建立仪器连接时生效；"
+					"已经处于活动状态的会话不会更新传输格式。"
+						)
+					.EnumValue("Auto", WIDTH_AUTO)
+					.EnumValue("8 bits", WIDTH_8_BITS)
+					.EnumValue("16 bits", WIDTH_16_BITS)
 				);
 
 		auto& rsrtb = drivers.AddCategory("RohdeSchwarz RTB", "RohdeSchwarz RTB");
 			rsrtb.AddPreference(
 				Preference::Enum("data_width", WIDTH_16_BITS)
 					.Label("数据宽度")
-					.Description("从仪器下载采样数据时使用的数据宽度。\n\n即使仪器具有 10 位 ADC，使用 8 位而不是 16 位数据格式也可以获得更快的波形刷新率。\n\n如果更重视数据精度而不是刷新率，请选择 16 位模式。\n\n更改此设置会在下次打开仪器连接时生效；活动会话的传输格式不会更新。")
-					.EnumValue("8 bits", "8 位", WIDTH_8_BITS)
-					.EnumValue("16 bits", "16 位", WIDTH_16_BITS)
+					.Description(
+					"从仪器下载采样数据时使用的数据位宽。\n\n"
+					"即便仪器配备 10 位 ADC，使用 8 位而非 16 位数据格式，"
+					"能够提升波形刷新速率。\n\n"
+					"如果希望优先保证数据精度，而非刷新速度，请选择 16 位模式。\n\n"
+					"该设置会在下次建立仪器连接时生效；"
+					"已处于运行中的会话不会更新传输格式。"
+						)
+					.EnumValue("8 bits", WIDTH_8_BITS)
+					.EnumValue("16 bits", WIDTH_16_BITS)
 				);
 
 		auto& siglent = drivers.AddCategory("Siglent SDS HD", "Siglent SDS HD");
 			siglent.AddPreference(
 				Preference::Enum("data_width", WIDTH_AUTO)
 					.Label("数据宽度")
-					.Description("从仪器下载采样数据时使用的数据宽度。\n\n即使仪器具有 12 位 ADC，使用 8 位而不是 16 位数据格式也可以获得约 10% 更快的波形刷新率。\n\n如果更重视数据精度而不是刷新率，请选择 16 位模式。\n\n更改此设置会在下次打开仪器连接时生效；活动会话的传输格式不会更新。")
-					.EnumValue("Auto", "自动", WIDTH_AUTO)
-					.EnumValue("8 bits", "8 位", WIDTH_8_BITS)
-					.EnumValue("16 bits", "16 位", WIDTH_16_BITS)
+					.Description(
+					"从仪器下载采样数据时使用的数据位宽。\n\n"
+					"即便仪器搭载 12 位 ADC，使用 8 位而非 16 位数据格式，"
+					"波形刷新速率可提升约 10%。\n\n"
+					"如果你希望优先保证数据精度，而非刷新速度，请选择 16 位模式。\n\n"
+					"该设置将在下次建立仪器连接时生效；"
+					"已处于活动状态的会话不会更新传输格式。"
+						)
+					.EnumValue("Auto", WIDTH_AUTO)
+					.EnumValue("8 bits", WIDTH_8_BITS)
+					.EnumValue("16 bits", WIDTH_16_BITS)
 				);
 
 		auto& lecroy = drivers.AddCategory("Teledyne LeCroy", "Teledyne LeCroy");
 			lecroy.AddPreference(
 				Preference::Bool("force_16bit", true)
 				.Label("强制 16 位模式")
-				.Description("从仪器下载采样数据时强制使用 16 位整数格式。\n\n即使仪器只有 8 位 ADC，由于内部平坦度校正和校准步骤，示波器内部数据表示也具有额外的有效位。\n\n禁用此设置时，具有 8 位 ADC 的仪器将使用 8 位整数格式下载采样。这会略微提升每秒波形数性能，但会增加量化噪声，并可能在眼图中产生水平“条纹”伪影。\n\n此设置对 ADC 位数大于 8 位的仪器（HDO、WaveSurfer HD、WaveRunner HD、WavePro HD）无效，这些仪器始终使用 16 位传输格式。\n\n更改此设置会在下次打开仪器连接时生效；活动会话的传输格式不会更新。"));
+				.Description(
+					"从仪器下载采样数据时强制使用 16 位整数格式。\n\n"
+					"即便仪器仅配备 8 位 ADC，由于内部平坦度校正与校准流程，"
+					"示波器内部的数据表示会带有额外有效位。\n\n"
+					"关闭该选项时，搭载 8 位 ADC 的仪器将采用 8 位整数格式下载采样点。"
+					"此举可小幅提升每秒波形处理性能，但会增大量化噪声，"
+					"还可能在眼图中出现水平 “条纹” 伪影。\n\n"
+					"该设置对 ADC 位数大于 8 位的仪器（HDO、WaveSurfer HD、WaveRunner HD、WavePro HD）无效，"
+					"这类仪器始终使用 16 位传输格式。\n\n"
+					"修改此设置后，将在下次建立仪器连接时生效；"
+					"已建立的活动会话不会更新传输格式。"
+				));
 
 	auto& files = this->m_treeRoot.AddCategory("Files", "文件");
 		files.AddPreference(
@@ -572,15 +714,27 @@ void PreferenceManager::InitializeDefaults()
 			events.AddPreference(
 				Preference::Enum("event_driven_ui", 0)
 					.Label("事件循环模式")
-					.Description("指定主事件循环的运行方式。\n\n性能模式下，事件循环以锁定到显示刷新率的恒定速度运行。这样可以获得最流畅的 GUI 和最高的波形更新率，但持续重绘会增加功耗。\n\n省电模式下，事件循环会阻塞，直到发生 GUI 事件（按键、鼠标移动等）或用户指定的超时时间到期。这会使显示更新不那么平滑，但让 CPU 大部分时间保持空闲以节省电力。")
-					.EnumValue("Performance", "性能", 0)
-					.EnumValue("Power", "省电", 1)
+					.Description(
+						"指定主事件循环的运行方式。\n"
+						"\n"
+						"在**性能模式**下，事件循环以与显示器刷新率锁定的恒定速率运行。\n"
+						"该模式下界面最为流畅，波形刷新能力最强，\n"
+						"但持续重绘会增加功耗。\n"
+						"\n"
+						"在**省电模式**下，事件循环会进入阻塞状态，直至发生 GUI 事件（按键、鼠标移动等），\n"
+						"或是到达用户设定的超时时间。该模式画面更新会出现卡顿，\n"
+						"但可让 CPU 大部分时间处于空闲状态，以此节省功耗。"
+						)
+					.EnumValue("Performance", 0)
+					.EnumValue("Power", 1)
 				);
 			events.AddPreference(
 				Preference::Real("polling_timeout", FS_PER_SECOND / 4)
 				.Label("轮询超时")
 				.Unit(Unit::UNIT_FS)
-				.Description("省电优化模式下事件循环的轮询超时。\n\n更长的超时时间会降低功耗，但也会减慢显示更新。\n")
+				.Description(
+					"省电优化模式下事件循环的轮询超时时间。\n\n"
+					"超时数值越大，功耗越低，但画面更新速度也会变慢。\n")
 				);
 
 
@@ -589,5 +743,8 @@ void PreferenceManager::InitializeDefaults()
 		 privacy.AddPreference(
 			Preference::Bool("redact_serial_in_title", false)
 			.Label("在标题栏隐藏序列号")
-			.Description("在窗口标题栏中部分隐藏仪器序列号。\n\n这样可以在共享截图时不暴露序列号。"));*/
+			.Description(
+				"在窗口标题栏中对仪器序列号做部分隐藏处理。\n\n"
+				"该功能便于你分享截图，而不会泄露仪器序列号。"
+			));*/
 }
