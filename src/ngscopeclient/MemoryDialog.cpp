@@ -60,7 +60,7 @@ public:
 // Construction / destruction
 
 MemoryDialog::MemoryDialog(Session* session, MainWindow* parent)
-	: Dialog("Memory Analysis", "Memory", ImVec2(800, 600), session, parent)
+	: Dialog("内存分析", "Memory", ImVec2(800, 600), session, parent)
 	, m_selection(nullptr)
 {
 

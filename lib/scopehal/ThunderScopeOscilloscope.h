@@ -80,12 +80,15 @@ public:
 	virtual Oscilloscope::TriggerMode PollTrigger() override;
 	virtual bool AcquireData() override;
 	virtual void PushEdgeTrigger(EdgeTrigger* trig) override;
+	virtual bool PeekTriggerArmed() override;
 
 	// Captures
 	virtual void Start() override;
 	virtual void StartSingleTrigger() override;
 	virtual void Stop() override;
 	virtual void ForceTrigger() override;
+	virtual bool HasAutoTrigger() override;
+	virtual void StartAutoTrigger() override;
 
 	//Timebase
 	virtual std::vector<uint64_t> GetSampleRatesNonInterleaved() override;

@@ -205,11 +205,29 @@ bool MetricsDialog::DoRender()
 				ImGui::EndDisabled();
 
 				HelpMarker(
-					"Number of waveforms queued for processing.\n\n"
-					"This value should normally be 0 or 1, and is capped at 5.\n"
-					"If it is consistently at or near 5, waveform processing and/or rendering is unable to keep "
-					"up with the instrument."
+					"待处理波形队列数量。\n\n"
+					"该数值正常应为 0 或 1，上限为 5。\n"
+					"如果该数值持续等于或接近 5，说明波形处理或渲染跟不上仪器的"
+					"输出速率。"
 					);
+
+				const auto& diag = s->GetDiagnosticsValues();
+				if(!diag.empty())
+				{
+					if(ImGui::TreeNode("驱动程序诊断"))
+					{
+						ImGui::BeginDisabled();
+							for(auto& it : diag)
+							{
+								str = it.second->ToString();
+								ImGui::SetNextItemWidth(width);
+								ImGui::InputText(it.first.c_str(), &str);
+							}
+						ImGui::EndDisabled();
+
+						ImGui::TreePop();
+					}
+				}
 
 				ImGui::TreePop();
 			}

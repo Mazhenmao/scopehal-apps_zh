@@ -1189,7 +1189,9 @@ void MainWindow::ToolbarButtons()
 		ClearPersistence();
 	}
 	Dialog::Tooltip(
-	 "清除 PC 端缓存的仪器状态，并从仪器重新加载配置\n此操作会导致应用程序短暂卡顿，但当在仪器前面板上进行了\nngscopeclient 未检测到的更改时，可通过该操作重新同步。"
+		"清空电脑端缓存的仪器状态，并从仪器重新加载配置。\n\n"
+		"此操作会造成软件短暂卡顿；当你在示波器面板上修改参数，\n"
+		"而 ngscopeclient 没有自动识别该变更时，可以用它来重新同步。"
 		);
 
 	//View settings
@@ -2057,7 +2059,9 @@ void MainWindow::RenderLoadWarningPopup()
 				ImVec2(warningSize, warningSize));
 			ImGui::SameLine();
 			ImGui::TextUnformatted(
-				"正在加载的会话中有部分仪器设置与当前硬件配置不匹配，如果设置错误，可能会损坏仪器和/或被测设备。"
+				"你正在加载的会话中，部分仪器设置与"
+				"当前硬件配置不匹配；若参数设置错误，"
+				"有可能损坏仪器和 / 或被测件（DUT）。"
 				);
 
 			ImGui::PopTextWrapPos();
@@ -2853,11 +2857,14 @@ bool MainWindow::LoadUIConfiguration(int version, const YAML::Node& node)
 				auto streams = an["streams"];
 				for(auto jt : streams)
 				{
-					auto chan = m_session.m_idtable.Lookup<OscilloscopeChannel>(jt.second["channel"].as<int>());
+					auto nchan = jt.second["channel"].as<int>();
+					auto chan = m_session.m_idtable.Lookup<OscilloscopeChannel>(nchan);
 					auto stream = jt.second["stream"].as<int>();
 					auto persist = jt.second["persistence"].as<bool>();
 					auto ramp = jt.second["colorRamp"].as<string>();
-					if(chan)
+
+					//Channel must exist, and also the stream
+					if(chan && (stream < (int)chan->GetStreamCount()) )
 					{
 						//Make the waveform area if needed
 						if(!area)
@@ -2870,8 +2877,9 @@ bool MainWindow::LoadUIConfiguration(int version, const YAML::Node& node)
 					}
 					else
 					{
-						LogWarning("channel %d not found in area %d\n",
-							jt.second["channel"].as<int>(),
+						LogWarning("channel %d or stream %d not found in area %d\n",
+							nchan,
+							stream,
 							aid);
 					}
 				}

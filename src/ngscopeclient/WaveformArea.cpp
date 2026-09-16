@@ -1866,6 +1866,7 @@ void WaveformArea::RenderProtocolWaveform(std::shared_ptr<DisplayedChannel> chan
 	//Draw the actual stuff
 	size_t len = data->size();
 	size_t xend = start.x + size.x;
+	const double mincellwidth = 2;
 	for(size_t i=ifirst; i<len; i++)
 	{
 		int64_t tstart = (data->m_offsets[i] * data->m_timescale) + data->m_triggerPhase;
@@ -1881,21 +1882,24 @@ void WaveformArea::RenderProtocolWaveform(std::shared_ptr<DisplayedChannel> chan
 
 		double cellwidth = xe - xs;
 		auto color = data->GetColorCached(i);
-		if(cellwidth < 2)
+		if(cellwidth < mincellwidth)
 		{
 			//This sample is really skinny. There's no text to render so don't waste time with that.
+
+			//Calculate the end timestamp of the decode bubble we're drawing
+			int64_t cellend = m_group->XPositionToXAxisUnits(xs + mincellwidth);
+			cellend -= data->m_triggerPhase;
+			cellend /= data->m_timescale;
 
 			//Average the color of all samples touching this pixel
 			size_t nmerged = 1;
 			float sum_red = (color >> IM_COL32_R_SHIFT) & 0xff;
 			float sum_green = (color >> IM_COL32_G_SHIFT) & 0xff;
 			float sum_blue = (color >> IM_COL32_B_SHIFT) & 0xff;
+			size_t ibase = i;
 			for(size_t j=i+1; j<len; j++)
 			{
-				int64_t cellstart = (data->m_offsets[j] * data->m_timescale) + data->m_triggerPhase;
-				double cellxs = m_group->XAxisUnitsToXPosition(cellstart);
-
-				if(cellxs > xs+2)
+				if(data->m_offsets[j] > cellend)
 					break;
 
 				auto c = data->GetColorCached(j);
@@ -1904,10 +1908,13 @@ void WaveformArea::RenderProtocolWaveform(std::shared_ptr<DisplayedChannel> chan
 				sum_green += (c >> IM_COL32_G_SHIFT) & 0xff;
 				sum_blue += (c >> IM_COL32_B_SHIFT) & 0xff;
 				nmerged ++;
-
-				//Skip these samples in the outer loop
-				i = j-1;
 			}
+
+			//Update loop counter with anything we averaged
+			if(nmerged > 1)
+				i = (ibase + nmerged - 2);
+
+			//TODO: weight by size of samples so bigger ones are heavier?
 
 			//Render a single box for them all
 			sum_red /= nmerged;
@@ -1918,7 +1925,6 @@ void WaveformArea::RenderProtocolWaveform(std::shared_ptr<DisplayedChannel> chan
 				((static_cast<int>(sum_green) & 0xff) << IM_COL32_G_SHIFT) |
 				((static_cast<int>(sum_blue) & 0xff) << IM_COL32_B_SHIFT) |
 				(0xff << IM_COL32_A_SHIFT);
-
 
 			RenderComplexSignal(
 				list,
