@@ -359,7 +359,7 @@ Oscilloscope::TriggerMode ThunderScopeOscilloscope::PollTrigger()
 		#endif
 
 		//Do we have old stale waveforms to drop still in the socket buffer? Throw it out
-		if(m_dropUntilSeq > m_lastSeq)
+		if( (m_dropUntilSeq > m_lastSeq) && (m_lastSeq != 0) )
 		{
 			LogTrace("Dropping until sequence %u, last received sequence was %u. Need to drop this waveform\n",
 				(unsigned int)m_dropUntilSeq, (unsigned int)m_lastSeq);
@@ -635,7 +635,17 @@ bool ThunderScopeOscilloscope::DoAcquireData(bool keep)
 
 	//If this was a one-shot trigger we're no longer armed
 	if(m_triggerOneShot)
+	{
 		m_triggerArmed = false;
+
+		//Ask the server what the last waveform it captured was
+		m_dropUntilSeq = stoul(Trim(m_transport->SendCommandQueuedWithReply("SEQNUM?")));
+		if(m_lastSeq != 0)
+		{
+			LogTrace("Trigger stopped after processing waveform %u. Last sequence number sent by scope was %u. Need to drop %u stale waveforms already in flight\n",
+				(unsigned int)m_lastSeq, (unsigned int)m_dropUntilSeq, (unsigned int)(m_dropUntilSeq - m_lastSeq));
+		}
+	}
 
 	return true;
 }
@@ -720,6 +730,15 @@ void ThunderScopeOscilloscope::Stop()
 
 void ThunderScopeOscilloscope::StartSingleTrigger()
 {
+	//Ask the server what the last waveform it sent was
+	m_dropUntilSeq = stoul(Trim(m_transport->SendCommandQueuedWithReply("SEQNUM?")));
+	LogTrace("Starting single trigger after processing waveform %u. Last sequence number sent by scope was %u. Need to drop %u stale waveforms already in flight\n",
+		(unsigned int)m_lastSeq, (unsigned int)m_dropUntilSeq, (unsigned int)(m_dropUntilSeq - m_lastSeq));
+
+	//If we were in normal trigger mode, stop it
+	if(m_triggerArmed)
+		Stop();
+
 	RemoteBridgeOscilloscope::StartSingleTrigger();
 	ResetPerCaptureDiagnostics();
 }
@@ -742,11 +761,39 @@ void ThunderScopeOscilloscope::StartAutoTrigger()
 
 void ThunderScopeOscilloscope::ForceTrigger()
 {
-	m_transport->SendCommandQueued("SINGLE");
-	m_transport->SendCommandQueued("FORCE");
+	if(!m_triggerArmed)
+	{
+		//Ask the server what the last waveform it captured was
+		m_dropUntilSeq = stoul(Trim(m_transport->SendCommandQueuedWithReply("SEQNUM?")));
+		if( (m_dropUntilSeq > m_lastSeq) && (m_lastSeq != 0) )
+		{
+			LogTrace("Starting forced trigger after processing waveform %u. Last sequence number sent by scope was %u. Need to drop %u stale waveforms already in flight\n",
+				(unsigned int)m_lastSeq, (unsigned int)m_dropUntilSeq, (unsigned int)(m_dropUntilSeq - m_lastSeq));
 
-	m_triggerArmed = true;
-	m_triggerOneShot = true;
+			//Actually drop them here
+			while(m_dropUntilSeq > m_lastSeq)
+				DoAcquireData(false);
+		}
+		else
+		{
+			LogTrace("Starting forced trigger after processing waveform %u. Last sequence number sent by scope was %u. No action needed.\n",
+				(unsigned int)m_lastSeq, (unsigned int)m_dropUntilSeq);
+		}
+	}
+
+	//If the trigger is currently armed, don't change the current trigger mode and just force it
+	if(m_triggerArmed)
+		m_transport->SendCommandQueued("FORCE");
+
+	//Otherwise, do a forced single shot trigger
+	else
+	{
+		m_transport->SendCommandQueued("SINGLE");
+		m_transport->SendCommandQueued("FORCE");
+
+		m_triggerArmed = true;
+		m_triggerOneShot = true;
+	}
 
 	ResetPerCaptureDiagnostics();
 }

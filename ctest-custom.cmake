@@ -60,7 +60,7 @@ elseif(${HOSTNAME} STREQUAL "debian-stable" )
 	message(STATUS "Found known CI config: debian-stable")
 
 	set(CTEST_BUILD_CONFIGURATION "RelWithDebInfo")
-	set(CONFIGURE_OPTIONS "-DBUILD_TESTING=ON" "-DBUILD_DOCS=ON" "-DCPACK_GENERATOR=DEB")
+	set(CONFIGURE_OPTIONS "-DBUILD_TESTING=ON" "-DBUILD_DOCS=ON" "-DCPACK_GENERATOR=DEB" "-DENABLE_HIL_TESTS=ON" "-DHIL_SIGGEN_PATH=fpgadev.lab.poulsbo.antikernel.net:8000" "-DHIL_TS_PATH=fpgadev.lab.poulsbo.antikernel.net:5025:5026" "-DHIL_RELAY_PATH=fpgadev.lab.poulsbo.antikernel.net:8001")
 
 # CI Debian Trixie with Intel Coffee Lake iGPU
 elseif(${HOSTNAME} STREQUAL "debian-stable-intel" )
@@ -142,10 +142,10 @@ elseif(${HOSTNAME} MATCHES "ubuntu-lts" )
 		set(CONFIGURE_OPTIONS "-DBUILD_TESTING=ON" "-DBUILD_DOCS=OFF" "-DCPACK_GENERATOR=DEB")
 	endif()
 
-# CI Fedora 43
+# CI Fedora 44
 elseif(${HOSTNAME} STREQUAL "fedora" )
 	set(CTEST_SITE ci-fedora)
-	set(CTEST_BUILD_NAME x86_64-linux-fedora-43-llvmpipe)
+	set(CTEST_BUILD_NAME x86_64-linux-fedora-44-llvmpipe)
 	set(CTEST_DASHBOARD Continuous)
 	set(CTEST_GIT_COMMAND "/usr/bin/git")
 	message(STATUS "Found known CI config: fedora")
